@@ -262,7 +262,11 @@ after_migrate = [
    
     "aims_customization.patches.v_0.add_status_for_design_feasibility_on_quotation.execute",
     "aims_customization.patches.v_0.add_mould_detail_tab_on_item_master.execute",
-    "aims_customization.patches.v_0.add_is_mold_item_field_on_item.execute"
+    "aims_customization.patches.v_0.add_is_mold_item_field_on_item.execute",
+    "aims_customization.patches.v_0.document_naming_series_for_shape.execute",
+    "aims_customization.patches.v_0.add_is_moulding_item_checkbox_on_item.execute",
+    "aims_customization.patches.v_0.add_selection_of_tool_on_item.execute",
+    "aims_customization.patches.v_0.add_moulds_field_on_item.execute"
     
     
     
@@ -274,11 +278,12 @@ doctype_js = {
     "public/js/workflow_state_submitand_closed_hide_feasibility_button.js",
     "public/js/hide_workflow_action_closed_lead.js",
     "public/js/short_close_field_show_only_feasibility_reject.js"],
-    "Pre Feasibility":["public/js/fetched_current_login_user_name_on_preparedby_field_on_pre_feasibility.js","public/js/prefeasibility_template.js"],
+    "Pre Feasibility":["public/js/fetched_current_login_user_name_on_preparedby_field_on_pre_feasibility.js",
+    "public/js/store_part_no_on_lead.js","public/js/prefeasibility_template.js"],
     "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
-    "Item":"public/js/fetched_cavity_from_mould_on_item.js",
-    "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
-    "Pre Feasibility":"public/js/store_part_no_on_lead.js"
+    "Item":["public/js/fetched_cavity_from_mould_on_item.js","public/js/is_mold_and_is_molding_show_hide_mandatory_mold_details_tab_fiedls.js"],
+    "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js"
+    
     
     
     
