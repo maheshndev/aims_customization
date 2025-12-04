@@ -61,6 +61,12 @@ def execute():
             "label": "Total Shots",
             "fieldtype": "Data",
             "insert_after": "tool_life"
+        },
+        {
+            "fieldname": "mould_name",
+            "label": "Mould Name",
+            "field_type": "Data",
+            "insert_after": "total_shots"
         }
     ]
 
