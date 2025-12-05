@@ -52,7 +52,7 @@ def execute():
         },
         {
             "fieldname": "tool_life",
-            "label": "Tool Life",
+            "label": "Tool Life (Year)",
             "fieldtype": "Data",
             "insert_after": "cold_runner_system"
         },
@@ -61,13 +61,8 @@ def execute():
             "label": "Total Shots",
             "fieldtype": "Data",
             "insert_after": "tool_life"
-        },
-        {
-            "fieldname": "mould_name",
-            "label": "Mould Name",
-            "field_type": "Data",
-            "insert_after": "total_shots"
         }
+       
     ]
 
     for df in fields:

@@ -266,7 +266,8 @@ after_migrate = [
     "aims_customization.patches.v_0.document_naming_series_for_shape.execute",
     "aims_customization.patches.v_0.add_is_moulding_item_checkbox_on_item.execute",
     "aims_customization.patches.v_0.add_selection_of_tool_on_item.execute",
-    "aims_customization.patches.v_0.add_moulds_field_on_item.execute"
+    "aims_customization.patches.v_0.add_moulds_field_on_item.execute",
+    "aims_customization.patches.v_0.add_mould_name_field_on_item.execute"
     
     
     
