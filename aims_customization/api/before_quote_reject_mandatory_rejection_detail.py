@@ -24,3 +24,6 @@ def validate_quotation_workflow(doc, method):
     # Case 3: Customer Approval validation
     if doc.workflow_state == "Customer Approved" and not doc.customer_approval_email:
         frappe.throw("Before Approval Please Attach Customer Approval Email")
+
+    if doc.workflow_state == "Design Feasibility Approved" and not doc.design_document_attachment:
+        frappe.throw("Please attach the Design Document before approving Design Feasibility.")

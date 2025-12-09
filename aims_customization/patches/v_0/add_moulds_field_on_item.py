@@ -11,6 +11,13 @@ def execute():
             "insert_after": "mould_selection_table"
         },
         {
+            "fieldname": "mould_ty",
+            "label": "Mould Type",
+            "fieldtype": "Link",
+            "options": "Mould Type",
+            "insert_after": "mould_name"
+        },
+        {
             "fieldname": "material_type",
             "label": "Material Type",
             "fieldtype": "Link",

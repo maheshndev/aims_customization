@@ -83,7 +83,9 @@ frappe.ui.form.on('Item', {
             'hot_runner_system',
             'cold_runner_system',
             'tool_life',
-            'total_shots'
+            'total_shots',
+            'mould_name',
+            'mould_ty'
         ];
 
         if (frm.doc.is_moulding) {
