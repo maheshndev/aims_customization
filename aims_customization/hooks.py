@@ -263,10 +263,7 @@ after_migrate = [
     "aims_customization.patches.v_0.add_mould_detail_tab_on_item_master.execute",
     "aims_customization.patches.v_0.add_is_mold_item_field_on_item.execute",
     "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute"
-    
-    
-    
-    
+
     
 ]
 doctype_js = {
@@ -281,10 +278,6 @@ doctype_js = {
     "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
     "Sales Invoice": ["public/js/sales_invoice_and_credit_note_default_print_format_setting.js",
                       "public/js/default_value_for_declaration.js"]
-    
-    
-    
-
 }
 
 
@@ -292,20 +285,14 @@ doc_events = {
     "Lead": {
         "on_submit": "aims_customization.api.make_pre_feasibility_mandatory.before_submit_check_pre_feasibility",
         "on_update": "aims_customization.api.update_workflow_state_based_on_link_prefeasibility.before_save"
-
     },
     "Quotation": {
-       
-        
         "validate": "aims_customization.api.before_quote_reject_mandatory_rejection_detail.validate_quotation_workflow"
     },
     "Sales Order": {
         "validate": "aims_customization.api.short_close_reason_mandatory_when_sales_order_rejected.validate_rejection_details"
     }
-
-    
 }
-
 
 # fixtures = [
 #     "Workflow", "Workflow State", "Workflow Action",

@@ -188,7 +188,7 @@ function renderSalesOrdersPage(resetRender = false) {
             <span class="ml-3 text-muted">Selected SO: <b id="so-selected-count">${selected_sales_orders.size}</b></span>
         </div>
         <table class="table table-bordered mt-2"><thead>
-            <tr><th style="width:40px;">✔</th><th>Sales Order</th><th>Customer</th><th>Date</th><th>Month</th><th>Delivery</th><th>Status</th></tr>
+            <tr><th style="width:40px;">✔</th><th>Sales Order</th><th>Customer</th><th>Date</th><th>Month</th><th>Delivery</th><th>Status</th><th>Total Order Qty</th><th>Grand Total</th></tr>
         </thead><tbody>
     `;
 	pageSlice.forEach((row) => {
@@ -201,6 +201,8 @@ function renderSalesOrdersPage(resetRender = false) {
             <td onclick="toggle_and_reload_items('${row.name}')">${row.month}</td>
             <td onclick="toggle_and_reload_items('${row.name}')">${row.delivery_date}</td>
             <td onclick="toggle_and_reload_items('${row.name}')">${row.status}</td>
+			<td onclick="toggle_and_reload_items('${row.name}')">${row.total_qty}</td>
+			<td onclick="toggle_and_reload_items('${row.name}')">${row.currency} ${row.grand_total}</td>
         </tr>`;
 	});
 	html += `</tbody></table>`;
@@ -290,33 +292,32 @@ function renderItemsPage() {
         <th style="min-width:40px;">Select</th>
         <th style="min-width:120px;">Sales Order</th>
         <th style="min-width:150px;">Item</th>
-        <th style="min-width:80px;">Order Qty</th>
+        <th style="min-width:80px;">Qty</th>
         <th style="min-width:80px;">Rate</th>
-        <th style="min-width:100px;">BOM</th>
-        <th style="min-width:100px;">Warehouse</th>
-        <th style="min-width:100px;">Available Qty</th>
-        <th style="min-width:100px;">Available Amt</th>
-        <th style="min-width:100px;">Dispatched Qty</th>
-        <th style="min-width:100px;">Dispatched Amt</th>
-        <th style="min-width:100px;">Produced Qty</th>
-        <th style="min-width:100px;">Produced Amt</th>
-        <th style="min-width:100px;">WIP Qty</th>
-        <th style="min-width:100px;">WIP Amt</th>
-        <th style="min-width:120px;">Total Stock Qty</th>
-        <th style="min-width:120px;">Total Stock Amt</th>
-        <th style="min-width:120px;">Total+Produced Qty</th>
-        <th style="min-width:120px;">Total+Produced Amt</th>
-        <th style="min-width:120px;">Balance to Produce Qty</th>
-        <th style="min-width:120px;">Balance to Produce Amt</th>
-        <th style="min-width:120px;">Balance to Deliver Qty</th>
-        <th style="min-width:120px;">Balance to Deliver Amt</th>
-        <th style="min-width:100px;">Reserved Qty</th>
-        <th style="min-width:100px;">Incoming Qty</th>
-        <th style="min-width:80px;">Cavity</th>
+		 <th style="min-width:80px;">Cavity</th>
         <th style="min-width:80px;">PCS Wt</th>
         <th style="min-width:80px;">Runner Wt</th>
         <th style="min-width:80px;">Shot Wt</th>
-        <th style="min-width:100px;">Weight/Unit</th>
+		<th style="min-width:100px;">Cycle Time</th>
+		<th style="min-width:100px;">Per Peace  Wt.  In VERG (Inclu. Runner Wt.)</th>
+		<th style="min-width:100px;">Available Stock in Nos. (FG/SFG Warehouse)</th>
+		<th style="min-width:100px;">Available Stock in Amt. (FG/SFG Warehouse)</th>
+		<th style="min-width:100px;">Delivered Qty in Nos.</th>
+		<th style="min-width:100px;">Delivered Amt</th>
+		<th style="min-width:100px;">Produced Stock in Nos.</th>
+		<th style="min-width:100px;">Produced Stock in Amt.</th>
+		<th style="min-width:100px;">WIP Stock in Amt (WIP-Warehouse Stock in Amt.)</th>
+		<th style="min-width:100px;">Total Stock in Nos. (FG+WIP)</th>
+		<th style="min-width:100px;">Total Stock in Amt. (FG+WIP)</th>
+		<th style="min-width:120px;">Total Stock + Produced Stock in Nos.</th>
+		<th style="min-width:120px;">Total Stock + Produced Stock in Amt.</th>
+		<th style="min-width:120px;">Balance to Produce Qty in Nos.</th>
+		<th style="min-width:120px;">Balance to Produce Amt.</th>
+		<th style="min-width:120px;">Balance to Deliver Qty in Nos.</th>
+		<th style="min-width:120px;">Balance to Deliver Quantities Amt.</th>
+		<th style="min-width:100px;">Req.  Qty For Production (BAL SCHE-AVAIL WIP)+ 3 DAY BUFF STK </th>
+		<th style="min-width:100px;">Req Amt For Production</th>
+		<th style="min-width:100px;">REQ VER ON TOTAL SCHEDULE</th>
     </tr></thead><tbody>`;
 
 	pageSlice.forEach((row, idx) => {
@@ -340,9 +341,12 @@ function renderItemsPage() {
             <td>${row.item_code} - ${row.item_name || ""}</td>
             <td>${row.order_qty || 0}</td>
             <td>${row.rate || 0}</td>
-            <td>${row.bom_no || ""}</td>
-            <td>${row.warehouse || ""}</td>
-            <td>${row.available_stock_nos || 0}</td>
+			 <td>${row.cavity || ""}</td>
+            <td>${row.pcs_wt || ""}</td>
+            <td>${row.runner_wt || ""}</td>
+            <td>${row.shot_wt || ""}</td>
+			<td>${row.cycle_time || ""}</td>
+            <td>${row.weight_per_unit || 0}</td>
             <td>${row.available_stock_amt || 0}</td>
             <td>${row.dispatched_qty_nos || 0}</td>
             <td>${row.dispatched_amt || 0}</td>
@@ -360,10 +364,7 @@ function renderItemsPage() {
             <td>${row.balance_to_deliver_amt || 0}</td>
             <td>${row.reserved_qty || 0}</td>
             <td>${row.incoming_qty || 0}</td>
-            <td>${row.cavity || ""}</td>
-            <td>${row.pcs_wt || ""}</td>
-            <td>${row.runner_wt || ""}</td>
-            <td>${row.shot_wt || ""}</td>
+           
             <td>${row.weight_per_unit || ""}</td>
         </tr>`;
 	});
@@ -473,7 +474,7 @@ function load_boms_for_selected_items(selected_rows, reset = false) {
         <span class="ml-3 text-muted">Selected BOMs: <b id="bom-selected-count">${selected_boms.size}</b></span>
     `);
 
-	$("#bom-list").html(`<p>Loading BOMs...${JSON.stringify(selected_rows)}</p>`);
+	$("#bom-list").html(`<p>Loading BOMs...</p>`);
      
 	frappe.call({
 		method: "aims_customization.api.mss_page_api.get_boms_for_items",

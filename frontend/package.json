@@ -1,0 +1,25 @@
+{
+  "name": "mss-vue-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --outDir ../aims_customization/public/mss-vue-app",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "flowbite": "^4.0.1",
+    "pinia": "^2.2.0",
+    "vue": "^3.3.4",
+    "vue-router": "^4.3.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "vite": "^5.0.0"
+  }
+}
