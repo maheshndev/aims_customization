@@ -1,5 +1,5 @@
 <template>
-  <div class="raw-materials bg-white rounded shadow-sm p-4">
+  <div class="raw-materials  rounded shadow-sm p-4">
 
     <!-- Loading -->
     <div v-if="loading" class="text-gray-500">Loading Raw Materials...</div>
@@ -9,23 +9,19 @@
 
     <!-- Actions -->
     <div v-if="materials.length && !loading" class="flex justify-end gap-2 mb-3">
-      <button class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700" @click="selectAll">
-        Select All
-      </button>
-      <button class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600" @click="unselectAll">
-        Unselect All
-      </button>
+      <button class="px-3 py-1 bg-blue-600 text-black rounded" @click="selectAll">Select All</button>
+      <button class="px-3 py-1 bg-gray-500 text-black rounded" @click="unselectAll">Unselect All</button>
     </div>
 
     <!-- Table -->
-    <div v-if="materials.length && !loading" class="overflow-x-auto">
-      <table class="min-w-full border border-gray-200 divide-y divide-gray-200">
+    <div v-if="materials.length && !loading" class="overflow-auto rounded-b-2xl">
+      <table class="min-w-[1200px] table-auto border border-gray-200 divide-y divide-gray-200">
         <thead class="bg-gray-100">
           <tr>
-            <th class="border px-3 py-2 w-10">
-              <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+            <th class="border px-3 py-2 w-10 text-left">
+              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th class="border px-3 py-2 text-left">Item</th>
+            <th class="border px-3 py-2 text-left">BOM</th>
             <th class="border px-3 py-2 text-left">Material</th>
             <th class="border px-3 py-2 text-left">Required Qty</th>
             <th class="border px-3 py-2 text-left">Available Qty</th>
@@ -34,25 +30,17 @@
         </thead>
 
         <tbody>
-          <tr
-            v-for="rm in materials"
-            :key="rm.rm_item_code"
-            class="hover:bg-gray-50 transition"
-          >
+          <tr v-for="rm in materials" :key="rm.rm_item_code" class="hover:bg-gray-50 transition">
             <td class="border px-3 py-2 text-center">
-              <input type="checkbox" v-model="selectedMaterials" :value="rm.rm_item_code" />
+              <input type="checkbox" v-model="selectedRows" :value="rm.rm_item_code" />
             </td>
-            <td class="border px-3 py-2">{{ rm.rm_item_code }}</td>
+            <td class="border px-3 py-2">{{ rm.bom_no }}</td>
             <td class="border px-3 py-2">{{ rm.rm_item_name }}</td>
             <td class="border px-3 py-2">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                v-model.number="rm.total_required_qty"
-                @input="emitSelected"
-                class="w-full border rounded px-2 py-1"
-              />
+              <input type="number"
+                     v-model.number="rm.total_required_qty"
+                     @input="emitUpdate"
+                     class="w-full border px-2 py-1 rounded" />
             </td>
             <td class="border px-3 py-2">{{ rm.available_qty }}</td>
             <td class="border px-3 py-2">{{ rm.consumed_qty }}</td>
@@ -65,6 +53,7 @@
     <div v-if="!materials.length && !loading" class="text-gray-500 mt-2">
       No raw materials found.
     </div>
+
   </div>
 </template>
 
@@ -80,54 +69,28 @@ const props = defineProps({
 const emit = defineEmits(["update:selected", "raw-material-loaded"]);
 
 const materials = ref([]);
+const selectedRows = ref([]);
 const loading = ref(false);
 const error = ref(null);
-const selectedMaterials = ref([]);
 
-// ---------------------------
-// Computed for header checkbox
-// ---------------------------
-const allSelected = computed(() => {
-  return materials.value.length > 0 && selectedMaterials.value.length === materials.value.length;
-});
+// -----------------
+// Select/Unselect All
+// -----------------
+const isAllSelected = computed(() => materials.value.length && selectedRows.value.length === materials.value.length);
 
-// ---------------------------
-// Select/unselect helpers
-// ---------------------------
-const selectAll = () => {
-  selectedMaterials.value = materials.value.map(m => m.rm_item_code);
-  emitSelected();
-};
+const selectAll = () => { selectedRows.value = materials.value.map(m => m.rm_item_code); emitUpdate(); };
+const unselectAll = () => { selectedRows.value = []; emitUpdate(); };
+const toggleSelectAll = () => isAllSelected.value ? unselectAll() : selectAll();
 
-const unselectAll = () => {
-  selectedMaterials.value = [];
-  emitSelected();
-};
-
-const toggleSelectAll = () => {
-  allSelected.value ? unselectAll() : selectAll();
-};
-
-// ---------------------------
-// Emit selected raw materials
-// ---------------------------
-const emitSelected = () => {
-  const selectedRows = materials.value.filter(m => selectedMaterials.value.includes(m.rm_item_code));
-  emit("update:selected", selectedRows);
-  emit("raw-material-loaded", selectedRows);
-};
-
-// Watch selection changes
-watch(selectedMaterials, emitSelected);
-
-// ---------------------------
+// -----------------
 // Fetch raw materials for selected BOMs
-// ---------------------------
+// -----------------
 const fetchMaterials = async () => {
   if (!props.boms.length) {
     materials.value = [];
-    selectedMaterials.value = [];
-    emitSelected();
+    selectedRows.value = [];
+    emit("update:selected", []);
+    emit("raw-material-loaded", []);
     return;
   }
 
@@ -137,8 +100,8 @@ const fetchMaterials = async () => {
   try {
     const res = await api.getRawMaterialsForBOMs(props.boms);
     materials.value = res.data.message || [];
-    selectedMaterials.value = [];
-    emitSelected();
+    selectedRows.value = materials.value.map(m => m.rm_item_code);
+    emitUpdate();
   } catch (err) {
     console.error("Raw Material Fetch Error:", err);
     error.value = "Failed to fetch Raw Materials.";
@@ -147,10 +110,14 @@ const fetchMaterials = async () => {
   }
 };
 
-// Watch selected BOMs and fetch raw materials automatically
-watch(
-  () => props.boms,
-  () => fetchMaterials(),
-  { deep: true, immediate: true }
-);
+// -----------------
+// Emit updated selected rows & quantities
+// -----------------
+const emitUpdate = () => {
+  const selected = materials.value.filter(m => selectedRows.value.includes(m.rm_item_code));
+  emit("update:selected", selected);
+  emit("raw-material-loaded", selected);
+};
+
+watch(() => props.boms, fetchMaterials, { deep: true, immediate: true });
 </script>

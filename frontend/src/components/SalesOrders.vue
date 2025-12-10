@@ -1,5 +1,5 @@
 <template>
-  <div class="sales-orders bg-white rounded-xl shadow-sm">
+  <div class="sales-orders rounded-xl shadow-sm p-2">
 
     <!-- Loading -->
     <div v-if="loading" class="text-gray-500 animate-pulse">
@@ -12,7 +12,7 @@
     </div>
 
     <!-- Actions -->
-    <div v-if="orders.length && !loading" class="flex justify-end gap-3 mb-3">
+    <div v-if="orders.length && !loading" class="flex justify-end items-center gap-3 mb-3">
       <button class="px-3 py-1 m-1 bg-blue-600 text-black rounded shadow hover:bg-blue-700" @click="selectAll">
         Select All
       </button>
@@ -26,20 +26,20 @@
     </div>
 
     <!-- Sales Orders Table -->
-    <div v-if="orders.length && !loading" class="overflow-x-auto">
-      <table class="min-w-full border border-gray-200 divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+    <div v-if="orders.length && !loading" class="overflow-auto rounded-b-2xl">
+      <table class="min-w-[1200px] table-auto border border-gray-200 divide-y divide-gray-200">
+        <thead class="bg-gray-100 sticky">
           <tr>
             <th class="px-3 py-2 text-left text-sm font-medium border w-10">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th class="px-3 py-2 text-left text-sm font-medium border">SO</th>
-            <th class="px-3 py-2 text-left text-sm font-medium border">Customer</th>
-            <th class="px-3 py-2 text-right text-sm font-medium border">Qty</th>
-            <th class="px-3 py-2 text-right text-sm font-medium border">Month</th>
-            <th class="px-3 py-2 text-right text-sm font-medium border">Transaction Date</th>
-            <th class="px-3 py-2 text-left text-sm font-medium border">Delivery Date</th>
-            <th class="px-3 py-2 text-left text-sm font-medium border">Status</th>
+            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">SO</th>
+            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">Customer</th>
+            <th class="px-3 py-2 text-right text-sm font-medium border whitespace-nowrap">Qty</th>
+            <th class="px-3 py-2 text-right text-sm font-medium border whitespace-nowrap">Month</th>
+            <th class="px-3 py-2 text-right text-sm font-medium border whitespace-nowrap">Transaction Date</th>
+            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">Delivery Date</th>
+            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">Status</th>
           </tr>
         </thead>
 
@@ -49,13 +49,13 @@
               <input type="checkbox" :value="so.name" v-model="selectedLocal" @change="handleSelectionChange" />
             </td>
 
-            <td class="border px-3 py-2">{{ so.name }}</td>
-            <td class="border px-3 py-2">{{ so.customer_name }}</td>
-            <td class="border px-3 py-2 text-right">{{ so.total_qty }}</td>
-            <td class="border px-3 py-2 text-right">{{ so.month }}</td>
-            <td class="border px-3 py-2 text-right">{{ so.transaction_date }}</td>
-            <td class="border px-3 py-2">{{ so.delivery_date }}</td>
-            <td class="border px-3 py-2">{{ so.status }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.name }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.customer_name }}</td>
+            <td class="border px-3 py-2 text-right whitespace-nowrap">{{ so.total_qty }}</td>
+            <td class="border px-3 py-2 text-right whitespace-nowrap">{{ so.month }}</td>
+            <td class="border px-3 py-2 text-right whitespace-nowrap">{{ so.transaction_date }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.delivery_date }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.status }}</td>
           </tr>
         </tbody>
       </table>

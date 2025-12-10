@@ -1,5 +1,5 @@
 <template>
-  <div class="blanket-orders bg-white rounded-lg shadow-sm p-4">
+  <div class="blanket-orders  rounded-lg shadow-sm p-4">
 
     <!-- Actions -->
     <div class="flex justify-between items-center mb-4">
@@ -24,14 +24,14 @@
     </div>
 
     <!-- Table -->
-    <div v-if="orders.length && !loading" class="overflow-x-auto">
-      <table class="min-w-full border border-gray-300 divide-y divide-gray-200">
-        <thead class="bg-gray-100">
+    <div v-if="orders.length && !loading" class="overflow-auto rounded-b-2xl">
+      <table class="min-w-[1200px] table-auto border border-gray-300 divide-y divide-gray-200">
+        <thead class="bg-gray-100 sticky">
           <tr>
             <th class="px-2 py-1 w-12 text-center border">
               <input type="checkbox" :checked="isAllSelected" @change="toggleAll" />
             </th>
-            <th v-for="h in headers" :key="h" class="px-2 py-1 text-left text-sm font-medium text-gray-700 border">
+            <th v-for="h in headers" :key="h" class="px-2 py-1 text-left text-sm font-medium text-gray-700 border whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
@@ -42,20 +42,20 @@
             'hover:bg-gray-50 transition',
             selectedBOrders.includes(bo.name) ? 'bg-blue-50' : ''
           ]">
-            <td class="px-2 py-1 text-center border">
+            <td class="px-2 py-1 text-center border whitespace-nowrap">
               <input type="checkbox" v-model="selectedBOrders" :value="bo.name" />
             </td>
 
-            <td class="px-2 py-1 text-sm border">{{ bo.name }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.blanket_order_type }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.customer }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.customer_name }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.order_no }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.order_date }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.month }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.from_date }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.to_date }}</td>
-            <td class="px-2 py-1 text-sm border">{{ bo.company }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.name }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.blanket_order_type }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.customer }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.customer_name }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.order_no }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.order_date }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.month }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.from_date }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.to_date }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.company }}</td>
           </tr>
         </tbody>
       </table>

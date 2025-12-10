@@ -1,5 +1,5 @@
 <template>
-	<div class="job-cards bg-white rounded shadow-sm p-4">
+	<div class="job-cards rounded shadow-sm p-4">
 		
 		<!-- Loading -->
 		<div v-if="loading" class="text-gray-500">Loading Job Cards...</div>
@@ -8,8 +8,8 @@
 		<div v-if="error" class="text-red-500 mb-2">{{ error }}</div>
 
 		<!-- Table -->
-		<div v-if="jobCards.length" class="overflow-x-auto">
-			<table class="table-auto w-full border-collapse">
+		<div v-if="jobCards.length" class="overflow-auto rounded-b-2xl">
+			<table class="table-auto min-w-[1200px] border-collapse">
 				<thead class="bg-gray-100">
 					<tr>
 						<th class="border px-3 py-2 text-left">JC</th>

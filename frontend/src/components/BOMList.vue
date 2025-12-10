@@ -1,5 +1,5 @@
 <template>
-  <div class="bom-list bg-white rounded-xl shadow-sm p-5">
+  <div class="bom-list rounded-xl shadow-sm p-2">
 
     <!-- Loading -->
     <div v-if="loading" class="text-gray-500 animate-pulse">
@@ -14,23 +14,19 @@
     <!-- Actions -->
     <div v-if="filteredBOMs.length && !loading" class="flex justify-between items-center mb-3">
 
-      <!-- Search -->
-      <input v-model="search" type="text" placeholder="Search BOM / Item..."
-        class="border px-3 py-1 rounded w-60 text-sm" />
-
       <div class="flex gap-3">
-        <button class="px-3 py-1 bg-blue-600 text-white rounded shadow hover:bg-blue-700" @click="selectAll">
+        <button class="px-3 py-1 bg-blue-600 text-black rounded shadow hover:bg-blue-700" @click="selectAll">
           Select All
         </button>
-        <button class="px-3 py-1 bg-gray-500 text-white rounded shadow hover:bg-gray-600" @click="unselectAll">
+        <button class="px-3 py-1 bg-gray-500 text-black rounded shadow hover:bg-gray-600" @click="unselectAll">
           Unselect All
         </button>
-        <button class="px-3 py-1 bg-green-500 text-white rounded shadow hover:bg-green-600"
+        <button class="px-3 py-1 bg-green-500 text-black rounded shadow hover:bg-green-600"
           @click="createMixPlannerBOM">
           Create Planner Mix BOM
         </button>
         <button v-if="selectedLocal.length >= 2" @click="$emit('open-compare')"
-          class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">
+          class="px-3 py-1 bg-purple-600 text-black rounded hover:bg-purple-700">
           Compare BOMs
         </button>
 
@@ -38,25 +34,25 @@
     </div>
 
     <!-- BOM Table -->
-    <div v-if="filteredBOMs.length && !loading" class="overflow-x-auto border rounded">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+    <div v-if="filteredBOMs.length && !loading" class="overflow-auto rounded-b-2xl ">
+      <table class="min-w-[1200px] table-auto divide-y divide-gray-200">
+        <thead class="bg-gray-100 sticky">
           <tr>
             <th class="px-3 py-2 border w-10 text-left">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th class="px-3 py-2 border text-left">Item</th>
-            <th class="px-3 py-2 border text-left">BOM</th>
-            <th class="px-3 py-2 border text-left">Qty</th>
-            <th class="px-3 py-2 border text-left">BOM Type</th>
-            <th class="px-3 py-2 border text-left">Required Qty</th>
-            <th class="px-3 py-2 border text-left">Cavity</th>
-            <th class="px-3 py-2 border text-left">PCS wt</th>
-            <th class="px-3 py-2 border text-left">Runner wt</th>
-            <th class="px-3 py-2 border text-left">Shot wt</th>
-            <th class="px-3 py-2 border text-left">Gross wt</th>
-            <th class="px-3 py-2 border text-left">Cycle Time</th>
-            <th class="px-3 py-2 border text-left">UOM</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Item</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">BOM</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Qty</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">BOM Type</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Required Qty</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Cavity</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">PCS wt</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Runner wt</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Shot wt</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Gross wt</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Cycle Time</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">UOM</th>
           </tr>
         </thead>
 
@@ -65,18 +61,18 @@
             <td class="border px-3 py-2">
               <input type="checkbox" :value="bom.bom_no" v-model="selectedLocal" />
             </td>
-            <td class="border px-3 py-2">{{ bom.item_code }}</td>
-            <td class="border px-3 py-2">{{ bom.bom_no }}</td>
-            <td class="border px-3 py-2">{{ bom.bom_qty }}</td>
-            <td class="border px-3 py-2">{{ bom.bom_type }}</td>
-            <td class="border px-3 py-2">{{ bom.required_for_selected_qty }}</td>
-            <td class="border px-3 py-2">{{ bom.cavity }}</td>
-            <td class="border px-3 py-2">{{ bom.pcs_wt }}</td>
-            <td class="border px-3 py-2">{{ bom.runner_wt }}</td>
-            <td class="border px-3 py-2">{{ bom.shot_wt }}</td>
-            <td class="border px-3 py-2">{{ bom.gross_wt }}</td>
-            <td class="border px-3 py-2">{{ bom.cycle_time }}</td>
-            <td class="border px-3 py-2">{{ bom.uom }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.item_code }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_no }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_qty }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_type }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.required_for_selected_qty }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.cavity }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.pcs_wt }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.runner_wt }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.shot_wt }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.gross_wt }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.cycle_time }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.uom }}</td>
           </tr>
         </tbody>
       </table>

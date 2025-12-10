@@ -40,14 +40,17 @@
       <CapacityPlanner :boms="selectedBOMObjects" :available-machine-hours="machineCapacity"
         @capacity-updated="handleCapacityUpdate" />
     </SectionCard>
+    
     <BOMComparisonModal :open="state.showCompareModal" :boms="selectedBOMObjects" :raw-materials="rawMaterials"
       @close="state.showCompareModal = false" />
 
+
     <!-- Work Orders -->
     <SectionCard title="Work Orders">
-      <WorkOrders :boList="selected.salesOrders" v-model:selected="selected.salesOrders"
-        @wo-loaded="state.salesOrders = $event" />
+      <WorkOrders :salesOrders="selected.salesOrders" v-model:selected="selected.workOrders"
+        @wo-loaded="state.workOrders = $event" />
     </SectionCard>
+
 
     <!-- Job Cards -->
     <SectionCard title="Job Cards">

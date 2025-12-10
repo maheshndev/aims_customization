@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 import frappe
-from frappe.utils import nowdate
+from frappe.utils import nowdate, get_datetime
 
 # -------------------- Helpers --------------------
 def safe(val):
@@ -449,7 +449,6 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
 
 @frappe.whitelist()
 def get_raw_materials_for_boms(boms: list = None):
-    print("BOMS: ", boms)
     if not boms:
         return []
 
@@ -459,8 +458,6 @@ def get_raw_materials_for_boms(boms: list = None):
             boms = json.loads(boms)
         except Exception:
             return []
-
-    print("bom list: ", boms)
 
     rm_totals = {}
 
@@ -512,6 +509,7 @@ def get_raw_materials_for_boms(boms: list = None):
         consumed = consumed_row[0].get("consumed_qty", 0) if consumed_row else 0
 
         result.append({
+            "bom_no" : bom_no,
             "rm_item_code": v["rm_item_code"],
             "rm_item_name": v["rm_item_name"],
             "total_required_qty": round(v["total_required_qty"], 6),
@@ -521,28 +519,86 @@ def get_raw_materials_for_boms(boms: list = None):
 
     return result
 # -------------------- Level 6: Work Orders for Blanket Orders --------------------
+import json
+import frappe
+
 @frappe.whitelist()
-def get_work_orders_for_blanket_orders(bo_list: str | list = None):
-    if not bo_list:
-        return []
+def get_work_orders_for_so(so_list: str | list = None):
+    """
+    Fetch Work Orders for given Sales Orders.
+    Returns a dictionary: { sales_order: [work_orders] }
+    """
+    result = {}
 
-    if isinstance(bo_list, str):
+    if not so_list:
+        return result
+
+    # Convert string input to list if needed
+    if isinstance(so_list, str):
         try:
-            bo_list = json.loads(bo_list)
+            so_list = json.loads(so_list)
         except Exception:
-            bo_list = [s.strip() for s in bo_list.split(",") if s.strip()]
+            so_list = [s.strip() for s in so_list.split(",") if s.strip()]
 
-    if not bo_list:
-        return []
+    if not so_list:
+        return result
 
-    placeholders = ",".join(["%s"] * len(bo_list))
+    # Prepare SQL placeholders
+    placeholders = ",".join(["%s"] * len(so_list))
+
+    # Query Work Orders
     sql = f"""
-        SELECT name AS wo_name, production_item, qty AS wo_qty, IFNULL(produced_qty,0) AS produced_qty, sales_order
+        SELECT
+            name AS wo_name,
+            production_item,
+            qty AS wo_qty,
+            status,
+            material_transferred_for_manufacturing,
+            disassembled_qty,
+            bom_no,
+            company,
+            IFNULL(produced_qty, 0) AS produced_qty,
+            sales_order,
+            fg_warehouse,
+            scrap_warehouse,
+            wip_warehouse,
+            planned_start_date, 
+            planned_end_date,
+            expected_delivery_date,
+            stock_uom 
         FROM `tabWork Order`
-        WHERE sales_order IN ({placeholders}) AND docstatus=1
+        WHERE sales_order IN ({placeholders}) AND docstatus = 1
         ORDER BY modified DESC
     """
-    return frappe.db.sql(sql, tuple(bo_list), as_dict=True) or []
+    work_orders = frappe.db.sql(sql, tuple(so_list), as_dict=True) or []
+
+    # Organize results by sales_order
+    for wo in work_orders:
+        so = wo.sales_order
+        if so not in result:
+            result = []
+        result.append({
+            "wo_name": wo.wo_name,
+            "so_name": so,
+            "production_item": wo.production_item,
+            "wo_qty": wo.wo_qty,
+            "produced_qty": wo.produced_qty,
+            "status":wo.status,
+            "material_transferred_for_manufacturing":wo.material_transferred_for_manufacturing,
+            "disassembled_qty":wo.disassembled_qty,
+            "bom_no":wo.bom_no,
+            "company":wo.company,
+            "fg_warehouse":wo.fg_warehouse,
+            "scrap_warehouse":wo.scrap_warehouse,
+            "wip_warehouse":wo.wip_warehouse,
+            "planned_start_date":get_datetime(wo.planned_start_date).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S"), 
+            "planned_end_date":get_datetime(wo.planned_end_date).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
+            "expected_delivery_date":get_datetime(wo.expected_delivery_date).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
+            "stock_uom":wo.stock_uom, 
+        })
+
+    return result
+
 
 # -------------------- Level 7: Job Cards for Work Orders --------------------
 @frappe.whitelist()
@@ -651,24 +707,24 @@ def add_scrap_job_card(job_card, scrap_qty):
 
 
 @frappe.whitelist(allow_guest=True)
-def create_work_orders(bo_list):
+def create_work_orders(so_list):
     """
     Create Work Orders for selected Blanket Orders.
     """
-    if isinstance(bo_list, str):
-        bo_list = json.loads(bo_list)
+    if isinstance(so_list, str):
+        so_list = json.loads(so_list)
 
     created_wos = []
 
-    for bo_name in bo_list:
-        items = frappe.get_all("Blanket Order Item", filters={"parent": bo_name}, fields=["item_code", "qty", "warehouse", "bom_no"])
-        bo_doc = frappe.get_doc("Blanket Order", bo_name)
+    for so_name in so_list:
+        items = frappe.get_all("Sales Order Item", filters={"parent": so_name}, fields=["item_code", "qty", "warehouse", "bom_no"])
+        so_doc = frappe.get_doc("Sales Order", so_name)
         for item in items:
             wo = frappe.new_doc("Work Order")
             wo.production_item = item.item_code
             wo.qty = item.qty
-            wo.sales_order = bo_name
-            wo.company = bo_doc.company
+            wo.sales_order = so_name
+            wo.company = so_doc.company
             wo.bom_no = item.bom_no
             wo.fg_warehouse = item.warehouse
             wo.flags.ignore_mandatory = True

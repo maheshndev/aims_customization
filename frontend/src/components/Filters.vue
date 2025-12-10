@@ -1,5 +1,5 @@
 <template>
-	<div class="p-2 shadow-md border border-gray-200 rounded-lg w-full">
+	<div class="p-2 shadow-md border border-gray-200 rounded-lg">
 		<!-- Filter Grid -->
 		<div class="p-3 grid md:grid-cols-4 gap-3">
 			<!-- Customer -->

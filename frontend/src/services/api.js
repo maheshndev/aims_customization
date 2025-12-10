@@ -55,17 +55,17 @@ export const api = {
 		),
 	
 	// -------------------- Level 6 --------------------
-	getWorkOrders: (bo_list) =>
+	getWorkOrders: (so_list) =>
 		axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_work_orders_for_blanket_orders",
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_work_orders_for_so",
 			{
-				params: { bo_list: JSON.stringify(bo_list) },
+				params: { so_list: JSON.stringify(so_list) },
 			}
 		),
 
-	createWorkOrders: (bo_list) =>
+	createWorkOrders: (so_list) =>
 		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders", 	
-			{ bo_list }
+			{ so_list }
 		,{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token }
 		}),
 
