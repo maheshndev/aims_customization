@@ -221,7 +221,7 @@ export default {
 		},
 
 		async fetchBlanketOrders() {
-			const res = await api.getBlanketOrdersSearch(this.searchBlanketOrder);
+			const res = await api.getBlanketOrdersSearch();
 			this.blanketOrders = res.data.message;
 		},
 

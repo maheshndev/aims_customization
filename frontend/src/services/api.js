@@ -11,59 +11,62 @@ export const api = {
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
 			params,
 		}),
-    getBlanketOrdersSearch: (search) =>
+	getBlanketOrdersSearch: (search) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
 			params: { search_text: search },
 		}),
 
 	// -------------------- Level 2 --------------------
-	getBlanketOrderItems: (bo_list) =>(console.log(bo_list)),
-		// axios.get(
-		// 	"/api/method/aims_customization.api.mss_monthly_schedule.get_items_for_blanket_orders",
-		// 	{
-		// 		params: { bo_list: JSON.stringify(bo_list) },
-		// 	},
-		// ),
+	getBlanketOrderItems(bo_list) {
+ 
+		return axios.get(
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_items_for_blanket_orders",
+			{
+				params: {bo_list: JSON.stringify(bo_list)} // <— FIX
+			}
+		);
+	},
 
-	createSalesOrderFromBOItems: (blanket_order, items) =>
-		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.create_sales_order", {
-			blanket_order,
-			items,
-		}),
+	createSalesOrderFromBOItems: ( items) =>
+		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.create_sales_order", 
+			{ items }
+		,{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token }
+    }),
 
 	// -------------------- Level 3 --------------------
-	getSalesOrders: (params) =>
+	getSalesOrders: (customer) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_sales_orders", {
-			params,
+			params: {customer}
 		}),
 
 	// -------------------- Level 4 --------------------
-	getBOMsForItems: (items) =>
-		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_boms_for_items", {
-			params: { items },
+	getBOMsForSalesOrder: (sales_orders) =>
+		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_boms_for_sales_orders", {
+			params: { sales_orders: JSON.stringify(sales_orders) },
 		}),
-
+ 
 	// -------------------- Level 5 --------------------
 	getRawMaterialsForBOMs: (boms) =>
 		axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_raw_materials_for_boms",
 			{
-				params: { boms },
-			},
+				params: { boms: JSON.stringify(boms) },
+			}
 		),
-
+	
 	// -------------------- Level 6 --------------------
 	getWorkOrders: (bo_list) =>
 		axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_work_orders_for_blanket_orders",
 			{
-				params: { bo_list },
-			},
+				params: { bo_list: JSON.stringify(bo_list) },
+			}
 		),
 
 	createWorkOrders: (bo_list) =>
-		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders", {
-			bo_list,
+		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders", 	
+			{ bo_list }
+		,{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token }
 		}),
 
 	// -------------------- Level 7 --------------------
@@ -71,8 +74,8 @@ export const api = {
 		axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_job_cards_for_work_orders",
 			{
-				params: { wo_list },
-			},
+				params: { wo_list : JSON.stringify(wo_list) },
+			}
 		),
 
 	attachQCJobCard: (job_card, qc_item_code) =>
@@ -93,7 +96,7 @@ export const api = {
 			{
 				job_card,
 				status,
-			},
+			}
 		),
 
 	// -------------------- Level 8 --------------------
@@ -102,6 +105,6 @@ export const api = {
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_status",
 			{
 				params: { bo_list },
-			},
+			}
 		),
 };

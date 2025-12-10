@@ -140,7 +140,8 @@ def get_blanket_orders(search_text: str = None, customer: str = None, month: str
 
 # -------------------- Level 2: Items for Blanket Orders --------------------
 @frappe.whitelist()
-def get_items_for_blanket_orders(bo_list: str | list = None):
+def get_items_for_blanket_orders(bo_list: str | list):
+
     if not bo_list:
         return []
 
@@ -149,10 +150,10 @@ def get_items_for_blanket_orders(bo_list: str | list = None):
             bo_list = json.loads(bo_list)
         except Exception:
             bo_list = [s.strip() for s in bo_list.split(",") if s.strip()]
-
+        
     if not bo_list:
         return []
-
+    
     placeholders = ",".join(["%s"] * len(bo_list))
     sql = f"""
         SELECT boi.name, boi.parent AS bo_name, boi.item_code, boi.item_name, boi.qty AS order_qty, boi.rate
@@ -181,7 +182,7 @@ def get_items_for_blanket_orders(bo_list: str | list = None):
 
         item_attrs = frappe.db.get_value(
             "Item", line["item_code"],
-            ["cavity", "pcs_wt", "runner_wt", "shot_wt", "weight_per_unit"], as_dict=True
+            ["cavity", "pcs_wt", "runner_wt", "shot_wt", "weight_per_unit", "cycle_time"], as_dict=True
         ) or {}
 
         result.append({
@@ -198,8 +199,9 @@ def get_items_for_blanket_orders(bo_list: str | list = None):
             "pcs_wt": safe(item_attrs.get("pcs_wt")),
             "runner_wt": safe(item_attrs.get("runner_wt")),
             "shot_wt": safe(item_attrs.get("shot_wt")),
+            "cycle_time": safe(item_attrs.get("cycle_time")),
             "weight_per_unit": safe(item_attrs.get("weight_per_unit")),
-
+            
             # Stock & Dispatch
             "available_stock_nos": bin_tot.get("actual_qty", 0),
             "available_stock_amt": bin_tot.get("stock_value", 0),
@@ -226,55 +228,100 @@ def get_items_for_blanket_orders(bo_list: str | list = None):
             "reserved_qty": _get_reserved_qty(line["item_code"]),
             "incoming_qty": _get_incoming_qty(line["item_code"]),
         })
-
+        
     return result
 
-@frappe.whitelist()
-def create_sales_order(blanket_order: str, items: str | list):
+@frappe.whitelist(allow_guest=True)
+def create_sales_order(items: str | list):
+
     if isinstance(items, str):
         items = json.loads(items)
 
     if not items:
-        frappe.throw("No items selected.")
+        frappe.throw("No items provided.")
 
-    bo = frappe.get_doc("Blanket Order", blanket_order)
-    so = frappe.new_doc("Sales Order")
-
-    so.customer = bo.customer
-    so.delivery_date = nowdate()
-    so.company = bo.company
-    so.currency = bo.currency
-    so.blanket_order = blanket_order
-
+    # Group items by blanket_order
+    orders = {}
     for it in items:
-        so.append("items", {
-            "item_code": it.get("item_code"),
-            "item_name": it.get("item_name"),
-            "qty": it.get("order_qty"),
-            "rate": it.get("rate"),
-            "delivery_date": nowdate(),
-            "bom_no": it.get("bom_no"),
-            "warehouse": it.get("warehouse"),
-            "blanket_order": blanket_order,
-            "blanket_order_rate": it.get("rate"),
-        })
+        bo_name = it.get("bo_name")
+        if not bo_name:
+            frappe.throw(f"Item {it.get('item_code')} is missing blanket_order")
+        orders.setdefault(bo_name, []).append(it)
 
-    so.flags.ignore_mandatory = True
-    so.insert(ignore_permissions=True)
+    created_sos = []
+    skipped = []
+
+    for bo_name, bo_items in orders.items():
+
+        # 🔍 Check existing Sales Orders for this Blanket Order
+        existing_so = frappe.get_all(
+            "Sales Order",
+            filters={"blanket_order": bo_name},
+            fields=["name", "status"]
+        )
+
+        if existing_so:
+            skipped.append({
+                "blanket_order": bo_name,
+                "existing_sales_orders": [so.name for so in existing_so]
+            })
+            continue  # Skip creating new SO
+
+        # Fetch Blanket Order
+        bo = frappe.get_doc("Blanket Order", bo_name)
+
+        # Create new Sales Order
+        so = frappe.new_doc("Sales Order")
+        so.customer = bo.customer
+        so.company = bo.company
+        so.blanket_order = bo_name
+        so.delivery_date = nowdate()
+        so.currency = getattr(bo, "currency", None) or frappe.get_value("Company", bo.company, "default_currency") or "USD"
+        so.status = "Draft"
+
+        for it in bo_items:
+            item_doc = frappe.get_doc("Item", it.get("item_code"))
+
+            warehouse = (
+                it.get("warehouse") or
+                frappe.get_value("Item Default", {"parent": it.get("item_code")}, "default_warehouse") or ""
+            )
+            bom_no = (
+                it.get("bom_no") or
+                frappe.get_value("BOM", {"item": it.get("item_code"), "is_default": 1}, "name")
+            )
+            rate = it.get("rate") or item_doc.standard_rate or 0
+
+            so.append("items", {
+                "item_code": it.get("item_code"),
+                "item_name": item_doc.item_name,
+                "qty": it.get("order_qty"),
+                "rate": rate,
+                "delivery_date": nowdate(),
+                "bom_no": bom_no,
+                "warehouse": warehouse,
+                "blanket_order": bo_name,
+                "blanket_order_rate": rate,
+            })
+
+        so.flags.ignore_mandatory = True
+        so.insert(ignore_permissions=True)
+        created_sos.append(so.name)
 
     return {
         "status": "success",
-        "message": "Sales Order Created",
-        "sales_order": so.name
+        "message": f"{len(created_sos)} Sales Order(s) created. {len(skipped)} skipped.",
+        "created_sales_orders": created_sos,
+        "skipped": skipped
     }
+
 
 # -------------------- Level 3: Sales Orders --------------------
 @frappe.whitelist()
 def get_sales_orders(search_text: str = None, month: str = None, customer: str = None, limit: int = 200):
     sql = """
-        SELECT name, customer, customer_name, transaction_date, delivery_date, status
+        SELECT name, customer, customer_name, transaction_date, delivery_date, status, total_qty
         FROM `tabSales Order`
-        WHERE docstatus = 1
     """
     params = []
 
@@ -306,90 +353,154 @@ def get_sales_orders(search_text: str = None, month: str = None, customer: str =
             "transaction_date": r["transaction_date"],
             "month": _month_str_from_date(r["transaction_date"]),
             "delivery_date": r["delivery_date"],
-            "status": r["status"]
+            "status": r["status"],
+            "total_qty": r["total_qty"]
         } for r in rows
     ]
 
-# -------------------- Level 4: BOMs for selected items --------------------
 @frappe.whitelist()
-def get_boms_for_items(items: str | list = None):
-    if not items:
+def get_boms_for_sales_orders(sales_orders: str | list = None):
+    """
+    Fetch BOMs for items in multiple Sales Orders.
+    Input: sales_orders = ["SO-0001", "SO-0002"]
+    Output: BOM breakdown similar to your existing structure.
+    """
+
+    if not sales_orders:
         return []
 
-    if isinstance(items, str):
+    # Parse JSON input
+    if isinstance(sales_orders, str):
         try:
-            items = json.loads(items)
+            sales_orders = json.loads(sales_orders)
         except Exception as e:
-            frappe.log_error(f"Failed to parse items JSON: {e}", "get_boms_for_items")
+            frappe.log_error(f"Failed to parse JSON: {e}", "get_boms_for_sales_orders")
             return []
 
     result = []
 
-    for it in items:
-        item_code = it.get("item_code")
-        required_qty = float(it.get("required_for_selected_qty") or 0)
-        forced_bom = it.get("bom_no")
+    for so_name in sales_orders:
+        try:
+            so = frappe.get_doc("Sales Order", so_name)
+        except frappe.DoesNotExistError:
+            frappe.log_error(f"Sales Order not found: {so_name}", "get_boms_for_sales_orders")
+            continue
 
-        boms = (frappe.get_all(
-            "BOM",
-            filters={"name": forced_bom} if forced_bom else {"item": item_code, "is_active": 1},
-            fields=["name as bom_no", "item as item", "quantity as bom_qty"],
-            limit_page_length=1 if forced_bom else None
-        ) or [])
+        for so_item in so.items:
 
-        for b in boms:
-            bom_items = frappe.get_all(
-                "BOM Item",
-                filters={"parent": b["bom_no"]},
-                fields=["item_code as rm_item_code", "item_name", "stock_qty as qty_per_bom"],
-                order_by="idx"
-            )
-            result.append({
-                "item_code": item_code,
-                "bom_no": b.get("bom_no"),
-                "bom_qty": b.get("bom_qty") or 0,
-                "bom_items": bom_items,
-                "required_for_selected_qty": required_qty
-            })
+            item_code = so_item.item_code
+            required_qty = float(so_item.qty or 0)
+            forced_bom = so_item.bom_no
+
+            # Fetch BOMs
+            boms = frappe.get_all(
+                "BOM",
+                filters={"name": forced_bom} if forced_bom else {"item": item_code},
+                fields=["name as bom_no", "item", "quantity as bom_qty", "bom_type", "cavity", "pcs_wt", "runner_wt", "shot_wt", "gross_wt", "cycle_time","uom" ],
+                limit_page_length=1 if forced_bom else None
+            ) or []
+
+            if not boms:
+                result.append({
+                    "sales_order": so_name,
+                    "item_code": item_code,
+                    "bom_no": "",
+                    "bom_qty": 0,
+                    "bom_type": "",
+                    "cavity" : "",
+                    "pcs_wt": 0,
+                    "runner_wt": 0, 
+                    "shot_wt": 0, 
+                    "gross_wt": 0, 
+                    "cycle_time": 0,
+                    "uom": "",
+                    "bom_items": [],
+                    "required_for_selected_qty": required_qty
+                })
+                continue
+
+            # Fetch RM items for each BOM
+            for bom in boms:
+                bom_items = frappe.get_all(
+                    "BOM Item",
+                    filters={"parent": bom["bom_no"]},
+                    fields=["item_code as rm_item_code", "item_name", "stock_qty as qty_per_bom"],
+                    order_by="idx"
+                )
+
+                result.append({
+                    "sales_order": so_name,
+                    "item_code": item_code,
+                    "bom_no": bom.get("bom_no"),
+                    "bom_qty": bom.get("bom_qty") or 0,
+                    "bom_type": bom.get("bom_type"),
+                    "cavity" : bom.get("cavity") or 0,
+                    "pcs_wt": bom.get("pcs_wt") or 0,
+                    "runner_wt": bom.get("runner_wt") or 0, 
+                    "shot_wt": bom.get("shot_wt") or 0, 
+                    "gross_wt": bom.get("gross_wt") or 0, 
+                    "cycle_time": bom.get("cycle_time") or 0,
+                    "uom": bom.get("uom") or "",
+                    "bom_items": bom_items,
+                    "required_for_selected_qty": required_qty or 0,
+                })
 
     return result
 
-# -------------------- Level 5: Raw materials for selected BOMs --------------------
 @frappe.whitelist()
-def get_raw_materials_for_boms(boms: str | list = None):
+def get_raw_materials_for_boms(boms: list = None):
+    print("BOMS: ", boms)
     if not boms:
         return []
 
+    # Convert JSON string to list
     if isinstance(boms, str):
         try:
             boms = json.loads(boms)
         except Exception:
             return []
 
+    print("bom list: ", boms)
+
     rm_totals = {}
 
     for b in boms:
-        bom_no = b.get("bom_no")
-        req_qty = float(b.get("required_for_selected_qty") or 0)
+        # 🎯 FIX: b may be a string or a dict
+        if isinstance(b, dict):
+            bom_no = b.get("name")
+            req_qty = float(b.get("required_for_selected_qty") or 0)
+        else:
+            bom_no = b       # string BOM name
+            req_qty = 1      # default required qty (you can adjust as needed)
+
         if not bom_no:
             continue
 
-        bom = frappe.db.get_value("BOM", bom_no, "quantity") or 1.0
+        bom_qty = frappe.db.get_value("BOM", bom_no, "quantity") or 1.0
+
         components = frappe.db.sql("""
             SELECT item_code, item_name, stock_qty AS qty
             FROM `tabBOM Item` WHERE parent=%s
         """, (bom_no,), as_dict=True) or []
 
         for comp in components:
-            comp_required = (req_qty / bom) * (comp.get("qty") or 0.0)
+            comp_required = (req_qty / bom_qty) * (comp.get("qty") or 0.0)
             rm = comp["item_code"]
+
             if rm not in rm_totals:
-                rm_totals[rm] = {"rm_item_code": rm, "rm_item_name": comp.get("item_name") or "", "total_required_qty": 0.0}
+                rm_totals[rm] = {
+                    "rm_item_code": rm,
+                    "rm_item_name": comp.get("item_name") or "",
+                    "total_required_qty": 0.0
+                }
+
             rm_totals[rm]["total_required_qty"] += comp_required
 
+    # Build final structured response
     result = []
     for rm, v in rm_totals.items():
         bin_tot = _get_bin_totals(rm)
+
         consumed_row = frappe.db.sql("""
             SELECT IFNULL(SUM(sei.qty),0) AS consumed_qty
             FROM `tabStock Entry Detail` sei
@@ -397,6 +508,7 @@ def get_raw_materials_for_boms(boms: str | list = None):
             WHERE sei.item_code=%s AND se.docstatus=1
               AND se.purpose IN ('Manufacture','Material Consumption for Manufacture')
         """, (rm,), as_dict=True)
+
         consumed = consumed_row[0].get("consumed_qty", 0) if consumed_row else 0
 
         result.append({
@@ -408,7 +520,6 @@ def get_raw_materials_for_boms(boms: str | list = None):
         })
 
     return result
-
 # -------------------- Level 6: Work Orders for Blanket Orders --------------------
 @frappe.whitelist()
 def get_work_orders_for_blanket_orders(bo_list: str | list = None):
@@ -539,7 +650,7 @@ def add_scrap_job_card(job_card, scrap_qty):
     return {"status": "success", "message": f"Scrap of {scrap_qty} recorded for Job Card {job_card}"}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_work_orders(bo_list):
     """
     Create Work Orders for selected Blanket Orders.

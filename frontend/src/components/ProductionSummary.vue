@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import { api } from "../services/api";
 
 export default {
 	name: "ProductionSummary",
@@ -48,12 +48,7 @@ export default {
 			this.loading = true;
 			this.error = null;
 			try {
-				const res = await axios.get(
-					"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
-					{
-						params: { items: JSON.stringify(this.items) },
-					},
-				);
+				const res = api.getProductionStatus()
 				this.summary = res.data.message || [];
 			} catch (err) {
 				console.error(err);

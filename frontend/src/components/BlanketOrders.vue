@@ -4,11 +4,10 @@
     <!-- Actions -->
     <div class="flex justify-between items-center mb-4">
       <div class="flex gap-2">
-        <button @click="selectAll" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+        <button @click="selectAll" class="px-3 py-1 bg-blue-600 text-black text-sm rounded hover:bg-blue-700">
           Select All
         </button>
-
-        <button @click="unselectAll" class="px-3 py-1 bg-gray-700 text-white text-sm rounded hover:bg-black">
+        <button @click="unselectAll" class="px-3 py-1 bg-gray-700 text-black text-sm rounded hover:bg-black">
           Unselect All
         </button>
       </div>
@@ -32,9 +31,7 @@
             <th class="px-2 py-1 w-12 text-center border">
               <input type="checkbox" :checked="isAllSelected" @change="toggleAll" />
             </th>
-
-            <th v-for="h in headers" :key="h"
-              class="px-2 py-1 text-left text-sm font-medium text-gray-700 border">
+            <th v-for="h in headers" :key="h" class="px-2 py-1 text-left text-sm font-medium text-gray-700 border">
               {{ h }}
             </th>
           </tr>
@@ -43,11 +40,10 @@
         <tbody>
           <tr v-for="bo in orders" :key="bo.name" :class="[
             'hover:bg-gray-50 transition',
-            selectedOrders.includes(bo.name) ? 'bg-blue-50' : ''
+            selectedBOrders.includes(bo.name) ? 'bg-blue-50' : ''
           ]">
-
             <td class="px-2 py-1 text-center border">
-              <input type="checkbox" v-model="selectedOrders" :value="bo.name" @change="handleSelection" />
+              <input type="checkbox" v-model="selectedBOrders" :value="bo.name" />
             </td>
 
             <td class="px-2 py-1 text-sm border">{{ bo.name }}</td>
@@ -73,6 +69,7 @@
 </template>
 
 <script>
+import { ref, watch } from "vue";
 import { api } from "../services/api";
 
 export default {
@@ -83,103 +80,103 @@ export default {
     selected: { type: Array, default: () => [] }, // v-model for selected BOs
   },
 
-  data() {
-    return {
-      orders: [],
-      selectedOrders: [],
-      loading: false,
-      error: null,
+  setup(props, { emit }) {
+    const orders = ref([]);
+    const selectedBOrders = ref([]);
+    const loading = ref(false);
+    const error = ref(null);
 
-      headers: [
-        "Blanket Order No.",
-        "Type",
-        "Customer",
-        "Customer Name",
-        "Order No",
-        "Order Date",
-        "Month",
-        "From Date",
-        "To Date",
-        "Company",
-      ],
-    };
-  },
+    const headers = [
+      "Blanket Order No.",
+      "Type",
+      "Customer",
+      "Customer Name",
+      "Order No",
+      "Order Date",
+      "Month",
+      "From Date",
+      "To Date",
+      "Company",
+    ];
 
-  computed: {
-    isAllSelected() {
-      return this.orders.length > 0 && this.selectedOrders.length === this.orders.length;
-    },
-  },
+    const isAllSelected = () =>
+      orders.value.length && selectedBOrders.value.length === orders.value.length;
 
-  watch: {
-    filters: {
-      deep: true,
-      handler() {
-        this.fetchBlanketOrders();
-      },
-    },
-  },
-
-  methods: {
-    async fetchBlanketOrders() {
-      this.loading = true;
-      this.error = null;
-      this.selectedOrders = [];
-
+    const fetchBlanketOrders = async () => {
+      loading.value = true;
+      error.value = null;
+      selectedBOrders.value = [];
       try {
-        const res = await api.getBlanketOrders({
-          customer: this.filters.customer,
-          month: this.filters.month,
-          year: this.filters.year,
-          blanket_order: this.filters.blanket_order,
-        });
-
-        this.orders = res.data.message || [];
-        this.$emit("blanket-orders-loaded", this.orders);
-
+        const res = await api.getBlanketOrders(props.filters);
+        orders.value = res.data.message || [];
       } catch (err) {
-        this.error = "Failed to load Blanket Orders. Please try again.";
+        error.value = "Failed to load Blanket Orders. Please try again.";
+        orders.value = [];
       } finally {
-        this.loading = false;
+        loading.value = false;
       }
-    },
+    };
 
-    toggleAll(e) {
-      if (e.target.checked) this.selectAll();
-      else this.unselectAll();
-    },
+    const loadSelectedItems = async () => {
+  if (!selectedBOrders.value.length) {
+    emit("bo-loaded", []);
+    emit("update:selected", []); // reset BO selection
+    return;
+  }
 
-    selectAll() {
-      this.selectedOrders = this.orders.map(o => o.name);
-      this.processSelectedOrders();
-    },
+  try {
+    const res = await api.getBlanketOrderItems(selectedBOrders.value);
 
-    unselectAll() {
-      this.selectedOrders = [];
-      this.$emit("update:selected", []);
-      this.$emit("items-loaded", []);
-    },
+    const combinedItems = res.data.message || [];
 
-    async handleSelection() {
-      this.processSelectedOrders();
-    },
+    // send BO ITEMS to parent
+    emit("bo-loaded", combinedItems);
 
-    async processSelectedOrders() {
-      let combinedItems = [];
+    // send selected BO objects
+    const selectedBOs = orders.value.filter(bo =>
+      selectedBOrders.value.includes(bo.name)
+    );
 
-      if (this.selectedOrders.length) {
-        const res = await api.getBlanketOrderItems({ bo_list: this.selectedOrders });
-        combinedItems = res.data.message || [];
-      }
+    emit("update:selected", selectedBOs);  // BO list only
+  } catch (err) {
+    console.error("Failed to load BO items", err);
+    emit("bo-loaded", []);
+  }
+};
 
-      // Emit to parent
-      this.$emit('update:selected', this.selectedOrders);
-      this.$emit('items-loaded', combinedItems);
-    },
-  },
 
-  mounted() {
-    this.fetchBlanketOrders();
+    const toggleAll = (e) => {
+      if (e.target.checked) selectAll();
+      else unselectAll();
+    };
+
+    const selectAll = () => {
+      selectedBOrders.value = orders.value.map(o => o.name);
+    };
+
+    const unselectAll = () => {
+      selectedBOrders.value = [];
+      emit("bo-loaded", []);
+      emit("update:selected", []);
+    };
+
+    // Watch filters → fetch Blanket Orders automatically
+    watch(() => props.filters, fetchBlanketOrders, { deep: true, immediate: true });
+
+    // Watch selected BO names → fetch items automatically
+    watch(selectedBOrders, loadSelectedItems, { deep: true });
+
+    return {
+      orders,
+      selectedBOrders,
+      loading,
+      error,
+      headers,
+      isAllSelected,
+      toggleAll,
+      selectAll,
+      unselectAll,
+    };
   },
 };
 </script>
