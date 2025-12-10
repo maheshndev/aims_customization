@@ -268,11 +268,7 @@ after_migrate = [
     "aims_customization.patches.v_0.add_moulds_field_on_item.execute",
     "aims_customization.patches.v_0.add_mould_name_field_on_item.execute",
     "aims_customization.patches.v_0.add_design_document_attachment_on_quotation.execute",
-    "aims_customization.patches.v_0.add_other_than_mould_or_moulding_item.execute"
-    
-    
-    
-    
+    "aims_customization.patches.v_0.add_other_than_mould_or_moulding_item.execute",
     "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute"
 
     
@@ -283,17 +279,7 @@ doctype_js = {
     "public/js/hide_workflow_action_closed_lead.js",
     "public/js/short_close_field_show_only_feasibility_reject.js"],
     "Pre Feasibility":["public/js/fetched_current_login_user_name_on_preparedby_field_on_pre_feasibility.js",
-    "public/js/store_part_no_on_lead.js","public/js/prefeasibility_template.js"],
-    "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
-    "Item":["public/js/fetched_cavity_from_mould_on_item.js","public/js/is_mold_and_is_molding_show_hide_mandatory_mold_details_tab_fiedls.js"],
-    "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js"
-    
-    
-    
-    
-    
-    
-                       "public/js/prefeasibility_template.js","public/js/store_part_no_on_lead.js",],
+    "public/js/store_part_no_on_lead.js","public/js/prefeasibility_template.js","public/js/store_part_no_on_lead.js",],
     "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
     "Item":"public/js/fetched_cavity_from_mould_on_item.js",
     "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
