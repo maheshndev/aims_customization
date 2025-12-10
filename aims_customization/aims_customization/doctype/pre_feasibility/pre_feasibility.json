@@ -85,16 +85,14 @@
   },
   {
    "fieldname": "part_no",
-   "fieldtype": "Link",
-   "label": "Part No",
-   "options": "Item"
+   "fieldtype": "Data",
+   "label": "Part No"
   },
   {
    "fetch_from": "part_no.item_name",
    "fieldname": "part_name",
    "fieldtype": "Data",
-   "label": "Part Name",
-   "read_only": 1
+   "label": "Part Name"
   },
   {
    "fieldname": "checklist_section",
@@ -192,7 +190,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-29 15:23:08.490917",
+ "modified": "2025-12-09 11:38:33.229295",
  "modified_by": "Administrator",
  "module": "Aims Customization",
  "name": "Pre Feasibility",
