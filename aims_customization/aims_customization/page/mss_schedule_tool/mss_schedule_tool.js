@@ -1,0 +1,44 @@
+frappe.pages["mss-schedule-tool"].on_page_load = function (wrapper) {
+    frappe.ui.make_app_page({
+        parent: wrapper,
+        title: "MSS - Schedule Tool",
+        single_column: true
+    });
+
+    wrapper.innerHTML = frappe.render_template("mss_schedule_tool");
+    load_vue_app();
+};
+
+function load_vue_app() {
+    console.log("Loading MSS Vue App…");
+
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "/assets/aims_customization/mss-vue-app/main.js";
+
+    script.onload = () => {
+        console.log("Vue App JS Loaded ✔️");
+
+        const interval = setInterval(() => {
+            const mountDiv = document.querySelector("#mss-vue-app");
+
+            if (mountDiv) {
+                console.log("Mount point found, initializing Vue app…");
+
+                if (window.__MSS_VUE_MOUNTED__) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                window.__MSS_VUE_MOUNTED__ = true;
+                window.initVueApp();
+
+                clearInterval(interval); // ← stop repeats
+            }
+        }, 50); // slightly delayed for stability
+    };
+
+    script.onerror = () => frappe.msgprint("Failed to load MSS Vue App");
+
+    document.body.appendChild(script);
+}

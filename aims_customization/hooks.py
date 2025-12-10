@@ -259,7 +259,6 @@ after_migrate = [
     "aims_customization.patches.v_0.add_bom_type_field_on_bom.execute",
     "aims_customization.patches.v_0.add_rework_and_checking_details.execute",
     "aims_customization.patches.v_0.change_the_datatype_qty_field_on_bomitem_from_float_to_data.execute",
-   
     "aims_customization.patches.v_0.add_status_for_design_feasibility_on_quotation.execute",
     "aims_customization.patches.v_0.add_mould_detail_tab_on_item_master.execute",
     "aims_customization.patches.v_0.add_is_mold_item_field_on_item.execute",
@@ -274,6 +273,8 @@ after_migrate = [
     
     
     
+    "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute"
+
     
 ]
 doctype_js = {
@@ -292,6 +293,12 @@ doctype_js = {
     
     
     
+                       "public/js/prefeasibility_template.js","public/js/store_part_no_on_lead.js",],
+    "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
+    "Item":"public/js/fetched_cavity_from_mould_on_item.js",
+    "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
+    "Sales Invoice": ["public/js/sales_invoice_and_credit_note_default_print_format_setting.js",
+                      "public/js/default_value_for_declaration.js"]
 }
 
 
@@ -299,20 +306,14 @@ doc_events = {
     "Lead": {
         "on_submit": "aims_customization.api.make_pre_feasibility_mandatory.before_submit_check_pre_feasibility",
         "on_update": "aims_customization.api.update_workflow_state_based_on_link_prefeasibility.before_save"
-
     },
     "Quotation": {
-       
-        
         "validate": "aims_customization.api.before_quote_reject_mandatory_rejection_detail.validate_quotation_workflow"
     },
     "Sales Order": {
         "validate": "aims_customization.api.short_close_reason_mandatory_when_sales_order_rejected.validate_rejection_details"
     }
-
-    
 }
-
 
 # fixtures = [
 #     "Workflow", "Workflow State", "Workflow Action",
