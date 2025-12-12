@@ -4,10 +4,10 @@
     <!-- Actions -->
     <div class="flex justify-between items-center mb-4">
       <div class="flex gap-2">
-        <button @click="selectAll" class="px-3 py-1 bg-blue-600 text-black text-sm rounded hover:bg-blue-700">
+        <button @click="selectAll" class="px-3 py-1 bg-blue-600 text-black text-sm rounded hover:bg-blue-700 m-1">
           Select All
         </button>
-        <button @click="unselectAll" class="px-3 py-1 bg-gray-700 text-black text-sm rounded hover:bg-black">
+        <button @click="unselectAll" class="px-3 py-1 bg-gray-700 text-black text-sm rounded hover:bg-black m-1">
           Unselect All
         </button>
       </div>
@@ -31,7 +31,8 @@
             <th class="px-2 py-1 w-12 text-center border">
               <input type="checkbox" :checked="isAllSelected" @change="toggleAll" />
             </th>
-            <th v-for="h in headers" :key="h" class="px-2 py-1 text-left text-sm font-medium text-gray-700 border whitespace-nowrap">
+            <th v-for="h in headers" :key="h"
+              class="px-2 py-1 text-left text-sm font-medium text-gray-700 border whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
@@ -49,8 +50,6 @@
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.name }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.blanket_order_type }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.customer }}</td>
-            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.customer_name }}</td>
-            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.order_no }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.order_date }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.month }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.from_date }}</td>
@@ -90,8 +89,6 @@ export default {
       "Blanket Order No.",
       "Type",
       "Customer",
-      "Customer Name",
-      "Order No",
       "Order Date",
       "Month",
       "From Date",
@@ -117,32 +114,6 @@ export default {
       }
     };
 
-    const loadSelectedItems = async () => {
-  if (!selectedBOrders.value.length) {
-    emit("bo-loaded", []);
-    emit("update:selected", []); // reset BO selection
-    return;
-  }
-
-  try {
-    const res = await api.getBlanketOrderItems(selectedBOrders.value);
-
-    const combinedItems = res.data.message || [];
-
-    // send BO ITEMS to parent
-    emit("bo-loaded", combinedItems);
-
-    // send selected BO objects
-    const selectedBOs = orders.value.filter(bo =>
-      selectedBOrders.value.includes(bo.name)
-    );
-
-    emit("update:selected", selectedBOs);  // BO list only
-  } catch (err) {
-    console.error("Failed to load BO items", err);
-    emit("bo-loaded", []);
-  }
-};
 
 
     const toggleAll = (e) => {
@@ -156,15 +127,18 @@ export default {
 
     const unselectAll = () => {
       selectedBOrders.value = [];
-      emit("bo-loaded", []);
-      emit("update:selected", []);
     };
 
-    // Watch filters → fetch Blanket Orders automatically
+
     watch(() => props.filters, fetchBlanketOrders, { deep: true, immediate: true });
 
-    // Watch selected BO names → fetch items automatically
-    watch(selectedBOrders, loadSelectedItems, { deep: true });
+
+    // Watch selectedBOrders → emit selection to parent
+    watch(selectedBOrders, (val) => {
+      const selectedBOs = orders.value.filter(bo => val.includes(bo.name));
+      emit("update:selected", selectedBOs); // only selected BO objects
+    }, { deep: true });
+
 
     return {
       orders,

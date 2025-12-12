@@ -1,128 +1,86 @@
 <template>
-	<div class="p-2 shadow-md border border-gray-200 rounded-lg">
-		<!-- Filter Grid -->
-		<div class="p-3 grid md:grid-cols-4 gap-3">
-			<!-- Customer -->
-			<div class="relative grid grid-cols-1">
-				<label class="filter-label m-1">Customer</label>
+	<div class="p-4 shadow-md border border-gray-200 rounded-lg relative">
 
-				<input
-					type="text"
-					v-model="searchCustomer"
-					placeholder="Search customer..."
-					class="filter-input"
-					@focus="dropdownOpen = true"
-					@input="dropdownOpen = true"
-					@keydown.down.prevent="highlightNext"
-					@keydown.up.prevent="highlightPrev"
-					@keydown.enter.prevent="selectHighlighted"
-					@keydown.esc.prevent="dropdownOpen = false"
-				/>
-
-				<!-- Dropdown -->
-				<ul
-					v-if="dropdownOpen"
-					class="absolute border rounded-lg mt-1 z-10 max-h-6 w-20 animate-fadeIn"
-				>
-					<li
-						v-for="(c, index) in filteredCustomers"
-						:key="c.value"
-						@click="selectCustomer(c)"
-						@mouseenter="highlightedIndex = index"
-						:class="[
-							'px-2 py-2 text-sm cursor-pointer rounded-md transition w-20',
-							highlightedIndex === index
-								? 'bg-blue-100 text-blue-700'
-								: 'hover:bg-gray-100',
-						]"
-					>
-						{{ c.label }}
-					</li>
-
-					<li
-						v-if="filteredCustomers.length === 0"
-						class="px-2 py-2 text-sm text-gray-500 w-20"
-					>
-						No results found
-					</li>
-				</ul>
-			</div>
+		<!-- Filter Row (Month, Year, Customer) -->
+		<div class="flex flex-wrap gap-4">
 
 			<!-- Month -->
-			<div class="relative grid grid-cols-1">
-				<label class="filter-label m-1">Month</label>
-				<select v-model="localFilters.month" class="filter-input">
-					<option value="">Select Month</option>
-					<option v-for="m in monthOptions" :key="m.value" :value="m.value">
-						{{ m.label }}
-					</option>
-				</select>
+			<div class="relative flex-1 min-w-[250px] m-1">
+				<label class="filter-label mb-1 block">Month</label>
+				<div class="relative">
+					<select v-model="localFilters.month" class="filter-input w-[250px] pr-8 p-1 rounded-sm">
+						<option value="">Select Month</option>
+						<option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+					</select>
+					<span v-if="localFilters.month" @click="clearMonth"
+						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700">
+						✕
+					</span>
+				</div>
 			</div>
 
 			<!-- Year -->
-			<div class="relative grid grid-cols-1">
-				<label class="filter-label m-1">Year</label>
-				<select v-model="localFilters.year" class="filter-input">
-					<option value="">Select Year</option>
-					<option v-for="y in yearOptions" :key="y" :value="y">
-						{{ y }}
-					</option>
-				</select>
+			<div class="relative flex-1 min-w-[250px] m-1">
+				<label class="filter-label mb-1 block">Year</label>
+				<div class="relative">
+					<select v-model="localFilters.year" class="filter-input w-[250px] pr-8 p-1 rounded-sm">
+						<option value="">Select Year</option>
+						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+					</select>
+					<span v-if="localFilters.year" @click="clearYear"
+						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700">
+						✕
+					</span>
+				</div>
 			</div>
 
-			<!-- Blanket Orders -->
-
-			<div class="relative grid grid-cols-1">
-				<label class="filter-label m-1">Blanket Order</label>
-
-				<input
-					type="text"
-					v-model="searchBlanketOrder"
-					placeholder="Search blanket order..."
-					class="filter-input pr-10"
-					@focus="boDropdownOpen = true"
-					@input="boDropdownOpen = true"
-					@keydown.down.prevent="highlightNext"
-					@keydown.up.prevent="highlightPrev"
-					@keydown.enter.prevent="selectHighlightedBlanketOrder"
-					@keydown.esc.prevent="boDropdownOpen = false"
-				/>
+			<!-- Customer -->
+			<div class="relative flex-1 min-w-[250px] m-1">
+				<label class="filter-label mb-1 block">Customer</label>
+				<div class="relative">
+					<input type="text" v-model="searchCustomer" placeholder="Search customer..."
+						class="filter-input w-[250px] pr-8 rounded-sm" @focus="dropdownOpen = true"
+						@input="dropdownOpen = true" @keydown.down.prevent="highlightNext"
+						@keydown.up.prevent="highlightPrev" @keydown.enter.prevent="selectHighlighted"
+						@keydown.esc.prevent="dropdownOpen = false" />
+					<!-- Clear icon -->
+					<span v-if="searchCustomer" @click="clearCustomer"
+						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700">
+						✕
+					</span>
+				</div>
 
 				<!-- Dropdown -->
-				<ul
-					v-if="boDropdownOpen"
-					class="absolute left-0 right-0 border border-gray-300 rounded-lg shadow-lg mt-1 z-10 max-h-6 overflow-y-auto animate-fadeIn"
-				>
-					<li
-						v-for="(b, index) in filteredBlanketOrders"
-						:key="b.value"
-						@click="selectBlanketOrder(b)"
-						@mouseenter="highlightedIndex = index"
-						:class="[
-							'px-2 py-2 text-sm cursor-pointer rounded-md transition',
-							highlightedIndex === index
-								? 'bg-blue-100 text-blue-700'
-								: 'hover:bg-gray-100',
-						]"
-					>
-						{{ b.label }}
+				<ul v-if="dropdownOpen"
+					class="absolute left-0 w-full border rounded-lg shadow-lg mt-1 z-10 max-h-40 overflow-y-auto bg-white animate-fadeIn">
+					<li v-for="(c, index) in filteredCustomers" :key="c.value" @click="selectCustomer(c)"
+						@mouseenter="highlightedIndex = index" :class="[
+							'px-3 py-2 text-sm cursor-pointer rounded-md transition',
+							highlightedIndex === index ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'
+						]">
+						{{ c.label }}
 					</li>
-
-					<li
-						v-if="filteredBlanketOrders.length === 0"
-						class="px-2 py-2 text-sm text-gray-500"
-					>
+					<li v-if="filteredCustomers.length === 0" class="px-3 py-2 text-sm text-gray-500">
 						No results found
 					</li>
 				</ul>
 			</div>
+
 		</div>
 
 		<!-- Action Buttons -->
-		<div class=" flex justify-end gap-1 mt-1">
-			<button class="bg-blue-500 hover:bg-blue-700 text-black font-bold py-1 px-1 m-1 rounded" @click="resetFilters">Reset</button>
-			<button class="bg-blue-500 hover:bg-blue-700 text-black font-bold py-1 px-1 m-1 rounded" @click="onApplyFilters">Apply Filters</button>
+		<div class="flex justify-end gap-2 mt-4">
+			<button class="bg-blue-500 hover:bg-blue-700 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
+				@click="resetFilters">
+				Reset All
+			</button>
+
+			<button class="bg-blue-600 hover:bg-blue-800 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
+				@click="onApplyFilters">
+				Apply Filters
+			</button>
 		</div>
+
 	</div>
 </template>
 
@@ -143,11 +101,8 @@ export default {
 			dropdownOpen: false,
 			searchCustomer: "",
 			customers: [],
-			blanketOrders: [],
 			highlightedIndex: -1,
-
 			localFilters: { ...this.modelValue },
-
 			monthOptions: [
 				{ value: "01", label: "January" },
 				{ value: "02", label: "February" },
@@ -170,32 +125,11 @@ export default {
 			const current = new Date().getFullYear();
 			return Array.from({ length: 6 }, (_, i) => current - 2 + i);
 		},
-
 		filteredCustomers() {
 			if (!this.searchCustomer) return this.customers;
 			return this.customers.filter((c) =>
-				c.label.toLowerCase().includes(this.searchCustomer.toLowerCase()),
+				c.label.toLowerCase().includes(this.searchCustomer.toLowerCase())
 			);
-		},
-		filteredBlanketOrders() {
-			if (!this.searchBlanketOrder)
-				return this.blanketOrders.map((b) => ({
-					value: b.name,
-					label: `${b.name} — ${b.customer_name}`,
-				}));
-
-			return this.blanketOrders
-				.filter(
-					(b) =>
-						b.name.toLowerCase().includes(this.searchBlanketOrder.toLowerCase()) ||
-						b.customer_name
-							.toLowerCase()
-							.includes(this.searchBlanketOrder.toLowerCase()),
-				)
-				.map((b) => ({
-					value: b.name,
-					label: `${b.name} — ${b.customer_name}`,
-				}));
 		},
 	},
 
@@ -220,63 +154,55 @@ export default {
 			}));
 		},
 
-		async fetchBlanketOrders() {
-			const res = await api.getBlanketOrdersSearch();
-			this.blanketOrders = res.data.message;
-		},
-
 		selectCustomer(customer) {
 			this.localFilters.customer = customer.value;
 			this.searchCustomer = customer.label;
 			this.dropdownOpen = false;
 		},
-		selectBlanketOrder(bo) {
-			this.localFilters.blanket_order = bo.value;
-			this.searchBlanketOrder = bo.label;
-			this.boDropdownOpen = false;
-		},
 
 		highlightNext() {
-			if (this.highlightedIndex < this.filteredCustomers.length - 1) {
-				this.highlightedIndex++;
-			}
+			if (this.highlightedIndex < this.filteredCustomers.length - 1) this.highlightedIndex++;
 		},
-
 		highlightPrev() {
-			if (this.highlightedIndex > 0) {
-				this.highlightedIndex--;
-			}
+			if (this.highlightedIndex > 0) this.highlightedIndex--;
+		},
+		selectHighlighted() {
+			if (this.highlightedIndex >= 0)
+				this.selectCustomer(this.filteredCustomers[this.highlightedIndex]);
 		},
 
-		selectHighlighted() {
-			if (this.highlightedIndex >= 0) {
-				this.selectCustomer(this.filteredCustomers[this.highlightedIndex]);
-			}
+		clearCustomer() {
+			this.searchCustomer = "";
+			this.localFilters.customer = "";
+			this.highlightedIndex = -1;
+		},
+		clearMonth() {
+			this.localFilters.month = "";
+		},
+		clearYear() {
+			this.localFilters.year = "";
 		},
 
 		resetFilters() {
-			this.localFilters = {
-				customer: "",
-				month: "",
-				year: "",
-				blanket_order: "",
-				search: "",
-			};
-			this.searchCustomer = "";
+			this.clearCustomer();
+			this.clearMonth();
+			this.clearYear();
 		},
 
 		onApplyFilters() {
-			this.$emit("apply-filters", this.localFilters);
+			const filtersToApply = { ...this.localFilters };
+			this.$emit("apply-filters", filtersToApply);
 		},
 
 		outsideClick(e) {
-			if (!this.$el.contains(e.target)) this.dropdownOpen = false;
+			if (!this.$el.contains(e.target)) {
+				this.dropdownOpen = false;
+			}
 		},
 	},
 
 	mounted() {
 		this.fetchCustomers();
-		this.fetchBlanketOrders();
 		document.addEventListener("click", this.outsideClick);
 	},
 
@@ -287,7 +213,6 @@ export default {
 </script>
 
 <style scoped>
-
 @keyframes fadeIn {
 	from {
 		opacity: 0;
@@ -302,5 +227,16 @@ export default {
 
 .animate-fadeIn {
 	animation: fadeIn 0.15s ease-out;
+}
+
+.filter-label {
+	font-weight: 700;
+}
+
+.filter-input {
+	width: 100%;
+	padding: 10px;
+	border: 1px solid #d1d5db;
+	border-radius: 0.375rem;
 }
 </style>

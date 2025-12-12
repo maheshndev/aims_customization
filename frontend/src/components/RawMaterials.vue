@@ -9,8 +9,8 @@
 
     <!-- Actions -->
     <div v-if="materials.length && !loading" class="flex justify-end gap-2 mb-3">
-      <button class="px-3 py-1 bg-blue-600 text-black rounded" @click="selectAll">Select All</button>
-      <button class="px-3 py-1 bg-gray-500 text-black rounded" @click="unselectAll">Unselect All</button>
+      <button class="px-3 py-1 bg-blue-600 text-black rounded m-1" @click="selectAll">Select All</button>
+      <button class="px-3 py-1 bg-gray-500 text-black rounded m-1" @click="unselectAll">Unselect All</button>
     </div>
 
     <!-- Table -->
@@ -18,32 +18,32 @@
       <table class="min-w-[1200px] table-auto border border-gray-200 divide-y divide-gray-200">
         <thead class="bg-gray-100">
           <tr>
-            <th class="border px-3 py-2 w-10 text-left">
+            <th class="border px-3 py-2 w-10 text-left whitespace-nowrap">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th class="border px-3 py-2 text-left">BOM</th>
-            <th class="border px-3 py-2 text-left">Material</th>
-            <th class="border px-3 py-2 text-left">Required Qty</th>
-            <th class="border px-3 py-2 text-left">Available Qty</th>
-            <th class="border px-3 py-2 text-left">Consumed Qty</th>
+            <th class="border px-3 py-2 text-left  whitespace-nowrap">BOM</th>
+            <th class="border px-3 py-2 text-left whitespace-nowrap">Material</th>
+            <th class="border px-3 py-2 text-left whitespace-nowrap">Required Qty</th>
+            <th class="border px-3 py-2 text-left whitespace-nowrap">Available Qty</th>
+            <th class="border px-3 py-2 text-left whitespace-nowrap">Consumed Qty</th>
           </tr>
         </thead>
 
         <tbody>
           <tr v-for="rm in materials" :key="rm.rm_item_code" class="hover:bg-gray-50 transition">
-            <td class="border px-3 py-2 text-center">
+            <td class="border px-3 py-2 text-center whitespace-nowrap">
               <input type="checkbox" v-model="selectedRows" :value="rm.rm_item_code" />
             </td>
-            <td class="border px-3 py-2">{{ rm.bom_no }}</td>
-            <td class="border px-3 py-2">{{ rm.rm_item_name }}</td>
-            <td class="border px-3 py-2">
+            <td class="border px-3 py-2 whitespace-nowrap">{{ rm.bom_no }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_name }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">
               <input type="number"
                      v-model.number="rm.total_required_qty"
                      @input="emitUpdate"
-                     class="w-full border px-2 py-1 rounded" />
+                     class="w-full border px-2 py-1 rounded whitespace-nowrap" />
             </td>
-            <td class="border px-3 py-2">{{ rm.available_qty }}</td>
-            <td class="border px-3 py-2">{{ rm.consumed_qty }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ rm.available_qty }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ rm.consumed_qty }}</td>
           </tr>
         </tbody>
       </table>

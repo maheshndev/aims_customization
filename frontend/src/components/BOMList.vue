@@ -15,18 +15,14 @@
     <div v-if="filteredBOMs.length && !loading" class="flex justify-between items-center mb-3">
 
       <div class="flex gap-3">
-        <button class="px-3 py-1 bg-blue-600 text-black rounded shadow hover:bg-blue-700" @click="selectAll">
+        <button class="px-3 py-1 bg-blue-600 text-black rounded shadow hover:bg-blue-700 m-1" @click="selectAll">
           Select All
         </button>
-        <button class="px-3 py-1 bg-gray-500 text-black rounded shadow hover:bg-gray-600" @click="unselectAll">
+        <button class="px-3 py-1 bg-gray-500 text-black rounded shadow hover:bg-gray-600 m-1" @click="unselectAll">
           Unselect All
         </button>
-        <button class="px-3 py-1 bg-green-500 text-black rounded shadow hover:bg-green-600"
-          @click="createMixPlannerBOM">
-          Create Planner Mix BOM
-        </button>
         <button v-if="selectedLocal.length >= 2" @click="$emit('open-compare')"
-          class="px-3 py-1 bg-purple-600 text-black rounded hover:bg-purple-700">
+          class="px-3 py-1 bg-purple-600 text-black rounded hover:bg-purple-700 m-1">
           Compare BOMs
         </button>
 
@@ -41,8 +37,9 @@
             <th class="px-3 py-2 border w-10 text-left">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th class="px-3 py-2 border text-left whitespace-nowrap">Item</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Sales Order</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">BOM</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Finish Good Item</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Qty</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">BOM Type</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Required Qty</th>
@@ -53,16 +50,20 @@
             <th class="px-3 py-2 border text-left whitespace-nowrap">Gross wt</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Cycle Time</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">UOM</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Workstation / Machine</th>
+
           </tr>
         </thead>
 
         <tbody class="divide-y divide-gray-100">
           <tr v-for="bom in filteredBOMs" :key="bom.bom_no" class="hover:bg-gray-50 transition">
             <td class="border px-3 py-2">
-              <input type="checkbox" :value="bom.bom_no" v-model="selectedLocal" />
+              <input type="checkbox" :value="bom.bom_no"  v-model="selectedLocal" />
             </td>
+           
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.sales_order }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_no || "No BOM Available" }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.item_code }}</td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_no }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_qty }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_type }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.required_for_selected_qty }}</td>
@@ -73,6 +74,13 @@
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.gross_wt }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.cycle_time }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.uom }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">
+              <select v-model="bom.selected_workstation" class="border rounded px-2 py-1">
+                <option v-for="op in bom.bom_operations" :key="op.name" :value="op.workstation">
+                  {{ op.workstation }}
+                </option>
+              </select>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -134,14 +142,14 @@ const isAllSelected = computed(() => {
 // Watch Local Selection → Emit to parent
 // ---------------------------------------------------
 watch(selectedLocal, () => {
-  emit("update:selected", [...selectedLocal.value]);
-
   const selectedObjects = boms.value.filter((b) =>
     selectedLocal.value.includes(b.bom_no)
   );
 
-  emit("bom-loaded", selectedObjects);
+  emit("update:selected", selectedLocal.value); // selected BOM numbers
+  emit("update:capBOMs", selectedObjects);     // full objects including operations
 });
+
 
 // ---------------------------------------------------
 // Select / Unselect
@@ -156,11 +164,6 @@ const unselectAll = () => {
 
 const toggleSelectAll = () => {
   isAllSelected.value ? unselectAll() : selectAll();
-};
-
-const createMixPlannerBOM = () => {
-  // Same as "Select All"
-  selectAll();
 };
 
 // ---------------------------------------------------
@@ -181,7 +184,11 @@ const fetchBOMs = async () => {
 
   try {
     const res = await api.getBOMsForSalesOrder(props.salesOrders);
-    boms.value = res.data.message || [];
+    boms.value = (res.data.message || []).map(b => ({
+      ...b,
+      selected_workstation:
+        b.bom_operations?.length ? b.bom_operations[0].workstation : null
+    }));
     selectedLocal.value = [];
 
     emit("bom-loaded", []);

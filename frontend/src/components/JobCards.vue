@@ -1,96 +1,112 @@
 <template>
-	<div class="job-cards rounded shadow-sm p-4">
-		
-		<!-- Loading -->
-		<div v-if="loading" class="text-gray-500">Loading Job Cards...</div>
+  <div class="job-cards rounded shadow-sm p-4 bg-white">
 
-		<!-- Error -->
-		<div v-if="error" class="text-red-500 mb-2">{{ error }}</div>
+    <!-- Loading -->
+    <div v-if="loading" class="text-gray-500">Loading Job Cards...</div>
 
-		<!-- Table -->
-		<div v-if="jobCards.length" class="overflow-auto rounded-b-2xl">
-			<table class="table-auto min-w-[1200px] border-collapse">
-				<thead class="bg-gray-100">
-					<tr>
-						<th class="border px-3 py-2 text-left">JC</th>
-						<th class="border px-3 py-2 text-left">WO</th>
-						<th class="border px-3 py-2 text-left">Item</th>
-						<th class="border px-3 py-2 text-left">Qty</th>
-						<th class="border px-3 py-2 text-left">Status</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr
-						v-for="jc in jobCards"
-						:key="jc.name"
-						class="hover:bg-gray-50"
-					>
-						<td class="border px-3 py-2">{{ jc.jc_no }}</td>
-						<td class="border px-3 py-2">{{ jc.wo_no }}</td>
-						<td class="border px-3 py-2">{{ jc.item_name }}</td>
-						<td class="border px-3 py-2">{{ jc.qty }}</td>
-						<td class="border px-3 py-2">{{ jc.status }}</td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
+    <!-- Error -->
+    <div v-if="error" class="text-red-500 mb-2">{{ error }}</div>
 
-		<!-- No Data -->
-		<div v-if="!jobCards.length && !loading" class="text-gray-500 mt-2">
-			No Job Cards found.
-		</div>
-	</div>
+    <!-- Table -->
+    <div v-if="jobCards.length && !loading" class="overflow-auto rounded-b-2xl">
+      <table class="table-auto min-w-[1200px] border-collapse w-full">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="border px-3 py-2 text-left">Job Card</th>
+            <th class="border px-3 py-2 text-left">Status</th>
+            <th class="border px-3 py-2 text-left">Operation</th>
+            <th class="border px-3 py-2 text-left">Workstation</th>
+            <th class="border px-3 py-2 text-left">RM Item Code</th>
+            <th class="border px-3 py-2 text-left">RM Item Name</th>
+            <th class="border px-3 py-2 text-left">Required Qty</th>
+            <th class="border px-3 py-2 text-left">Available Qty</th>
+            <th class="border px-3 py-2 text-left">Consumed Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="jc in jobCards" :key="jc.name" class="hover:bg-gray-50 transition">
+            <td class="border px-3 py-2">{{ jc.job_card }}</td>
+            <td class="border px-3 py-2">{{ jc.job_card_status }}</td>
+            <td class="border px-3 py-2">{{ jc.operation }}</td>
+            <td class="border px-3 py-2">{{ jc.workstation }}</td>
+            <td class="border px-3 py-2">{{ jc.rm_item_code }}</td>
+            <td class="border px-3 py-2">{{ jc.rm_item_name }}</td>
+            <td class="border px-3 py-2">{{ jc.required_qty }}</td>
+            <td class="border px-3 py-2">{{ jc.available_qty }}</td>
+            <td class="border px-3 py-2">{{ jc.consumed_qty }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- No Data -->
+    <div v-if="!jobCards.length && !loading" class="text-gray-500 mt-2">
+      No Job Cards found.
+    </div>
+
+  </div>
 </template>
 
-<script>
-import {api} from "../services/api"
+<script setup>
+import { ref, watch } from "vue";
+import { api } from "../services/api";
 
-export default {
-	name: "JobCards",
+const props = defineProps({
+  workOrders: { type: Array, default: () => [] }
+});
 
-	props: {
-		workOrders: { type: Array, default: () => [] }
-	},
+const emit = defineEmits(["update:selected", "jc-loaded"]);
 
-	data() {
-		return {
-			jobCards: [],
-			loading: false,
-			error: null
-		};
-	},
+const jobCards = ref([]);
+const loading = ref(false);
+const error = ref(null);
 
-	methods: {
-		async fetchJobCards() {
-			if (!this.workOrders.length) {
-				this.jobCards = [];
-				return;
-			}
+const fetchJobCards = async () => {
+  if (!props.workOrders?.length) {
+    jobCards.value = [];
+    emit("update:selected", []);
+    emit("jc-loaded", []);
+    return;
+  }
 
-			this.loading = true;
-			this.error = null;
+  loading.value = true;
+  error.value = null;
 
-			try {
-				const res = api.getJobCards(props.workOrders)
+  try {
+    const res = await api.getJobCards(props.workOrders);
+	console.log("in job cards: ", res);
+	console.log("in job card work order list :", props);
+	
+	
+    const validCards = res?.data?.message?.filter(jc => jc?.name) || [];
+    jobCards.value = validCards;
 
-				this.jobCards = res.data.message || [];
-			} catch (err) {
-				console.error(err);
-				this.error = "Failed to fetch Job Cards.";
-			} finally {
-				this.loading = false;
-			}
-		}
-	},
+    emit("update:selected", validCards);
+    emit("jc-loaded", validCards);
 
-	watch: {
-		workOrders: {
-			handler() {
-				this.fetchJobCards();
-			},
-			deep: true,
-			immediate: true
-		}
-	}
+  } catch (err) {
+    console.error(err);
+    error.value = "Failed to fetch Job Cards.";
+    jobCards.value = [];
+    emit("update:selected", []);
+    emit("jc-loaded", []);
+  } finally {
+    loading.value = false;
+  }
 };
+
+// Watch for changes in work orders and fetch job cards
+watch(
+  () => props.workOrders,
+  (newVal) => {
+    if (!newVal || !newVal.length || newVal.includes(undefined)) {
+      jobCards.value = [];
+      emit("update:selected", []);
+      emit("jc-loaded", []);
+      return;
+    }
+    fetchJobCards();
+  },
+  { deep: true, immediate: true }
+);
 </script>

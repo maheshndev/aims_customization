@@ -2,58 +2,48 @@
   <div class="sales-orders rounded-xl shadow-sm p-2">
 
     <!-- Loading -->
-    <div v-if="loading" class="text-gray-500 animate-pulse">
-      Loading Sales Orders...
-    </div>
+    <div v-if="loading" class="text-gray-500 animate-pulse">Loading Sales Orders...</div>
 
     <!-- Error -->
     <div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4">
       {{ error }}
     </div>
 
-    <!-- Actions -->
-    <div v-if="orders.length && !loading" class="flex justify-end items-center gap-3 mb-3">
-      <button class="px-3 py-1 m-1 bg-blue-600 text-black rounded shadow hover:bg-blue-700" @click="selectAll">
-        Select All
-      </button>
-
-      <button class="px-3 py-1 m-1 bg-gray-500 text-black rounded shadow hover:bg-gray-600" @click="unselectAll">
-        Unselect All
-      </button>
-       <button class="px-3 py-1 m-1 bg-gray-500 text-black rounded shadow hover:bg-gray-600" @click="unselectAll">
-       Create / Schedule Work Order
-      </button>
+    <!-- ACTIONS -->
+    <div v-if="orders.length && !loading" class="flex justify-end gap-3 mb-3">
+      <button class="px-3 py-1 bg-blue-600 text-black rounded shadow" @click="selectAll">Select All</button>
+      <button class="px-3 py-1 bg-gray-500 text-black rounded shadow" @click="unselectAll">Unselect All</button>
     </div>
 
-    <!-- Sales Orders Table -->
-    <div v-if="orders.length && !loading" class="overflow-auto rounded-b-2xl">
-      <table class="min-w-[1200px] table-auto border border-gray-200 divide-y divide-gray-200">
-        <thead class="bg-gray-100 sticky">
+    <!-- SALES ORDER TABLE -->
+    <div v-if="orders.length && !loading" class="overflow-auto rounded-b-xl">
+      <table class="min-w-[1200px] table-auto divide-y divide-gray-200 border">
+        <thead class="bg-gray-100">
           <tr>
-            <th class="px-3 py-2 text-left text-sm font-medium border w-10">
+            <th class="px-3 py-2 border">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
-            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">SO</th>
-            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">Customer</th>
-            <th class="px-3 py-2 text-right text-sm font-medium border whitespace-nowrap">Qty</th>
-            <th class="px-3 py-2 text-right text-sm font-medium border whitespace-nowrap">Month</th>
-            <th class="px-3 py-2 text-right text-sm font-medium border whitespace-nowrap">Transaction Date</th>
-            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">Delivery Date</th>
-            <th class="px-3 py-2 text-left text-sm font-medium border whitespace-nowrap">Status</th>
+            <th class="px-3 py-2 border whitespace-nowrap">SO</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Customer</th>
+            <th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Month</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Transaction</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Delivery</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Status</th>
           </tr>
         </thead>
 
-        <tbody class="divide-y divide-gray-100">
-          <tr v-for="so in orders" :key="so.name" class="hover:bg-gray-50 transition">
+        <tbody class="divide-y divide-gray-200">
+          <tr v-for="so in orders" :key="so.name" class="hover:bg-gray-50">
             <td class="border px-3 py-2">
-              <input type="checkbox" :value="so.name" v-model="selectedLocal" @change="handleSelectionChange" />
+              <input type="checkbox" :value="so.name" v-model="selectedLocal">
             </td>
 
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.name }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.customer_name }}</td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">{{ so.total_qty }}</td>
-            <td class="border px-3 py-2 text-right whitespace-nowrap">{{ so.month }}</td>
-            <td class="border px-3 py-2 text-right whitespace-nowrap">{{ so.transaction_date }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.month }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.transaction_date }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.delivery_date }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.status }}</td>
           </tr>
@@ -61,10 +51,42 @@
       </table>
     </div>
 
-    <!-- No Data -->
-    <div v-if="!orders.length && !loading" class="text-gray-500 mt-4 text-center">
+    <!-- EMPTY STATE -->
+    <div v-if="!orders.length && !loading" class="text-gray-500 text-center mt-4">
       No Sales Orders found.
     </div>
+
+    <!-- FINISHED GOODS SECTION -->
+    <div v-if="fgItems.length" class="mt-6 border-t pt-4">
+      <h3 class="font-bold text-lg mb-2">Finished Good Items (from selected SOs)</h3>
+      <button class="px-3 py-1 bg-green-500 text-black rounded shadow hover:bg-green-600 m-1"
+        @click="createMixPlannerBOM">
+        Create Planner Mix BOM
+      </button>
+
+      <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
+        <thead class="bg-gray-100">
+          <tr>
+            <th>Selected</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Item Code</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Item Name</th>
+            <th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-gray-100">
+          <tr v-for="item in fgItems" :key="item.item_code" class="hover:bg-gray-50">
+            <td class="border px-3 py-2">
+              <input type="checkbox" :value="item.item_code" v-model="selectedFGItems">
+            </td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_code }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_name }}</td>
+            <td class="border px-3 py-2 text-right whitespace-nowrap">{{ item.qty }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 </template>
 
@@ -75,99 +97,121 @@ import { api } from "../services/api";
 const props = defineProps({
   items: { type: Array, default: () => [] },
   customer: { type: String, default: "" },
-  selected: { type: Array, default: () => [] },
+  month: { type: String, default: "" },
+  year: { type: String, default: "" },
 });
 
-const emit = defineEmits([
-  "so-loaded",
-  "boms-loaded",
-  "update:selected",
-]);
+const emit = defineEmits(["update:selected", "fg-loaded", "so-loaded"]);
 
 const loading = ref(false);
 const error = ref(null);
+const selectedFGItems = ref([]);
 const orders = ref([]);
-
 const selectedLocal = ref([]);
+const fgItems = ref([]);
 
-const isAllSelected = computed(() => {
-  return (
-    orders.value.length > 0 &&
-    selectedLocal.value.length === orders.value.length
-  );
-});
+// ----------------------------------------------------
+// ALL SELECTED CHECKBOX
+// ----------------------------------------------------
+const isAllSelected = computed(() =>
+  orders.value.length > 0 &&
+  selectedLocal.value.length === orders.value.length
+);
 
-// ---------------------
+// ----------------------------------------------------
 // SELECT HANDLERS
-// ---------------------
-
-const emitSelected = () => {
-  emit("update:selected", [...selectedLocal.value]);
-};
-
+// ----------------------------------------------------
 const selectAll = () => {
-  selectedLocal.value = orders.value.map((so) => so.name);
-  handleSelectionChange();
+  selectedLocal.value = orders.value.map(o => o.name);
+  processFGItems();
 };
 
 const unselectAll = () => {
   selectedLocal.value = [];
-  handleSelectionChange();
+  selectedFGItems.value = [];
+  fgItems.value = [];
+  emit("fg-loaded", []);
 };
 
-const toggleSelectAll = () => {
+const toggleSelectAll = () =>
   isAllSelected.value ? unselectAll() : selectAll();
+
+// ----------------------------------------------------
+// Collect FG items from selected Sales Orders
+// ----------------------------------------------------
+const processFGItems = () => {
+  const selectedOrders = orders.value.filter(o =>
+    selectedLocal.value.includes(o.name)
+  );
+
+  const items = [];
+  selectedOrders.forEach(o => {
+    (o.items || []).forEach(it => items.push(it));
+  });
+
+  fgItems.value = items;
+  emit("fg-loaded", items);
+  emit("update:selected", selectedLocal.value);
 };
 
-// When selection changes → fetch BOMs
-const handleSelectionChange = async () => {
-  emitSelected();
+// When checkbox changes
+watch(selectedLocal, processFGItems);
 
-  if (!selectedLocal.value.length) {
-    emit("boms-loaded", []);
+const createMixPlannerBOM = () => {
+  if (!selectedFGItems.value.length) {
+    frappe.msgprint("Please select one Finished Good to create a Mix BOM.");
     return;
   }
 
-  try {
-    const res = await api.getBOMsForSalesOrder(selectedLocal.value);
-    emit("boms-loaded", res.data.message || []);
-  } catch (e) {
-    console.error("Error loading BOMs:", e);
-    emit("boms-loaded", []);
+  if (selectedFGItems.value.length > 1) {
+    frappe.msgprint("Please select only ONE FG item to create a Mix BOM.");
+    return;
   }
+
+  const fgItem = selectedFGItems.value[0].item_code;
+  const qty = selectedFGItems.value[0].qty || 1;
+
+  // Build URL with FG Item + Qty + Type
+  const url =
+    `/app/bom/new-bom` +
+    `?item=${fgItem}` +
+    `&qty=${qty}` +
+    `&type=Production`;
+
+  window.location.href = url;
 };
 
-// ---------------------
-// FETCH SALES ORDERS
-// ---------------------
+// ----------------------------------------------------
+// FETCH ORDERS WHEN FILTERS CHANGE
+// ----------------------------------------------------
 const fetchOrders = async () => {
   loading.value = true;
   error.value = null;
 
   try {
     const res = await api.getSalesOrders({
-      customer: props.customer || "",
-      items: props.items || [],
+      search_text: props.search,
+      month: props.month,
+      customer: props.customer,
     });
 
     orders.value = res.data.message || [];
-
     selectedLocal.value = [];
+    fgItems.value = [];
+
     emit("so-loaded", orders.value);
 
-    // emit("boms-loaded", []); // reset BOMs
-
   } catch (err) {
-    console.error("SO Fetch Error:", err);
-    error.value = "Failed to fetch Sales Orders.";
+    console.error(err);
+    error.value = "Failed to load Sales Orders.";
   } finally {
     loading.value = false;
   }
 };
 
 watch(
-  () => [props.items, props.customer],
-  () => fetchOrders(),
-  { immediate: true, deep: true }
+  () => [props.search, props.month, props.year, props.customer],
+  fetchOrders,
+  { immediate: true }
 );
 </script>

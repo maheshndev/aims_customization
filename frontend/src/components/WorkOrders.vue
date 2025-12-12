@@ -12,21 +12,15 @@
 
       <!-- Actions -->
       <div class="flex items-center gap-3 mb-3">
-        <button
-          class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700"
-          @click="selectAll"
-        >
+        <button class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700 m-1" @click="selectAll">
           Select All
         </button>
 
-        <button
-          class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700"
-          @click="unselectAll"
-        >
+        <button class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700 m-1" @click="unselectAll">
           Unselect All
         </button>
 
-        <span class="text-gray-600">
+        <span class="text-gray-600 m-1">
           Selected: {{ selectedWorkOrders.length }}
         </span>
       </div>
@@ -35,11 +29,7 @@
         <thead class="bg-gray-100">
           <tr>
             <th class="border px-3 py-2 text-left">
-              <input
-                type="checkbox"
-                :checked="isAllSelected"
-                @change="toggleSelectAll"
-              />
+              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
 
             <th class="border px-3 py-2 text-left whitespace-nowrap">WO</th>
@@ -63,12 +53,7 @@
         </thead>
 
         <tbody>
-          <tr
-            v-for="wo in workOrders"
-            :key="wo.name"
-            class="hover:bg-gray-50"
-          >
-            <!-- Row checkbox -->
+          <tr v-for="wo in workOrders" :key="wo.name" class="hover:bg-gray-50">
             <td class="border px-3 py-2 text-center">
               <input
                 type="checkbox"
@@ -108,91 +93,77 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, watch } from "vue";
 import { api } from "../services/api";
 
-export default {
-  name: "WorkOrders",
+const props = defineProps({
+  salesOrders: { type: Array, default: () => [] },
+});
 
-  props: {
-    salesOrders: { type: Array, default: () => [] },
-  },
+const emit = defineEmits(["update:selected", "wo-loaded"]);
 
-  data() {
-    return {
-      workOrders: [],
-      loading: false,
-      error: null,
+const workOrders = ref([]);
+const selectedWorkOrders = ref([]);
+const loading = ref(false);
+const error = ref(null);
 
-      // NEW: Selected work orders array
-      selectedWorkOrders: [],
-    };
-  },
+const isAllSelected = computed(() =>
+  workOrders.value.length &&
+  selectedWorkOrders.value.length === workOrders.value.length
+);
 
-  computed: {
-    isAllSelected() {
-      return (
-        this.workOrders.length > 0 &&
-        this.selectedWorkOrders.length === this.workOrders.length
-      );
-    },
-  },
+// Fetch work orders
+async function fetchWorkOrders() {
+  if (!props.salesOrders.length) {
+    workOrders.value = [];
+    selectedWorkOrders.value = [];
+    emitSelection();
+    return;
+  }
 
-  methods: {
-    async fetchWorkOrders() {
-      if (!this.salesOrders.length) {
-        this.workOrders = [];
-        this.selectedWorkOrders = [];
-        return;
-      }
+  loading.value = true;
+  error.value = null;
 
-      this.loading = true;
-      this.error = null;
+  try {
+    const res = await api.getWorkOrders(props.salesOrders);
+    workOrders.value = res.data.message || [];
+    
+    
+    selectedWorkOrders.value = []; // reset
+    emitSelection();
+    emit("wo-loaded", workOrders.value);
 
-      try {
-        const res = await api.getWorkOrders(this.salesOrders);
-        this.workOrders = res.data.message || [];
+  } catch (err) {
+    error.value = "Failed to fetch Work Orders.";
+  } finally {
+    loading.value = false;
+  }
+}
 
-        // Reset selected WOs when loading
-        this.selectedWorkOrders = [];
+// Selections
+function toggleSelectAll(e) {
+  e.target.checked ? selectAll() : unselectAll();
+}
 
-        this.$emit("wo-loaded", this.workOrders);
-      } catch (err) {
-        console.error(err);
-        this.error = "Failed to fetch Work Orders.";
-      } finally {
-        this.loading = false;
-      }
-    },
+function selectAll() {
+  selectedWorkOrders.value = workOrders.value.map(wo => wo.name);
+  emitSelection();
+}
 
-    toggleSelectAll(e) {
-      if (e.target.checked) this.selectAll();
-      else this.unselectAll();
-    },
+function unselectAll() {
+  selectedWorkOrders.value = [];
+  emitSelection();
+}
 
-    selectAll() {
-      this.selectedWorkOrders = this.workOrders.map((wo) => wo.name);
-      this.emitSelection();
-    },
+function emitSelection() {
+  emit("update:selected", [...selectedWorkOrders.value]);
+}
 
-    unselectAll() {
-      this.selectedWorkOrders = [];
-      this.emitSelection();
-    },
-
-    emitSelection() {
-      this.$emit("wo-selected", this.selectedWorkOrders);
-    },
-  },
-
-  watch: {
-    salesOrders: {
-      handler() {
-        this.fetchWorkOrders();
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-};
+// Watcher
+watch(
+  () => props.salesOrders,
+  () => fetchWorkOrders(),
+  { immediate: true, deep: true }
+);
 </script>
