@@ -12,11 +12,7 @@ export const api = {
 			params,
 		}),
 
-	getBlanketOrderType: () =>
-		axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders_type"
-		),
-
+	
 	getBlanketOrdersSearch: (search) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
 			params: { search_text: search },
@@ -40,9 +36,9 @@ export const api = {
 		),
 
 	// -------------------- Level 3 --------------------
-	getSalesOrders: (customer) =>
+	getSalesOrders: (params) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_sales_orders", {
-			params: { customer },
+			params,
 		}),
 
 	// -------------------- Level 4 --------------------
@@ -109,36 +105,14 @@ export const api = {
 		),
 
 	// -------------------- Level 7 --------------------
-	getJobCards: (wo_list) => {
-		console.log("in api call job card: ", wo_list);
-	},
-	// axios.get(
-	// 	"/api/method/aims_customization.api.mss_monthly_schedule.get_job_cards_for_work_orders",
-	// 	{
-	// 		params: { wo_list : JSON.stringify(wo_list) },
-	// 	}
-	// )
-	attachQCJobCard: (job_card, qc_item_code) =>
-		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.attach_qc_job_card", {
-			job_card,
-			qc_item_code,
-		}),
-
-	addScrapJobCard: (job_card, scrap_qty) =>
-		axios.post("/api/method/aims_customization.api.mss_monthly_schedule.add_scrap_job_card", {
-			job_card,
-			scrap_qty,
-		}),
-
-	updateJobCardStatus: (job_card, status) =>
-		axios.post(
-			"/api/method/aims_customization.api.mss_monthly_schedule.update_job_card_status",
-			{
-				job_card,
-				status,
-			}
-		),
-
+	getJobCards: (wo_list) => 
+	axios.get(
+		"/api/method/aims_customization.api.mss_monthly_schedule.get_job_cards_for_work_orders",
+		{
+			params: { wo_list : JSON.stringify(wo_list) },
+		}
+	),
+	
 	// -------------------- Level 8 --------------------
 	getProductionStatus: (bo_list) =>
 		axios.get(

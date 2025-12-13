@@ -39,14 +39,14 @@
         </thead>
 
         <tbody>
-          <tr v-for="bo in orders" :key="bo.name" :class="[
+          <tr v-for="(bo, index) in orders"  :class="[
             'hover:bg-gray-50 transition',
             selectedBOrders.includes(bo.name) ? 'bg-blue-50' : ''
           ]">
             <td class="px-2 py-1 text-center border whitespace-nowrap">
-              <input type="checkbox" v-model="selectedBOrders" :value="bo.name" />
+              <input type="checkbox" v-model="selectedBOrders" :value="bo.name" :key="bo.name" />
             </td>
-
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ index+1 }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.name }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.blanket_order_type }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.customer }}</td>
@@ -55,6 +55,8 @@
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.from_date }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.to_date }}</td>
             <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.company }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.total_blanket_qty }}</td>
+            <td class="px-2 py-1 text-sm border whitespace-nowrap">{{ bo.remaining_qty }}</td>
           </tr>
         </tbody>
       </table>
@@ -86,6 +88,7 @@ export default {
     const error = ref(null);
 
     const headers = [
+      "#",
       "Blanket Order No.",
       "Type",
       "Customer",
@@ -94,6 +97,8 @@ export default {
       "From Date",
       "To Date",
       "Company",
+      "Total Blanket Qty",
+      "Remaining Qty"
     ];
 
     const isAllSelected = () =>
@@ -104,8 +109,13 @@ export default {
       error.value = null;
       selectedBOrders.value = [];
       try {
+        if(props.filters.customer || props.filters.month || props.filters.year){
         const res = await api.getBlanketOrders(props.filters);
         orders.value = res.data.message || [];
+        }
+        else{
+            orders.value=[]
+        }
       } catch (err) {
         error.value = "Failed to load Blanket Orders. Please try again.";
         orders.value = [];

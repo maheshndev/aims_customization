@@ -5,10 +5,10 @@
 		<div class="flex flex-wrap gap-4">
 
 			<!-- Month -->
-			<div class="relative flex-1 min-w-[250px] m-1">
+			<div class="relative flex-1  m-1">
 				<label class="filter-label mb-1 block">Month</label>
 				<div class="relative">
-					<select v-model="localFilters.month" class="filter-input w-[250px] pr-8 p-1 rounded-sm">
+					<select v-model="localFilters.month" class="filter-input pr-10 px-5 p-1 rounded-sm">
 						<option value="">Select Month</option>
 						<option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
 					</select>
@@ -20,10 +20,10 @@
 			</div>
 
 			<!-- Year -->
-			<div class="relative flex-1 min-w-[250px] m-1">
+			<div class="relative flex-1 m-1">
 				<label class="filter-label mb-1 block">Year</label>
 				<div class="relative">
-					<select v-model="localFilters.year" class="filter-input w-[250px] pr-8 p-1 rounded-sm">
+					<select v-model="localFilters.year" class="filter-input pr-10 px-5 p-1 rounded-sm">
 						<option value="">Select Year</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
@@ -35,14 +35,14 @@
 			</div>
 
 			<!-- Customer -->
-			<div class="relative flex-1 min-w-[250px] m-1">
+			<div class="relative flex-[2] m-1">
 				<label class="filter-label mb-1 block">Customer</label>
-				<div class="relative">
+				<div class="relative ">
 					<input type="text" v-model="searchCustomer" placeholder="Search customer..."
-						class="filter-input w-[250px] pr-8 rounded-sm" @focus="dropdownOpen = true"
+						class="filter-input w-full pr-8 px-3 p-1 rounded-sm" @focus="dropdownOpen = true"
 						@input="dropdownOpen = true" @keydown.down.prevent="highlightNext"
 						@keydown.up.prevent="highlightPrev" @keydown.enter.prevent="selectHighlighted"
-						@keydown.esc.prevent="dropdownOpen = false" />
+						@keydown.esc.prevent="dropdownOpen = false"  />
 					<!-- Clear icon -->
 					<span v-if="searchCustomer" @click="clearCustomer"
 						class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700">
@@ -52,12 +52,12 @@
 
 				<!-- Dropdown -->
 				<ul v-if="dropdownOpen"
-					class="absolute left-0 w-full border rounded-lg shadow-lg mt-1 z-10 max-h-40 overflow-y-auto bg-white animate-fadeIn">
+					class="absolute left-0 w-full border rounded-lg shadow-lg mt-1 z-15 max-h-40 overflow-y-auto bg-white animate-fadeIn">
 					<li v-for="(c, index) in filteredCustomers" :key="c.value" @click="selectCustomer(c)"
 						@mouseenter="highlightedIndex = index" :class="[
-							'px-3 py-2 text-sm cursor-pointer rounded-md transition',
+							'px-2 py-1 text-sm cursor-pointer rounded-md transition',
 							highlightedIndex === index ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'
-						]">
+						]" >
 						{{ c.label }}
 					</li>
 					<li v-if="filteredCustomers.length === 0" class="px-3 py-2 text-sm text-gray-500">
@@ -71,7 +71,7 @@
 		<!-- Action Buttons -->
 		<div class="flex justify-end gap-2 mt-4">
 			<button class="bg-blue-500 hover:bg-blue-700 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
-				@click="resetFilters">
+				@click="resetFilters" tooltip="Hover for more!" theme="gray" :variant="'solid'">
 				Reset All
 			</button>
 
@@ -156,7 +156,7 @@ export default {
 
 		selectCustomer(customer) {
 			this.localFilters.customer = customer.value;
-			this.searchCustomer = customer.label;
+			this.searchCustomer = customer.value;
 			this.dropdownOpen = false;
 		},
 
@@ -231,10 +231,11 @@ export default {
 
 .filter-label {
 	font-weight: 700;
+	width: 350px;
 }
 
 .filter-input {
-	width: 100%;
+	width: 350px;
 	padding: 10px;
 	border: 1px solid #d1d5db;
 	border-radius: 0.375rem;

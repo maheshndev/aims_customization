@@ -7,6 +7,7 @@
 			<table class="table-auto min-w-[1200px] border-collapse">
 				<thead class="bg-gray-100">
 					<tr>
+						<th class="border px-3 py-2 text-left">#</th>
 						<th class="border px-3 py-2 text-left">Item</th>
 						<th class="border px-3 py-2 text-left">Planned Qty</th>
 						<th class="border px-3 py-2 text-left">Produced Qty</th>
@@ -14,7 +15,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-for="item in summary" :key="item.item_code" class="hover:bg-gray-50">
+					<tr v-for="(item, index) in summary" :key="item.item_code" class="hover:bg-gray-50">
+						<td class="border px-3 py-2">{{ index }}</td>
 						<td class="border px-3 py-2">{{ item.item_name }}</td>
 						<td class="border px-3 py-2">{{ item.planned_qty }}</td>
 						<td class="border px-3 py-2">{{ item.produced_qty }}</td>

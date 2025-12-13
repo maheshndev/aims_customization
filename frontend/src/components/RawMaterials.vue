@@ -21,6 +21,7 @@
             <th class="border px-3 py-2 w-10 text-left whitespace-nowrap">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
+             <th class="border px-3 py-2 text-left  whitespace-nowrap">#</th>
             <th class="border px-3 py-2 text-left  whitespace-nowrap">BOM</th>
             <th class="border px-3 py-2 text-left whitespace-nowrap">Material</th>
             <th class="border px-3 py-2 text-left whitespace-nowrap">Required Qty</th>
@@ -30,10 +31,11 @@
         </thead>
 
         <tbody>
-          <tr v-for="rm in materials" :key="rm.rm_item_code" class="hover:bg-gray-50 transition">
+          <tr v-for="(rm, index) in materials"  class="hover:bg-gray-50 transition">
             <td class="border px-3 py-2 text-center whitespace-nowrap">
-              <input type="checkbox" v-model="selectedRows" :value="rm.rm_item_code" />
+              <input type="checkbox" v-model="selectedRows" :value="rm" :key="index"/>
             </td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ index }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.bom_no }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_name }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">

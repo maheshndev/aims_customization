@@ -13,20 +13,19 @@
 
     <SectionCard title="Items for Selected BO(s)">
       <!-- Fetch items in BlanketOrderItems based on selected BOs -->
-      <BlanketOrderItems :selected-bo-names="selected.blanketOrders.map(b => b.name)"
+      <BlanketOrderItems :selected-bo-names="selected.blanketOrders.map((b) => b.name)"
         v-model:selected="selected.items" />
     </SectionCard>
 
     <!-- Sales Orders -->
     <SectionCard title="Sales Orders">
-      <SalesOrders v-model:selected="selected.salesOrders" :items="filters.items" :customer="filters.customer" />
+      <SalesOrders v-model:selected="selected.salesOrders" :filters="filters" :bo-items="selected.items" />
     </SectionCard>
 
     <!-- BOMs -->
     <SectionCard title="BOMs">
       <BOMList :sales-orders="selected.salesOrders" v-model:selected="selected.boms"
-        @update:capBOMs="val => selected.bomsObjects = val" />
-
+        @update:capBOMs="(val) => (selected.bomsObjects = val)" />
     </SectionCard>
 
     <!-- Raw Materials -->
@@ -37,16 +36,14 @@
     <SectionCard title="Capacity Planning">
       <CapacityPlanner :boms="selected.boms" :cap-boms="selected.bomsObjects" :filters="filters"
         :available-machine-hours="machineCapacity" @capacity-updated="handleCapacityUpdate" />
-
     </SectionCard>
 
     <BOMComparisonModal :open-compare="state.showCompareModal" :boms="selectedBOMObjects" :raw-materials="rawMaterials"
       @close="state.showCompareModal = false" />
 
-
     <!-- Work Orders -->
     <SectionCard title="Work Orders">
-      <WorkOrders :sales-orders="selected.salesOrders" v-model:selected="selected.workOrders" />
+      <WorkOrders :sales-orders="selected.salesOrders"  v-model:selected="selected.workOrders" />
     </SectionCard>
 
     <!-- Job Cards -->
@@ -54,13 +51,10 @@
       <JobCards :work-orders="selected.workOrders" v-model:selected="selected.jobCards" />
     </SectionCard>
 
-
-
     <!-- Production Summary -->
     <SectionCard title="Production Summary">
       <ProductionSummary :job-cards="selected.jobCards" :summary="state.productionSummary" />
     </SectionCard>
-
   </div>
 </template>
 
@@ -93,7 +87,7 @@ export default {
     WorkOrders,
     JobCards,
     ProductionSummary,
-    CapacityPlanner
+    CapacityPlanner,
   },
 
   setup() {
@@ -129,6 +123,7 @@ export default {
       workOrders: [],
       jobCards: [],
       productionSummary: {},
+      showCompareModal: false,
     });
 
     // When filters applied manually

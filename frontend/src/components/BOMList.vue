@@ -26,6 +26,8 @@
           Compare BOMs
         </button>
 
+         
+
       </div>
     </div>
 
@@ -37,6 +39,7 @@
             <th class="px-3 py-2 border w-10 text-left">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">#</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Sales Order</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">BOM</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Finish Good Item</th>
@@ -49,18 +52,18 @@
             <th class="px-3 py-2 border text-left whitespace-nowrap">Shot wt</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Gross wt</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Cycle Time</th>
-            <th class="px-3 py-2 border text-left whitespace-nowrap">UOM</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Workstation / Machine</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Moulds</th>
 
           </tr>
         </thead>
 
         <tbody class="divide-y divide-gray-100">
-          <tr v-for="bom in filteredBOMs" :key="bom.bom_no" class="hover:bg-gray-50 transition">
+          <tr v-for="(bom, index) in filteredBOMs"  class="hover:bg-gray-50 transition">
             <td class="border px-3 py-2">
-              <input type="checkbox" :value="bom.bom_no"  v-model="selectedLocal" />
+              <input type="checkbox" :value="bom.bom_no" :key="index" v-model="selectedLocal" />
             </td>
-           
+            <td class="border px-3 py-2 whitespace-nowrap">{{ index+1 }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.sales_order }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_no || "No BOM Available" }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.item_code }}</td>
@@ -73,11 +76,17 @@
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.shot_wt }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.gross_wt }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.cycle_time }}</td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ bom.uom }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">
               <select v-model="bom.selected_workstation" class="border rounded px-2 py-1">
                 <option v-for="op in bom.bom_operations" :key="op.name" :value="op.workstation">
                   {{ op.workstation }}
+                </option>
+              </select>
+            </td>
+            <td class="border px-3 py-2 whitespace-nowrap">
+              <select v-model="bom.selected_moulds" class="border rounded px-2 py-1">
+                <option v-for="mould in bom.selected_moulds" :key="mould.mould_no" :value="mould.mould_no">
+                  {{ mould.mould_no }} : {{ mould.mould_name }}
                 </option>
               </select>
             </td>
@@ -92,6 +101,7 @@
     </div>
 
   </div>
+  
 </template>
 
 <script setup>
@@ -108,7 +118,7 @@ const emit = defineEmits(["update:selected", "bom-loaded"]);
 const boms = ref([]);
 const loading = ref(false);
 const error = ref(null);
-
+ 
 const selectedLocal = ref([]);
 
 const search = ref("");
@@ -187,7 +197,9 @@ const fetchBOMs = async () => {
     boms.value = (res.data.message || []).map(b => ({
       ...b,
       selected_workstation:
-        b.bom_operations?.length ? b.bom_operations[0].workstation : null
+        b.bom_operations?.length ? b.bom_operations[0].workstation : null,
+      selected_moulds:
+        b.moulds?.length ? b.moulds[0].mould_name : null
     }));
     selectedLocal.value = [];
 

@@ -41,28 +41,30 @@
         <thead class="bg-gray-100 sticky top-0 z-10">
           <tr>
             <th class="px-2 py-2 text-left border w-16">Select</th>
-            <th v-for="h in headers" :key="h" class="px-4 py-2 text-left font-medium text-gray-700 border whitespace-nowrap">
+            <th v-for="h in headers" :key="h"
+              class="px-2 py-2 text-left font-medium text-gray-700 border whitespace-nowrap">
               {{ h }}
             </th>
           </tr>
         </thead>
 
         <tbody class="divide-y divide-gray-100">
-          <tr v-for="item in items" :key="item.item_code" class="hover:bg-gray-50 transition">
+          <tr v-for="(item, index) in items" :key="item.item_code" class="hover:bg-gray-50 transition">
 
             <!-- Checkbox -->
-            <td class="px-2 py-1 text-center border whitespace-nowrap">
-              <input type="checkbox" class="w-4 h-4" :value="item" v-model="selectedItems" @change="emitSelection" />
+            <td class="px-1 py-1 text-center border whitespace-nowrap">
+              <input type="checkbox" class="w-4 h-4" :value="item" v-model="selectedItems" />
             </td>
-
+            <td class="px-1 py-1 text-center border whitespace-nowrap">{{ index+1 }}</td>
+            
             <!-- Dynamic Cells -->
-            <td v-for="key in fieldKeys" :key="key" class="px-2 py-1 border text-gray-800 whitespace-nowrap">
+            <td v-for="key in fieldKeys" :key="key" class="px-1 py-1 border text-gray-800 whitespace-nowrap">
               <!-- Editable schedule_qty -->
               <template v-if="key === 'schedule_qty'">
                 <input type="number" v-model.number="item.schedule_qty" @input="emitSelection"
                   class="w-full border px-2 py-1 rounded" />
               </template>
-
+               
               <!-- Readonly fields -->
               <template v-else>
                 {{ item[key] }}
@@ -99,18 +101,19 @@ export default {
     const error = ref(null);
 
     const headers = [
-      "Blanket Order No.", "Item Code", "Item Name", "Qty", "Schedule Qty", "Rate",
+      "#",
+      "Blanket Order No.", "BO Item Code", "BO Item Name", " BO Qty",  "Pending To Produce Qty", "Schedule Qty","Already Consumed SO Qty", "Rate",
       "Cavity", "PCS Wt", "Runner Wt", "Shot Wt", "Cycle Time",
       "Per Piece Wt (Incl. Runner Wt.)", "Available Stock (Nos.)", "Available Stock Amt",
       "Produced Stock (Nos.)", "Produced Stock Amt", "WIP Stock (Nos.)", "Wip Stock Amt",
       "Balance Produce Qty", "Balance Produce Amt",
       "Balance Deliver Qty", "Balance Deliver Amt", "Reserved Qty", "Incoming Qty",
       "BOM No", "Warehouse", "Dispatched Nos", "Dispatched Amt", "Total Stock Nos",
-      "Total Stock Amt", "Total + Produced Nos", "Total + Produced Amt"
+      "Total Stock Amt", "Total + Produced Nos", "Total + Produced Amt",
     ];
 
     const fieldKeys = [
-      "bo_name", "item_code", "item_name", "order_qty", "schedule_qty", "rate",
+      "bo_name", "item_code", "item_name", "order_qty",  "remaining_bo_qty", "schedule_qty", "consumed_qty", "rate",
       "cavity", "pcs_wt", "runner_wt", "shot_wt", "cycle_time",
       "weight_per_unit", "available_stock_nos", "available_stock_amt",
       "produced_stock_nos", "produced_stock_amt", "wip_stock_nos", "wip_stock_amt",
@@ -118,7 +121,7 @@ export default {
       "balance_to_deliver_qty", "balance_to_deliver_amt",
       "reserved_qty", "incoming_qty", "bom_no", "warehouse",
       "dispatched_qty_nos", "dispatched_amt", "total_stock_nos",
-      "total_stock_amt", "total_plus_produced_nos", "total_plus_produced_amt"
+      "total_stock_amt", "total_plus_produced_nos", "total_plus_produced_amt",
     ];
 
     // Load BO Items
@@ -137,20 +140,21 @@ export default {
     };
 
     // Emit selection + updated quantities
-    const emitSelection = () => {
-      emit("update:selected", selectedItems.value);
-    };
+    // const emitSelection = () => {
+    //   emit("update:selected", selectedItems.value);
+    // };
 
     const selectAll = () => {
       selectedItems.value = [...items.value];
-      emitSelection();
+      // emitSelection();
     };
 
     const unselectAll = () => {
       selectedItems.value = [];
-      emitSelection();
+      // emitSelection();
     };
 
+    // Create Sales Order
     // Create Sales Order
     const createSalesOrder = async () => {
       if (!selectedItems.value.length) return;
@@ -158,30 +162,62 @@ export default {
       const payload = selectedItems.value.map(item => ({
         bo_name: item.bo_name,
         item_code: item.item_code,
-        schedule_qty: Number(item.schedule_qty),  // IMPORTANT
-        rate: item.rate,
-        bom_no: item.bom_no
+        schedule_qty: Number(item.schedule_qty) || 0,
+        rate: item.rate || 0,
+        bom_no: item.bom_no || null,
+        warehouse: item.warehouse || null
       }));
 
       try {
+        
         const res = await api.createSalesOrderFromBOItems(payload);
 
-        frappe.msgprint({
-          title: res.data.message.status,
-          message: res.data.message.message,
-          indicator: "green",
-        });
+        const data = res?.data?.message || {};
 
+       
+         if(data.skipped.length==0)
+        {
+
+        frappe.msgprint({
+          title: data.status === "success" ? "Success" : "Info",
+          message: `
+        ${data.message}
+        <br><br>
+        <b>Created:</b> ${data.created_sales_orders?.join(", ") || "Can not Create Sales Order because Fully consumed"}
+        <br>
+        <b>Skipped:</b> ${data.skipped?.length || 0}
+      `,
+          indicator: "green"
+        });
+      } else 
+      {
+        frappe.msgprint({
+          title: "Error To Create Sales Order",
+          message: `
+          <b>${data.skipped[0].reason}</b>
+          `,
+          indicator: "red"
+        })
+      }
+        // reset selection
         selectedItems.value = [];
         emit("update:selected", []);
+
       } catch (err) {
+        const errMsg =
+          err?.response?.data?.exception ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to create Sales Order.";
+
         frappe.msgprint({
           title: "Error",
-          message: "Failed to create Sales Order.",
-          indicator: "red",
+          message: errMsg,
+          indicator: "red"
         });
       }
     };
+
 
     watch(
       () => props.selectedBoNames,
@@ -206,7 +242,7 @@ export default {
       selectAll,
       unselectAll,
       createSalesOrder,
-      emitSelection,
+      // emitSelection,
     };
   },
 };
