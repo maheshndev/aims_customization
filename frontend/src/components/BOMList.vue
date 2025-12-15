@@ -26,7 +26,7 @@
           Compare BOMs
         </button>
 
-         
+
 
       </div>
     </div>
@@ -45,6 +45,7 @@
             <th class="px-3 py-2 border text-left whitespace-nowrap">Finish Good Item</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Qty</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">BOM Type</th>
+            <th class="px-3 py-2 border text-left whitespace-nowrap">Customer</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Required Qty</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Cavity</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">PCS wt</th>
@@ -59,16 +60,17 @@
         </thead>
 
         <tbody class="divide-y divide-gray-100">
-          <tr v-for="(bom, index) in filteredBOMs"  class="hover:bg-gray-50 transition">
+          <tr v-for="(bom, index) in filteredBOMs" class="hover:bg-gray-50 transition">
             <td class="border px-3 py-2">
-              <input type="checkbox" :value="bom.bom_no" :key="index" v-model="selectedLocal" />
+              <input type="checkbox" :value="bom" :key="bom.row_uid" v-model="selectedLocal" />
             </td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ index+1 }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.sales_order }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_no || "No BOM Available" }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.item_code }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_qty }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.bom_type }}</td>
+            <td class="px-3 py-2 border whitespace-nowrap">{{bom.customer}}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.required_for_selected_qty }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.cavity }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.pcs_wt }}</td>
@@ -78,17 +80,21 @@
             <td class="border px-3 py-2 whitespace-nowrap">{{ bom.cycle_time }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">
               <select v-model="bom.selected_workstation" class="border rounded px-2 py-1">
-                <option v-for="op in bom.bom_operations" :key="op.name" :value="op.workstation">
+                <option disabled value="">Select Workstation</option>
+                <option v-for="op in bom.bom_operations" :key="op.name || op.workstation" :value="op.workstation">
                   {{ op.workstation }}
                 </option>
               </select>
+
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">
-              <select v-model="bom.selected_moulds" class="border rounded px-2 py-1">
-                <option v-for="mould in bom.selected_moulds" :key="mould.mould_no" :value="mould.mould_no">
+              <select v-model="bom.selected_mould" class="border rounded px-2 py-1">
+                <option disabled value="">Select Mould</option>
+                <option v-for="mould in bom.moulds" :key="mould.mould_no" :value="mould.mould_no">
                   {{ mould.mould_no }} : {{ mould.mould_name }}
                 </option>
               </select>
+
             </td>
           </tr>
         </tbody>
@@ -101,7 +107,7 @@
     </div>
 
   </div>
-  
+
 </template>
 
 <script setup>
@@ -118,7 +124,7 @@ const emit = defineEmits(["update:selected", "bom-loaded"]);
 const boms = ref([]);
 const loading = ref(false);
 const error = ref(null);
- 
+
 const selectedLocal = ref([]);
 
 const search = ref("");
@@ -153,7 +159,7 @@ const isAllSelected = computed(() => {
 // ---------------------------------------------------
 watch(selectedLocal, () => {
   const selectedObjects = boms.value.filter((b) =>
-    selectedLocal.value.includes(b.bom_no)
+    selectedLocal.value.includes(b)
   );
 
   emit("update:selected", selectedLocal.value); // selected BOM numbers
@@ -165,7 +171,7 @@ watch(selectedLocal, () => {
 // Select / Unselect
 // ---------------------------------------------------
 const selectAll = () => {
-  selectedLocal.value = filteredBOMs.value.map((b) => b.bom_no);
+  selectedLocal.value = filteredBOMs.value.map((b) => b);
 };
 
 const unselectAll = () => {
@@ -194,13 +200,15 @@ const fetchBOMs = async () => {
 
   try {
     const res = await api.getBOMsForSalesOrder(props.salesOrders);
-    boms.value = (res.data.message || []).map(b => ({
+    boms.value = (res.data.message || []).map((b, idx) => ({
       ...b,
-      selected_workstation:
-        b.bom_operations?.length ? b.bom_operations[0].workstation : null,
-      selected_moulds:
-        b.moulds?.length ? b.moulds[0].mould_name : null
+      row_uid: `${b.sales_order}::${b.bom_no}`,
+      bom_operations: b.bom_operations || [],
+      moulds: b.moulds || [],
+      selected_workstation: b.bom_operations?.[0]?.workstation || "",
+      selected_mould: b.moulds?.[0]?.mould_no || ""
     }));
+
     selectedLocal.value = [];
 
     emit("bom-loaded", []);
@@ -213,5 +221,7 @@ const fetchBOMs = async () => {
   }
 };
 
+
 watch(() => props.salesOrders, fetchBOMs, { deep: true, immediate: true });
+
 </script>

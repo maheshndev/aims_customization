@@ -10,18 +10,16 @@
 		<div v-if="workOrders.length" class="overflow-auto rounded-b-2xl">
 			<!-- Actions -->
 			<div class="flex items-center gap-3 mb-3">
-				<button
-					class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700 m-1"
-					@click="selectAll"
-				>
+				<button class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700 m-1" @click="selectAll">
 					Select All
 				</button>
 
-				<button
-					class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700 m-1"
-					@click="unselectAll"
-				>
+				<button class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700 m-1" @click="unselectAll">
 					Unselect All
+				</button>
+				<button class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700 m-1"
+					@click="refreshWorkOrders">
+					Refresh Work Orders
 				</button>
 
 				<span class="text-gray-600 m-1"> Selected: {{ selectedWorkOrders.length }} </span>
@@ -31,11 +29,7 @@
 				<thead class="bg-gray-100">
 					<tr>
 						<th class="border px-3 py-2 text-left">
-							<input
-								type="checkbox"
-								:checked="isAllSelected"
-								@change="toggleSelectAll"
-							/>
+							<input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
 						</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">#</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">WO</th>
@@ -75,7 +69,7 @@
 						<td class="border px-3 py-2 text-center">
 							<input type="checkbox" :value="wo.wo_name" v-model="selectedWorkOrders" />
 						</td>
-						<td class="border px-3 py-2 whitespace-nowrap">{{ index +1 }}</td>
+						<td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
 						<td class="border px-3 py-2 whitespace-nowrap">{{ wo.wo_name }}</td>
 						<td class="border px-3 py-2 whitespace-nowrap">{{ wo.so_name }}</td>
 						<td class="border px-3 py-2 whitespace-nowrap">
@@ -125,8 +119,8 @@ import { api } from "../services/api";
 
 /* ---------------- Props ---------------- */
 const props = defineProps({
-  salesOrders: { type: Array, default: () => [] },
-  selected: { type: Array, default: () => [] },   // ✅ ADD
+	salesOrders: { type: Array, default: () => [] },
+	selected: { type: Array, default: () => [] },   // ✅ ADD
 });
 
 /* ---------------- Emits ---------------- */
@@ -140,75 +134,78 @@ const error = ref(null);
 
 /* ---------------- Computed ---------------- */
 const isAllSelected = computed(
-  () =>
-    workOrders.value.length > 0 &&
-    selectedWorkOrders.value.length === workOrders.value.length
+	() =>
+		workOrders.value.length > 0 &&
+		selectedWorkOrders.value.length === workOrders.value.length
 );
 
 /* ---------------- API ---------------- */
 async function fetchWorkOrders() {
-  loading.value = true;
-  error.value = null;
+	loading.value = true;
+	error.value = null;
 
-  try {
-    const res = await api.getWorkOrders(props.salesOrders);
-    workOrders.value = res.data.message || [];
-
-    // ✅ sync parent-selected WOs safely
-    const woNames = workOrders.value.map(wo => wo.wo_name);
-    selectedWorkOrders.value = props.selected.filter(name =>
-      woNames.includes(name)
-    );
-
-  } catch (err) {
-    error.value = "Failed to fetch Work Orders.";
-    workOrders.value = [];
-    selectedWorkOrders.value = [];
-    emit("update:selected", []);
-  } finally {
-    loading.value = false;
-  }
+	try {
+		const res = await api.getWorkOrders(props.salesOrders);
+		workOrders.value = res.data.message || [];
+		if(workOrders.value.length>0){
+		// ✅ sync parent-selected WOs safely
+		const woNames = workOrders.value.map(wo => wo.wo_name);
+		selectedWorkOrders.value = props.selected.filter(name =>
+			woNames.includes(name)
+		);
+		}
+		else{
+			workOrders.value = [];
+		}
+	} catch (err) {
+		error.value = "Failed to fetch Work Orders.";
+		workOrders.value = [];
+		selectedWorkOrders.value = [];
+		emit("update:selected", []);
+	} finally {
+		loading.value = false;
+	}
 }
 
 /* ---------------- Selection helpers ---------------- */
 const toggleSelectAll = () =>
-  isAllSelected.value ? unselectAll() : selectAll();
+	isAllSelected.value ? unselectAll() : selectAll();
 
 function selectAll() {
-  selectedWorkOrders.value = workOrders.value.map(wo => wo.wo_name);
+	selectedWorkOrders.value = workOrders.value.map(wo => wo.wo_name);
 }
 
 function unselectAll() {
-  selectedWorkOrders.value = [];
+	selectedWorkOrders.value = [];
 }
 
 /* ---------------- Emit selection ---------------- */
 watch(
-  selectedWorkOrders,
-  (val) => {
-    emit("update:selected", [...val]);   // ✅ REQUIRED
-  },
-  { deep: true }
+	selectedWorkOrders,
+	(val) => {
+		emit("update:selected", [...val]);   // ✅ REQUIRED
+	},
+	{ deep: true }
 );
 
 /* ---------------- Watch Sales Orders ---------------- */
 watch(
-  () => props.salesOrders,
-  (newVal, oldVal) => {
-    const curr = Array.isArray(newVal) ? newVal.filter(Boolean) : [];
-    const prev = Array.isArray(oldVal) ? oldVal.filter(Boolean) : [];
+	() => props.salesOrders,
+	(newVal, oldVal) => {
+		const curr = Array.isArray(newVal) ? newVal.filter(Boolean) : [];
+		const prev = Array.isArray(oldVal) ? oldVal.filter(Boolean) : [];
 
-    if (!curr.length) {
-      workOrders.value = [];
-      selectedWorkOrders.value = [];
-      emit("update:selected", []);
-      return;
-    }
+		if (!curr.length) {
+			workOrders.value = [];
+			selectedWorkOrders.value = [];
+			emit("update:selected", []);
+			return;
+		}
 
-    if (JSON.stringify(curr) === JSON.stringify(prev)) return;
+		if (JSON.stringify(curr) === JSON.stringify(prev)) return;
 
-    fetchWorkOrders();
-  },
-  { immediate: true }
+		fetchWorkOrders();
+	},
+	{ immediate: true }
 );
 </script>

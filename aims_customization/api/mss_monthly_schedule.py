@@ -1,10 +1,10 @@
 # aims_customization/api/mss_monthly_schedule.py
 from __future__ import annotations
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, time
 import calendar
 import frappe
-from frappe.utils import nowdate, get_datetime, getdate, flt
+from frappe.utils import nowdate, get_datetime, getdate, flt, time_diff_in_hours
 from frappe import _
  
 # -------------------- Helpers --------------------
@@ -453,8 +453,8 @@ def get_sales_orders(search_text: str = None, month: str = None, customer: str =
                 soi.item_name,
                 soi.qty,
                 soi.item_group,
-                soi.rate
-                
+                soi.rate,
+                soi.bom_no
             FROM `tabSales Order Item` soi
             WHERE soi.parent = %s
             ORDER BY soi.idx
@@ -520,24 +520,26 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 limit_page_length=1 if forced_bom else None
             ) or []
 
-            if not boms:
-                result.append({
-                    "sales_order": so_name,
-                    "item_code": item_code,
-                    "bom_no": "",
-                    "bom_qty": 0,
-                    "bom_type": "",
-                    "cavity" : "",
-                    "pcs_wt": 0,
-                    "runner_wt": 0, 
-                    "shot_wt": 0, 
-                    "gross_wt": 0, 
-                    "cycle_time": 0,
-                    "uom": "",
-                    "bom_items": [],
-                    "required_for_selected_qty": required_qty
-                })
-                continue
+            # if not boms:
+            #     result.append({
+            #         "sales_order": so_name,
+            #         "item_code": item_code,
+            #         "bom_no": "",
+            #         "bom_qty": 0,
+            #         "bom_type": "",
+            #         "cavity" : "",
+            #         "pcs_wt": 0,
+            #         "runner_wt": 0, 
+            #         "shot_wt": 0, 
+            #         "gross_wt": 0, 
+            #         "cycle_time": 0,
+            #         "uom": "",
+            #         "bom_items": [],
+            #         "bom_operations": [],
+            #         "moulds": [],
+            #         "required_for_selected_qty": required_qty
+            #     })
+            #     continue
 
             # Fetch RM items for each BOM
             for bom in boms:
@@ -572,6 +574,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 )
                 result.append({
                     "sales_order": so_name,
+                    "customer": so.customer,
                     "item_code": item_code,
                     "bom_no": bom.get("bom_no"),
                     "bom_qty": bom.get("bom_qty") or 0,
@@ -588,7 +591,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                     "moulds": moulds,
                     "required_for_selected_qty": required_qty or 0,
                 })
-
+                
     return result
 
 @frappe.whitelist()
@@ -737,7 +740,7 @@ def get_work_orders_for_so(so_list: str | list = None):
             "expected_delivery_date":get_datetime(wo.expected_delivery_date).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
             "stock_uom":wo.stock_uom, 
         })
-
+        print("in python code ",result)
     return result
 
 
@@ -864,19 +867,26 @@ def get_job_cards_for_work_orders(wo_list: str | list = None):
 
 # ---------------- LEVEL 8: Production / QC / Updates ----------------
 
-
 @frappe.whitelist(allow_guest=True)
 def create_work_orders(so_list):
-    """
-    Create Work Orders for selected Blanket Orders.
-    """
+    """Create Work Orders for selected Blanket Orders."""
     if isinstance(so_list, str):
-        so_list = json.loads(so_list)
+        try:
+            so_list = json.loads(so_list)
+        except Exception:
+            frappe.throw(_("Invalid Sales Order list"))
+
+    if not isinstance(so_list, list) or not so_list:
+        return {"status": "error", "message": "No Sales Orders provided"}
 
     created_wos = []
 
     for so_name in so_list:
-        items = frappe.get_all("Sales Order Item", filters={"parent": so_name}, fields=["item_code", "qty", "warehouse", "bom_no"])
+        items = frappe.get_all(
+            "Sales Order Item",
+            filters={"parent": so_name},
+            fields=["item_code", "qty", "warehouse", "bom_no"]
+        )
         so_doc = frappe.get_doc("Sales Order", so_name)
         for item in items:
             wo = frappe.new_doc("Work Order")
@@ -893,15 +903,9 @@ def create_work_orders(so_list):
     return {"status": "success", "created_work_orders": created_wos}
 
 
-# ---------------------------------------------------------
-# CAPACITY PLANNING API
-# ---------------------------------------------------------
+# ---------------- Capacity Planning ----------------
 @frappe.whitelist()
 def get_workstations():
-    """
-    Return list of workstations with mapped capacity fields
-    compatible with MSS Capacity Planner.
-    """
     workstations = frappe.get_all(
         "Workstation",
         fields=["name", "workstation_type", "total_working_hours", "holiday_list"],
@@ -909,263 +913,458 @@ def get_workstations():
     )
 
     result = []
-
     for ws in workstations:
-        machine_type = ws.workstation_type or "General"
-        shift_hours = ws.total_working_hours or 8
-        shifts_per_day = 1  # could extend if you have shift field
+        shift_hours = flt(ws.total_working_hours or 8)
         working_days = get_working_days_in_current_month(ws.holiday_list)
-        monthly_capacity_hours = shift_hours * shifts_per_day * working_days
 
         result.append({
             "name": ws.name,
-            "machine_type": machine_type,
+            "machine_type": ws.workstation_type or "",
             "shift_hours": shift_hours,
-            "shifts_per_day": shifts_per_day,
             "working_days": working_days,
-            "monthly_capacity_hours": monthly_capacity_hours
+            "monthly_capacity_hours": shift_hours * working_days
         })
 
     return result
 
 
-def get_working_days_in_current_month(holiday_list):
-    """Count working days in current month using ERPNext Holiday List."""
-    import calendar
-    from datetime import date
-    from frappe.utils import getdate
+def get_working_days_in_current_month(holiday_list, month=None):
+    """Return working days for a given YYYY-MM month using Holiday List."""
+    if not month:
+        today = date.today()
+        year, month = today.year, today.month
+    else:
+        year, month = map(int, month.split("-"))
 
-    year = date.today().year
-    month = date.today().month
     _, total_days = calendar.monthrange(year, month)
 
-    holidays = []
+    holidays = set()
     if holiday_list:
-        holidays = [
+        holidays = {
             getdate(h.holiday_date)
             for h in frappe.get_all(
                 "Holiday",
                 filters={"parent": holiday_list},
                 fields=["holiday_date"]
             )
-        ]
+        }
 
     working_days = 0
     for day in range(1, total_days + 1):
         d = date(year, month, day)
-        if d.weekday() >= 5 or d in holidays:  # 5=Sat, 6=Sun
+        if d.weekday() >= 5 or d in holidays:
             continue
         working_days += 1
 
     return working_days
 
+
 def get_item_cycle_and_cavitys(item_code):
-    """Fetch cycle time and cavity from Item or Item variant custom fields."""
-    # adapt field names where you store cycle_time and cavity
+    """Fetch cycle time and cavity from Item custom fields."""
     row = frappe.db.get_value("Item", item_code, ["cycle_time", "cavity_coun"], as_dict=True) or {}
     return flt(row.get("cycle_time") or 0), int(flt(row.get("cavity_coun") or 1))
 
-def machine_monthly_capacity(machine_name, month=None):
-    """Return machine monthly capacity hours (float). If not set, compute from working_days * shifts * shift_hours."""
-    if not machine_name:
+
+def _to_time(val):
+    """
+    Normalize Shift Type time fields.
+    Supports datetime.time and datetime.timedelta
+    """
+    if isinstance(val, time):
+        return val
+    if isinstance(val, timedelta):
+        total_seconds = int(val.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return time(hours % 24, minutes, seconds)
+    return None
+def get_machine_next_available_time(machine):
+    """Return next available datetime for machine"""
+    wos = frappe.get_all(
+        "Work Order",
+        filters={
+            "workstation": machine,
+            "status": ["in", ["Not Started", "In Process"]]
+        },
+        fields=["planned_end_date"],
+        order_by="planned_end_date desc",
+        limit=1
+    )
+
+    if wos:
+        return get_datetime(wos[0].planned_end_date)
+
+    return get_datetime()  # machine free now
+
+def is_mould_available(mould, start, end):
+    if not mould:
+        return True
+
+    clash = frappe.db.exists(
+        "Work Order",
+        {
+            "custom_mould": mould,
+            "planned_start_date": ["<", end],
+            "planned_end_date": [">", start],
+            "status": ["!=", "Completed"]
+        }
+    )
+    return not clash
+
+def split_qty_by_capacity(qty, per_hour_qty, shift_windows):
+    """Split qty into chunks that fit shifts"""
+    chunks = []
+
+    for start, end in shift_windows:
+        shift_hours = (end - start).total_seconds() / 3600
+        max_qty = int(shift_hours * per_hour_qty)
+
+        if qty <= 0:
+            break
+
+        used = min(qty, max_qty)
+        chunks.append((used, shift_hours * (used / max_qty)))
+        qty -= used
+
+    return chunks
+
+
+def machine_monthly_capacity(machine_name, month, utilization=100):
+    """Calculate machine monthly capacity using Shift Types safely."""
+    if not machine_name or not month:
         return 0
-    row = frappe.db.get_value("Workstation", machine_name, ["monthly_capacity_hours", "shift_hours", "shifts_per_day", "working_days"], as_dict=True) or {}
-    if flt(row.get("monthly_capacity_hours")):
-        return flt(row.get("monthly_capacity_hours"))
-    # fallback compute
-    shift_hours = flt(row.get("shift_hours") or 8)
-    shifts = int(row.get("shifts_per_day") or 1)
-    days = int(row.get("working_days") or 22)
-    return shift_hours * shifts * days
+
+    ws = frappe.db.get_value(
+        "Workstation",
+        machine_name,
+        ["holiday_list", "total_working_hours"],
+        as_dict=True
+    ) or {}
+
+    shift_types = frappe.get_all(
+        "Shift Type",
+        fields=["start_time", "end_time"]
+    )
+
+    daily_shift_hours = 0
+    base_date = getdate()
+
+    for s in shift_types:
+        start_t = _to_time(s.start_time)
+        end_t = _to_time(s.end_time)
+
+        if not start_t or not end_t:
+            continue
+
+        start = datetime.combine(base_date, start_t)
+        end = datetime.combine(base_date, end_t)
+
+        # Overnight shift
+        if end <= start:
+            end += timedelta(days=1)
+
+        daily_shift_hours += (end - start).total_seconds() / 3600
+
+    # Fallback if shifts not configured
+    if daily_shift_hours <= 0:
+        daily_shift_hours = flt(ws.get("total_working_hours") or 8)
+
+    working_days = get_working_days_in_current_month(
+        ws.get("holiday_list"),
+        month
+    )
+
+    if working_days <= 0:
+        return 0
+
+    capacity = daily_shift_hours * working_days
+    return round(capacity * (flt(utilization) / 100), 2)
 
 @frappe.whitelist()
 def validate_capacity(payload_json=None):
-    """Validate capacity for selected MSS lines."""
-    print("\nprint valdidate capavity payload: ",payload_json)
-    # ---- ALWAYS convert payload into dict safely ----
-    try:
-        if isinstance(payload_json, dict):
-            payload = payload_json
-        else:
-            payload = json.loads(payload_json or "{}")
-    except Exception:
-        frappe.throw("Invalid payload received for capacity validation")
-
+    payload = payload_json if isinstance(payload_json, dict) else json.loads(payload_json or "{}")
     lines = payload.get("lines") or []
+    utilization = flt(payload.get("production_utilization") or 100)
+
     result = []
 
     for ln in lines:
         item = ln.get("fg_item")
-        schedule_qty = flt(ln.get("schedule_qty") or 0)
-        month = ln.get("month")
+        qty = flt(ln.get("schedule_qty") or 0)
         machine = ln.get("machine")
+        month = ln.get("month")
 
-        # cycle time
-        try:
-            cycle_time, cavity_coun = get_item_cycle_and_cavitys(item)
-        except Exception:
-            cycle_time, cavity_coun = 0, 1
+        if not item or not machine or qty <= 0 or not month:
+            result.append({
+                "fg_item": item,
+                "bom_no": ln.get("bom_no"),
+                "required_hours": 0,
+                "machine_capacity_hours": 0,
+                "ok": False,
+                "message": _("Missing item, machine, qty or month")
+            })
+            continue
 
-        per_piece_sec = cycle_time / max(1, cavity_coun)
-        required_hours = (schedule_qty * per_piece_sec) / 3600
+        cycle_time, cavity = get_item_cycle_and_cavitys(item)
+        per_piece_sec = cycle_time / max(cavity, 1)
 
-        # machine capacity
-        try:
-            cap = machine_monthly_capacity(machine, month)
-        except Exception:
-            cap = 0
+        required_hours = (qty * per_piece_sec) / 3600 if per_piece_sec > 0 else 0
+        capacity = machine_monthly_capacity(machine, month, utilization)
 
-        ok = required_hours <= cap
+        ok = required_hours <= capacity
 
         result.append({
             "fg_item": item,
             "bom_no": ln.get("bom_no"),
-            "required_hours": required_hours,
-            "machine_capacity_hours": cap,
+            "required_hours": round(required_hours, 2),
+            "machine_capacity_hours": round(capacity, 2),
             "ok": ok,
-            "message":
-                None if ok else f"Required {required_hours:.2f} hrs exceeds capacity {cap:.2f} hrs"
+            "message": None if ok else _(
+                "Required {0:.2f} hrs exceeds capacity {1:.2f} hrs"
+            ).format(required_hours, capacity)
         })
 
     return result
 
+
 @frappe.whitelist()
 def create_mss_plan(payload_json):
-    """
-    payload_json: {"lines": [{bom_no, fg_item, schedule_qty, month, machine, working_days, shifts_per_day, shift_hours, related_bso}] , "filters": {...}}
-    Steps:
-     - Validate inputs
-     - Group lines by related_bso + month
-     - Create one Sales Order per group
-     - For each line create Work Orders according to shift/day split; link to that Sales Order
-     - Return created SOs and WOs
-    """
-    payload = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
-    lines = payload.get("lines") or []
-    if not lines:
-        frappe.throw(_("No lines provided"))
+    """Create Work Orders only (Sales Orders already exist)."""
+    try:
+        payload = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
+        lines = payload.get("lines") or []
 
-    # Server-side validation: capacity check for each unique (machine, month)
-    validation = validate_capacity({"lines": lines})
-    for v in validation:
-        if not v.get("ok"):
-            frappe.throw(v.get("message") or _("Capacity validation failed for {0}").format(v.get("bom_no")))
+        if not lines:
+            frappe.throw(_("No lines provided"))
 
-    # Group by related_bso + month
-    groups = {}
-    for ln in lines:
-        bso = ln.get("related_bso") or "UNASSIGNED"
-        month = ln.get("month") or nowdate()[:7]
-        key = f"{bso}__{month}"
-        groups.setdefault(key, {"bso": bso, "month": month, "lines": []})["lines"].append(ln)
-
-    created_sales_orders = []
-    created_work_orders = []
-
-    # start DB transaction
-    for key, grp in groups.items():
-        bso = grp["bso"]
-        month = grp["month"]
-        group_lines = grp["lines"]
-
-        # Create Sales Order for the group (Release/Month)
-        so = frappe.new_doc("Sales Order")
-        so.customer = _get_customer_from_bso(bso) or getattr(group_lines[0], "customer", None) or "Default Customer"
-        so.transaction_date = nowdate()
-        so.delivery_date = f"{month}-01"  # you may want last day of month or custom
-        so.order_type = "Release" if frappe.db.has_column("Sales Order", "order_type") else None
-        so.append("items", {
-            "item_code": group_lines[0].get("fg_item"),  # in minimal case; you may want to create aggregated item lines
-            "qty": sum([flt(l.get("schedule_qty") or 0) for l in group_lines]),
-            "rate": 0
+        # 1️⃣ Capacity validation
+        validation = validate_capacity({
+            "lines": lines,
+            "production_utilization": payload.get("production_utilization", 100)
         })
-        so.flags.ignore_permissions = True
-        so.insert()
-        so.submit() if so.meta.is_submittable and not so.docstatus else None
-        created_sales_orders.append(so.name)
 
-        # For each BOM line, create Work Orders split by day × shifts
-        for ln in group_lines:
-            wos = create_work_orders_for_line(ln, so.name)
+        for v in validation:
+            if not v.get("ok"):
+                frappe.throw(
+                    v.get("message")
+                    or _("Capacity validation failed for BOM {0}").format(v.get("bom_no"))
+                )
+
+        created_work_orders = []
+
+        # 2️⃣ Create Work Orders
+        for ln in lines:
+            sales_order = ln.get("sales_order")
+            if not sales_order:
+                frappe.throw(
+                    _("Sales Order is required to create Work Orders for item: {0}")
+                    .format(ln.get("fg_item"))
+                )
+
+            customer = resolve_customer(ln.get("related_bso"), ln)
+            if not customer:
+                frappe.throw(
+                    _("Customer is mandatory for MSS line: {0}")
+                    .format(ln.get("fg_item"))
+                )
+
+            wos = create_capacity_based_work_orders(ln, sales_order)
             created_work_orders.extend(wos)
 
-    return {
-        "success": True,
-        "created_sales_orders": created_sales_orders,
-        "created_work_orders": created_work_orders
-    }
+        return {
+            "success": True,
+            "created_work_orders": created_work_orders
+        }
+
+    except Exception as e:
+        frappe.log_error(message=str(e), title="create_mss_plan failed")
+        frappe.throw(_("Error creating MSS Plan: ") + str(e))
 
 def _get_customer_from_bso(bso_name):
     if not bso_name or bso_name == "UNASSIGNED":
         return None
-    cust = frappe.db.get_value("Blanket Order", bso_name, "customer")
-    return cust
+    return frappe.db.get_value("Blanket Order", bso_name, "customer")
 
-def create_work_orders_for_line(line, linked_sales_order):
+def resolve_customer(bso, line):
     """
-    Splits schedule_qty by working days and shifts and creates Work Orders.
-    Returns list of created work order names.
+    Resolve customer in safe priority order:
+    1. Blanket Order
+    2. MSS Line
     """
-    bom_no = line.get("bom_no")
-    schedule_qty = flt(line.get("schedule_qty") or 0)
-    machine = line.get("machine")
-    working_days = int(line.get("working_days") or 22)
-    shifts_per_day = int(line.get("shifts_per_day") or 2)
-    shift_hours = flt(line.get("shift_hours") or 8)
+    # 1️⃣ From Blanket Order
+    customer = _get_customer_from_bso(bso)
+    if customer and frappe.db.exists("Customer", customer):
+        return customer
 
-    # item cycle/cavity
-    cycle_time, cavity_coun = get_item_cycle_and_cavitys(line.get("fg_item"))
-    per_piece_sec = (cycle_time / max(1, cavity_coun))
-    # production rate pieces per hour = 3600 / per_piece_sec
-    per_hour_capacity_pieces = 3600.0 / per_piece_sec if per_piece_sec > 0 else 0
+    # 2️⃣ From MSS Line
+    customer = line.get("customer")
+    if customer and frappe.db.exists("Customer", customer):
+        return customer
 
-    # total required hours (again)
-    total_required_hours = (schedule_qty * per_piece_sec) / 3600.0
+    return None
 
-    # compute per shift capacity (hours -> pieces)
-    shift_capacity_hours = shift_hours
-    shift_capacity_pieces = per_hour_capacity_pieces * shift_capacity_hours
+def calculate_start_end(start_dt, required_hours, shift_windows):
+    remaining = required_hours
+    current = start_dt
 
-    # total number of shifts available
-    total_shifts = working_days * shifts_per_day
+    for start, end in shift_windows:
+        if current < start:
+            current = start
 
-    # naive distribution: evenly distribute schedule_qty across shifts (you can implement priority-based distribution)
-    if total_shifts <= 0 or shift_capacity_pieces <= 0:
-        frappe.throw(_("Insufficient shift or capacity data for Work Order splitting."))
+        available = (end - current).total_seconds() / 3600
+        if available <= 0:
+            continue
 
-    qty_per_shift = schedule_qty / total_shifts
+        if remaining <= available:
+            return current, current + timedelta(hours=remaining)
 
-    created_wos = []
-    for day_index in range(working_days):
-        for shift_index in range(shifts_per_day):
-            planned_qty = qty_per_shift
-            # optionally round/ceil for last shift
-            # if last shift of last day: planned_qty = remaining
+        remaining -= available
+        current = end
 
-            # do not create shift if planned_qty <= 0
-            if planned_qty <= 0:
-                continue
+    # Spill to next day
+    return calculate_start_end(
+        shift_windows[0][0] + timedelta(days=1),
+        remaining,
+        shift_windows
+    )
+def get_shift_windows(base_date):
+    shifts = frappe.get_all(
+        "Shift Type",
+        fields=["start_time", "end_time"]
+    )
 
-            wo = frappe.new_doc("Work Order")
-            wo.production_item = line.get("fg_item")
-            wo.qty = planned_qty
-            wo.bom_no = bom_no
-            wo.wip_warehouse = frappe.db.get_single_value("Manufacturing Settings", "default_wip_warehouse")
-            # link to Sales Order
-            wo.sales_order = linked_sales_order
-            # link machine / workstation (if Work Order has field)
-            if "workstation" in wo.meta.get_fieldnames():
-                wo.workstation = machine
-            if "planned_start_date" in wo.meta.get_fieldnames():
-                wo.planned_start_date = f"{line.get('month')}-01"
-            # flags and insert
-            wo.flags.ignore_permissions = True
-            wo.insert()
-            # optionally submit if your workflow expects that (usually Work Orders are submitted)
-            # wo.submit()
-            created_wos.append(wo.name)
+    windows = []
+    for s in shifts:
+        start = datetime.combine(base_date, _to_time(s.start_time))
+        end = datetime.combine(base_date, _to_time(s.end_time))
+        if end <= start:
+            end += timedelta(days=1)
+        windows.append((start, end))
 
-    return created_wos
+    return windows
+def find_warehouse_like(company, pattern):
+    return frappe.db.get_value(
+        "Warehouse",
+        {
+            "company": company,
+            "name": ["like", f"%{pattern}%"],
+            "is_group": 0
+        },
+        "name"
+    )
+    
+def resolve_warehouses(company, item_code, bom_no=None):
+    # ---------------- Item Default Warehouse ----------------
+    item_default_wh = frappe.db.get_value(
+        "Item Default",
+        {
+            "parent": item_code,
+            "company": company
+        },
+        "default_warehouse"
+    )
+
+    # ---------------- Manufacturing Settings ----------------
+    mfg_settings = frappe.db.get_value(
+        "Manufacturing Settings",
+        {"company": company},
+        [
+            "default_finished_goods_warehouse",
+            "default_wip_warehouse",
+            "default_scrap_warehouse",
+        ],
+        as_dict=True
+    ) or {}
+
+    # ---------------- FG Warehouse ----------------
+    fg_warehouse = (
+        item_default_wh
+        or mfg_settings.get("default_finished_goods_warehouse")
+        or find_warehouse_like(company, "Finished Goods")
+    )
+
+    if not fg_warehouse:
+        frappe.throw(
+            _("Finished Goods Warehouse not found for company {0}")
+            .format(company)
+        )
+
+    # ---------------- WIP Warehouse ----------------
+    wip_warehouse = (
+        mfg_settings.get("default_wip_warehouse")
+        or find_warehouse_like(company, "Work In Progress")
+    )
+
+    if not wip_warehouse:
+        frappe.throw(
+            _("WIP Warehouse not found for company {0}")
+            .format(company)
+        )
+
+    return fg_warehouse, wip_warehouse
+
+def create_capacity_based_work_orders(line, sales_order):
+    fg_item = line["fg_item"]
+    qty = flt(line["schedule_qty"])
+    machine = line["machine"]
+    bom_no = line["bom_no"]
+    month = line["month"]
+
+    so = frappe.get_doc("Sales Order", sales_order)
+    company = so.company
+
+    # 🔹 Resolve warehouses safely
+    fg_warehouse, wip_warehouse = resolve_warehouses(
+        company, fg_item, bom_no
+    )
+
+    cycle_time, cavity = get_item_cycle_and_cavitys(fg_item)
+    per_piece_sec = cycle_time / max(cavity, 1)
+    per_hour_qty = 3600 / per_piece_sec
+
+    base_date = get_machine_next_available_time(machine)
+    shift_windows = get_shift_windows(base_date.date())
+
+    qty_chunks = split_qty_by_capacity(qty, per_hour_qty, shift_windows)
+
+    created = []
+
+    for chunk_qty, hours in qty_chunks:
+        start_dt, end_dt = calculate_start_end(
+            base_date,
+            hours,
+            shift_windows
+        )
+
+        if not is_mould_available(line.get("mould"), start_dt, end_dt):
+            frappe.throw(_("Mould already in use during {0}").format(start_dt))
+
+        wo = frappe.new_doc("Work Order")
+        wo.company = company
+        wo.production_item = fg_item
+        wo.qty = chunk_qty
+        wo.bom_no = bom_no
+        wo.sales_order = sales_order
+        wo.workstation = machine
+
+        # ✅ MANDATORY FIELDS FIXED
+        wo.fg_warehouse = fg_warehouse
+        wo.wip_warehouse = wip_warehouse
+
+        wo.planned_start_date = start_dt
+        wo.planned_end_date = end_dt
+        wo.expected_delivery_date = end_dt.date()
+        wo.use_multi_level_bom = 1
+
+        wo.flags.ignore_permissions = True
+        wo.insert()
+        wo.submit()
+
+        created.append(wo.name)
+        base_date = end_dt
+
+    return created
 
 
 @frappe.whitelist()

@@ -12,7 +12,6 @@ export const api = {
 			params,
 		}),
 
-	
 	getBlanketOrdersSearch: (search) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
 			params: { search_text: search },
@@ -58,21 +57,30 @@ export const api = {
 				params: { boms: JSON.stringify(boms) },
 			}
 		),
-	createMSSPlan: ({ lines, filters }) => {
-		return axios.post(
+
+	// -------------------- Capacity Planner Section --------------------
+	getShifts() {
+		return axios.get("/api/resource/Shift Type", {
+			params: { fields: ["name", "start_time", "end_time"] },
+		});
+	},
+	createMSSPlan: ({ lines, filters, plan_start_date, plan_end_date, production_utilization }) =>
+		axios.post(
 			"/api/method/aims_customization.api.mss_monthly_schedule.create_mss_plan",
 			{
-				payload_json: { lines, filters }, // send pure JSON
+				payload_json: JSON.stringify({
+					lines,
+					filters,
+					plan_start_date,
+					plan_end_date,
+					production_utilization,
+				}),
 			},
 			{
-				headers: {
-					"X-Frappe-CSRF-Token": frappe.csrf_token,
-					"Content-Type": "application/json",
-				},
+				headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
 				withCredentials: true,
 			}
-		);
-	},
+		),
 
 	getWorkstations: () =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_workstations"),
@@ -88,7 +96,14 @@ export const api = {
 			}
 		),
 
+	createWorkOrders: (so_list) =>
+		axios.post(
+			"/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders",
+			{ so_list },
+			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+		),
 	// -------------------- Level 6 --------------------
+
 	getWorkOrders: (so_list) =>
 		axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_work_orders_for_so",
@@ -96,23 +111,15 @@ export const api = {
 				params: { so_list: JSON.stringify(so_list) },
 			}
 		),
-
-	createWorkOrders: (so_list) =>
-		axios.post(
-			"/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders",
-			{ so_list },
-			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+	// -------------------- Level 7 --------------------
+	getJobCards: (wo_list) =>
+		axios.get(
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_job_cards_for_work_orders",
+			{
+				params: { wo_list: JSON.stringify(wo_list) },
+			}
 		),
 
-	// -------------------- Level 7 --------------------
-	getJobCards: (wo_list) => 
-	axios.get(
-		"/api/method/aims_customization.api.mss_monthly_schedule.get_job_cards_for_work_orders",
-		{
-			params: { wo_list : JSON.stringify(wo_list) },
-		}
-	),
-	
 	// -------------------- Level 8 --------------------
 	getProductionStatus: (bo_list) =>
 		axios.get(

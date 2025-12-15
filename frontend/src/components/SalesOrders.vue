@@ -42,7 +42,7 @@
             <td class="border px-3 py-2">
               <input type="checkbox" :value="so.name" v-model="selectedLocal" />
             </td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ index +1 }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.name }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.customer_name }}</td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">
@@ -75,7 +75,7 @@
       <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
         <thead class="bg-gray-100">
           <tr>
-            
+
             <th>Selected</th>
             <th class="px-3 py-2 border whitespace-nowrap">#</th>
             <th class="px-3 py-2 border whitespace-nowrap">Item Code</th>
@@ -83,6 +83,7 @@
             <th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
             <th class="px-3 py-2 border text-right whitespace-nowrap">Item Group</th>
             <th class="px-3 py-2 border text-right whitespace-nowrap">Rate</th>
+            <th class="px-3 py-2 border text-right whitespace-nowrap">BOM No</th>
           </tr>
         </thead>
 
@@ -91,7 +92,7 @@
             <td class="border px-3 py-2">
               <input type="checkbox" :value="item" v-model="selectedFGItems" />
             </td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ index+1 }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_code }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_name }}</td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">
@@ -102,6 +103,9 @@
             </td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">
               {{ item.rate }}
+            </td>
+             <td class="border px-3 py-2 text-right whitespace-nowrap">
+              {{ item.bom_no }}
             </td>
           </tr>
         </tbody>
@@ -214,21 +218,21 @@ const fetchOrders = async () => {
   error.value = null;
 
   try {
-    
-    
-    if(props.filters.customer || props.filters.month || props.filters.year){
-    const res = await api.getSalesOrders(props.filters);
-    
-    orders.value = res.data.message || [];
-    selectedLocal.value = [];
-    fgItems.value = [];
 
-    emit("so-loaded", orders.value);
+
+    if (props.filters.customer || props.filters.month || props.filters.year) {
+      const res = await api.getSalesOrders(props.filters);
+
+      orders.value = res.data.message || [];
+      selectedLocal.value = [];
+      fgItems.value = [];
+
+      emit("so-loaded", orders.value);
     }
-    else{
-      orders.value =[]
+    else {
+      orders.value = []
     }
-   
+
   } catch (err) {
     console.error(err);
     error.value = "Failed to load Sales Orders.";

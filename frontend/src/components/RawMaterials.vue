@@ -23,6 +23,7 @@
             </th>
              <th class="border px-3 py-2 text-left  whitespace-nowrap">#</th>
             <th class="border px-3 py-2 text-left  whitespace-nowrap">BOM</th>
+            <th class="border px-3 py-2 text-left whitespace-nowrap">Material Code</th>
             <th class="border px-3 py-2 text-left whitespace-nowrap">Material</th>
             <th class="border px-3 py-2 text-left whitespace-nowrap">Required Qty</th>
             <th class="border px-3 py-2 text-left whitespace-nowrap">Available Qty</th>
@@ -37,6 +38,7 @@
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ index }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.bom_no }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_code }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_name }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">
               <input type="number"
@@ -80,7 +82,7 @@ const error = ref(null);
 // -----------------
 const isAllSelected = computed(() => materials.value.length && selectedRows.value.length === materials.value.length);
 
-const selectAll = () => { selectedRows.value = materials.value.map(m => m.rm_item_code); emitUpdate(); };
+const selectAll = () => { selectedRows.value = materials.value.map(m => m); emitUpdate(); };
 const unselectAll = () => { selectedRows.value = []; emitUpdate(); };
 const toggleSelectAll = () => isAllSelected.value ? unselectAll() : selectAll();
 
@@ -100,9 +102,11 @@ const fetchMaterials = async () => {
   error.value = null;
 
   try {
-    const res = await api.getRawMaterialsForBOMs(props.boms);
+    const bomNos = props.boms.map(bom => bom.bom_no);
+    
+    const res = await api.getRawMaterialsForBOMs(bomNos);
     materials.value = res.data.message || [];
-    selectedRows.value = materials.value.map(m => m.rm_item_code);
+    selectedRows.value = materials.value.map(m => m.index);
     emitUpdate();
   } catch (err) {
     console.error("Raw Material Fetch Error:", err);
@@ -116,7 +120,7 @@ const fetchMaterials = async () => {
 // Emit updated selected rows & quantities
 // -----------------
 const emitUpdate = () => {
-  const selected = materials.value.filter(m => selectedRows.value.includes(m.rm_item_code));
+  const selected = materials.value.filter(m => selectedRows.value.includes(m));
   emit("update:selected", selected);
   emit("raw-material-loaded", selected);
 };

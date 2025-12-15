@@ -10,22 +10,48 @@
       </div>
     </div>
 
-    <div class="mb-3 text-sm text-gray-600">
-      Weekend days:
-      <label v-for="d in weekendDaysOptions" :key="d.value" class="ml-2">
-        <input type="checkbox" v-model="weekendDays" :value="d.value" /> {{ d.label }}
-      </label>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3 text-sm text-gray-600">
+      <div>
+        Weekend days:
+        <label v-for="d in weekendDaysOptions" :key="d.value" class="ml-2">
+          <input type="checkbox" v-model="weekendDays" :value="d.value" /> {{ d.label }}
+        </label>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div>
+          <label>Production Utilization (%):</label>
+          <input type="number" v-model="productionUtilization" class="ml-2 border rounded px-2 py-1 w-20" />
+        </div>
+        <div>
+          <label>Plan Start Date:</label>
+          <input type="date" v-model="planStartDate" class="ml-2 border rounded px-2 py-1" />
+        </div>
+        <div>
+          <label>Plan End Date:</label>
+          <input type="date" v-model="planEndDate" class="ml-2 border rounded px-2 py-1" />
+        </div>
+      </div>
     </div>
 
     <div v-if="!localBoms.length" class="text-gray-500">No BOMs selected.</div>
 
-    <div v-for="(bom, idx) in localBoms" :key="bom.bom_no" class="mb-4 border rounded p-3">
-      <!-- same UI as before ... -->
-      <div class="mt-3 grid grid-cols-4 gap-4 text-sm">
-        <div>Cycle Time (s/shot): <strong>{{ bom.cycle_time || '—' }}</strong></div>
-        <div>No. of cavity: <strong>{{ bom.cavity || '—' }}</strong></div>
-        <div>Cycle Time per piece (s): <strong>{{ cycleSecPerPiece(bom) }}</strong></div>
-        <div>Required Hours: <strong>{{ requiredHours(bom) }}</strong></div>
+    <div v-for="(bom, idx) in capacityPlanData" :key="bom.bom_no" class="mb-4 border rounded p-3">
+      <h3 class="font-bold text-md">{{ bom.item_code }} ({{ bom.bom_no }})</h3>
+      <div class="text-sm text-gray-500">Required Qty: {{ bom.required_for_selected_qty }}</div>
+
+      <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>Machine: <strong>{{ bom.selected_workstation || 'N/A' }}</strong></div>
+        <div>Cycle Time: <strong>{{ bom.cycle_time }}s</strong></div>
+        <div>Cavity: <strong>{{ bom.cavity }}</strong></div>
+        <div>Hourly Capacity: <strong>{{ bom.machineHourlyCapacity }} pcs</strong></div>
+        <div>Hrs Required: <strong>{{ bom.hrsRequired }} hrs</strong></div>
+        <div>Month Capacity: <strong>{{ bom.monthCapacityHrs }} hrs</strong></div>
+        <div>Balance: <strong :class="{ 'text-red-500': bom.balanceHrs < 0 }">{{ bom.balanceHrs }} hrs</strong></div>
+        <div>Overload: <strong class="text-red-500">{{ bom.overloadHrs }} hrs</strong></div>
+        <div>Working Days: <strong>{{ bom.workingDays }}</strong></div>
+        <div>Shifts per Day: <strong>{{ bom.shiftsPerDay }}</strong></div>
+        <div>Daily Capacity: <strong>{{ bom.dailyCapacityHrs }} hrs</strong></div>
+        <div>Required Shifts: <strong>{{ bom.requiredShifts }}</strong></div>
       </div>
 
       <div class="mt-2">
@@ -33,9 +59,8 @@
         <div v-else class="text-green-600 text-sm">OK — capacity sufficient for selected month.</div>
       </div>
 
-      <!-- Schedule preview (simple) -->
       <div v-if="preview[bom.bom_no]" class="mt-3">
-        <div class="text-sm font-medium">Schedule Preview (first 7 shifts)</div>
+        <div class="text-sm font-medium">Schedule Preview </div>
         <div class="text-xs text-gray-600">Format: Day-Shift → qty</div>
         <div class="flex gap-2 mt-1 flex-wrap">
           <div v-for="(s, i) in preview[bom.bom_no].slice(0, 14)" :key="i"
@@ -58,8 +83,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { api } from '../services/api';
 
 const props = defineProps({
-         // for selected BOMs numbers
-  capBoms: { type: Array, default: () => [] },    // full BOM objects with operations
+  capBoms: { type: Array, default: () => [] },
   filters: { type: Object, default: () => ({}) },
   availableMachineHours: { type: Object, default: () => ({}) }
 });
@@ -67,28 +91,33 @@ const emit = defineEmits(['capacity-updated']);
 
 const localBoms = ref([]);
 const machines = ref([]);
-const preview = ref({}); // schedule preview per bom
+const shifts = ref([]);
+const preview = ref({});
 
-// weekend options (0=Sun ... 6=Sat)
 const weekendDaysOptions = [
   { value: 0, label: 'Sun' },
   { value: 6, label: 'Sat' },
 ];
-const weekendDays = ref([0, 6]); // default Sat+Sun
+const weekendDays = ref([0, 6]);
+const productionUtilization = ref(90);
+const planStartDate = ref(null);
+const planEndDate = ref(null);
 
 onMounted(async () => {
   syncLocalBoms();
   const ws = await api.getWorkstations();
   machines.value = Array.isArray(ws) ? ws : [];
+  try {
+    const shift_types = await api.getShifts();
+    shifts.value = Array.isArray(shift_types) ? shift_types : [];
+  } catch (e) {
+    console.error('Error fetching shifts', e);
+  }
 });
-
-
 
 watch(() => props.capBoms, () => syncLocalBoms(), { deep: true, immediate: true });
 
 function syncLocalBoms() {
- 
-  
   localBoms.value = (props.capBoms || []).map(b => ({
     ...b,
     month: b.month || (new Date()).toISOString().slice(0, 7),
@@ -99,156 +128,182 @@ function syncLocalBoms() {
     shift_hours: b.shift_hours || 8,
     cycle_time: b.cycle_time || b.cycle_time_from_item || 0,
     cavity: b.cavity || b.cavity_from_item || 1,
-    validation_error: null
+    validation_error: null,
+    sales_order: b.sales_order
   }));
   preview.value = {};
 }
 
+const capacityPlanData = computed(() => {
+  return localBoms.value.map(bom => {
+    const machine = machines.value.find(m => m.name === bom.selected_workstation);
 
+    const requiredQty = Number(bom.required_for_selected_qty) || 0;
+    const cycleTime = Number(bom.cycle_time) || 0;
+    const cavity = Math.max(1, Number(bom.cavity) || 1);
 
+    const perPieceSec = cycleTime / cavity;
+    const machineHourlyCapacity = perPieceSec > 0 ? 3600 / perPieceSec : 0;
+    const hrsRequired = machineHourlyCapacity > 0 ? requiredQty / machineHourlyCapacity : 0;
 
-// helpers (same as before)
-function cycleSecPerPiece(bom) {
-  const ct = Number(bom.cycle_time) || 0;
-  const cav = Number(bom.cavity) || 1;
-  if (!ct || !cav) return '—';
-  return (ct / cav).toFixed(3);
-}
-function requiredHours(bom) {
-  const perPieceSec = Number(bom.cycle_time || 0) / (Number(bom.cavity || 1) || 1);
-  const seconds = Number(bom.required_for_selected_qty || 0) * perPieceSec;
-  return seconds / 3600;
-}
-const totalRequiredHours = computed(() => localBoms.value.reduce((s, b) => s + requiredHours(b), 0));
-const totalPlannedCapacity = computed(() =>
-  localBoms.value.reduce((sum, b) => {
-    if (!Array.isArray(machines.value)) return sum;
-    const machine = machines.value.find(m => m.name === b.selected_workstation);
-    if (!machine) return sum;
-    return sum + Number(machine.monthly_capacity_hours || (b.working_days * b.shifts_per_day * b.shift_hours) || 0);
-  }, 0)
+    const year = new Date(bom.month).getFullYear();
+    const month = new Date(bom.month).getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let workingDays = 0;
+    for (let i = 1; i <= daysInMonth; i++) {
+      const day = new Date(year, month, i).getDay();
+      if (!weekendDays.value.includes(day)) {
+        workingDays++;
+      }
+    }
+
+    const shiftsPerDay = shifts.value.length || bom.shifts_per_day || machine?.shifts_per_day || 2;
+    const totalShiftHours = shifts.value.reduce((acc, s) => {
+      if (!s.start_time || !s.end_time) return acc;
+      const start = new Date(`1970-01-01T${s.start_time}`);
+      const end = new Date(`1970-01-01T${s.end_time}`);
+      let diff = (end - start) / 3600000;
+      if (diff <= 0) diff += 24;
+      return acc + diff;
+    }, 0);
+
+    const dailyCapacityHrs = shifts.value.length ? totalShiftHours : (shiftsPerDay * (bom.shift_hours || machine?.shift_hours || 8));
+    const avgShiftHours = shiftsPerDay > 0 ? dailyCapacityHrs / shiftsPerDay : (bom.shift_hours || machine?.shift_hours || 8);
+
+    const monthCapacityHrs = workingDays * dailyCapacityHrs * (productionUtilization.value / 100);
+
+    const balanceHrs = monthCapacityHrs - hrsRequired;
+    const overloadHrs = balanceHrs < 0 ? Math.abs(balanceHrs) : 0;
+
+    const utilizedShiftHours = avgShiftHours * (productionUtilization.value / 100);
+    const requiredShifts = utilizedShiftHours > 0 ? hrsRequired / utilizedShiftHours : 0;
+
+    return {
+      ...bom,
+      machineHourlyCapacity: machineHourlyCapacity.toFixed(2),
+      hrsRequired: hrsRequired.toFixed(2),
+      monthDays: daysInMonth,
+      workingDays: workingDays,
+      shiftsPerDay: shiftsPerDay,
+      dailyCapacityHrs: dailyCapacityHrs,
+      monthCapacityHrs: monthCapacityHrs.toFixed(2),
+      balanceHrs: balanceHrs.toFixed(2),
+      overloadHrs: overloadHrs.toFixed(2),
+      requiredShifts: requiredShifts.toFixed(2)
+    };
+  });
+});
+
+const totalRequiredHours = computed(() =>
+  capacityPlanData.value.reduce((sum, b) => sum + Number(b.hrsRequired), 0)
 );
 
-// validateAll will also ask backend for current allocated hours (so we can check)
+const totalPlannedCapacity = computed(() =>
+  capacityPlanData.value.reduce((sum, b) => sum + Number(b.monthCapacityHrs), 0)
+);
+
 async function validateAll() {
-  // ensure machine is selected for all BOMs
   localBoms.value.forEach(b => {
     if (!b.selected_workstation) b.validation_error = "Please select a workstation";
   });
- 
-
 
   const payload = {
+    production_utilization: productionUtilization.value,
     lines: localBoms.value.map(b => ({
       bom_no: b.bom_no,
       fg_item: b.item_code,
       schedule_qty: b.required_for_selected_qty,
       month: b.month,
-      machine: b.selected_workstation
+      machine: b.selected_workstation,
     }))
   };
 
+
   try {
     const res = await api.validate_capacity(payload);
+    const results = res.data.message; // <- access the returned array
+    if (Array.isArray(results)) {
+      results.forEach(r => {
+        const bom = localBoms.value.find(x => x.bom_no === r.bom_no);
+        if (bom) bom.validation_error = r.ok ? null : r.message;
+      });
+    }
 
-    // correct field
-    res.data.message.forEach(r => {
-      const bom = localBoms.value.find(x => x.bom_no === r.bom_no);
-      if (bom) {
-        bom.validation_error = r.ok ? null : r.message;
-      }
-    });
+
     emit('capacity-updated', { boms: localBoms.value });
   } catch (err) {
-    console.error(err);
+    console.error("Capacity validation failed", err);
   }
 }
 
 
-// build preview schedule per BOM using shift capacity (client-side preview)
-function computePreview() {
+const computePreview = () => {
   preview.value = {};
-  for (const bom of localBoms.value) {
-    if (!bom.selected_workstation || !bom.required_for_selected_qty) {
-      preview.value[bom.bom_no] = [];
-      continue;
-    }
-    const machine = machines.value.find(m => m.name === bom.selected_workstation);
-    const shift_hours = bom.shift_hours || machine?.shift_hours || 8;
-    const shifts_per_day = bom.shifts_per_day || machine?.shifts_per_day || 1;
-    const working_days = bom.working_days || machine?.working_days || 22;
-
-    // throughput per hour (pieces)
-    const perPieceSec = (Number(bom.cycle_time || 0) / Math.max(1, Number(bom.cavity || 1)));
-    const perHourPieces = perPieceSec > 0 ? Math.floor(3600.0 / perPieceSec) : 0;
-
-    const shiftCapacityPieces = Math.floor(perHourPieces * shift_hours);
-    const total_shifts = working_days * shifts_per_day;
-
-    // simple queue allocation: fill shifts up to shiftCapacityPieces
-    let remaining = Math.round(bom.required_for_selected_qty || 0);
+  capacityPlanData.value.forEach(b => {
+    const shift_hours = b.shift_hours || 8;
+    const shifts_per_day = b.shifts_per_day || 2;
+    const perHourPieces = b.machineHourlyCapacity || 0;
+    const shiftCapacity = perHourPieces * shift_hours * (productionUtilization.value / 100);
+    let remaining = b.required_for_selected_qty || 0;
     const schedule = [];
-    let day = 1;
-    for (let d = 0; d < working_days && remaining > 0; d++) {
-      for (let s = 1; s <= shifts_per_day && remaining > 0; s++) {
-        const allocate = Math.min(shiftCapacityPieces, remaining);
-        schedule.push({ day: d + 1, shift: s, qty: allocate });
-        remaining -= allocate;
+
+    if (planStartDate.value) {
+      let current = new Date(planStartDate.value);
+      const end = planEndDate.value ? new Date(planEndDate.value) : new Date(current.getFullYear(), current.getMonth() + 1, 0);
+
+      while (current <= end && remaining > 0) {
+        if (!weekendDays.value.includes(current.getDay())) {
+          for (let s = 1; s <= shifts_per_day && remaining > 0; s++) {
+            const allocate = Math.min(shiftCapacity, remaining);
+            schedule.push({ day: current.toISOString().slice(0, 10), shift: s, qty: allocate });
+            remaining -= allocate;
+          }
+        }
+        current.setDate(current.getDate() + 1);
       }
     }
-    // if remaining > 0, creates overflow entries (will go to next month / queued)
-    if (remaining > 0) {
-      schedule.push({ day: 'overflow', shift: 0, qty: remaining });
-    }
-    preview.value[bom.bom_no] = schedule;
-  }
-  // emit preview so parent can display if needed
-  emit('capacity-updated', { boms: localBoms.value, preview: preview.value });
-}
 
-// when machine changes: re-validate and compute preview
-async function onMachineChange(bom) {
-  const machine = machines.value.find(m => m.name === bom.selected_workstation);
-  if (machine) {
-    bom.shift_hours = bom.shift_hours || machine.shift_hours || bom.shift_hours;
-    bom.working_days = bom.working_days || machine.working_days || bom.working_days;
-    bom.shifts_per_day = bom.shifts_per_day || machine.shifts_per_day || bom.shifts_per_day;
-  }
-  await validateAll();
-  computePreview();
-}
+    if (remaining > 0) schedule.push({ day: "overflow", shift: 0, qty: remaining });
+    preview.value[b.bom_no] = schedule;
+  });
+};
+
 
 const canPlan = computed(() => {
   return localBoms.value.length > 0 && localBoms.value.every(b => !b.validation_error && b.selected_workstation && b.required_for_selected_qty > 0);
 });
 
-// Plan & Create (send preview and lines to backend)
 async function planAndCreate() {
-  // Build payload with shift allocations if preview exists
-  // If preview empty, compute one
   computePreview();
+  const payload = {
+    lines: capacityPlanData.value.map(b => ({
+      bom_no: b.bom_no,
+      sales_order: b.sales_order,
+      fg_item: b.item_code,
+      schedule_qty: b.required_for_selected_qty,
+      month: b.month,
+      machine: b.selected_workstation,
+      working_days: b.workingDays,
+      shifts_per_day: b.shifts_per_day,
+      shift_hours: b.shift_hours,
+      cycle_time: b.cycle_time,
+      cavity: b.cavity,
+      related_bso: b.related_bso || null,
+      schedule: preview.value[b.bom_no] || [],
+      customer: b.customer
 
-  const lines = localBoms.value.map(b => ({
-    bom_no: b.bom_no,
-    fg_item: b.item_code,
-    schedule_qty: b.required_for_selected_qty,
-    month: b.month,
-    machine: b.selected_workstation,
-    working_days: b.working_days,
-    shifts_per_day: b.shifts_per_day,
-    shift_hours: b.shift_hours,
-    cycle_time: b.cycle_time,
-    cavity: b.cavity,
-    related_bso: b.related_bso || null,
-    schedule: (preview.value[b.bom_no] || []).map(s => ({ day: s.day, shift: s.shift, qty: s.qty }))
-  }));
+    })),
+    filters: props.filters,
+    plan_start_date: planStartDate.value,
+    plan_end_date: planEndDate.value,
+    production_utilization: productionUtilization.value
+  };
 
-  try {
-    const res = await api.createMSSPlan({ lines, filters: props.filters });
-    // server returns created SOs and WOs
-    emit('capacity-updated', { created: res.data });
-  } catch (err) {
-    console.error(err);
+  const res = await api.createMSSPlan(payload);
+  if (res.data.success) {
+    alert(`Created WOs: ${res.data.created_work_orders.length}`);
+    preview.value = {};
   }
 }
+
 </script>
