@@ -7,7 +7,6 @@ import frappe
 from frappe.utils import nowdate, get_datetime, getdate, flt, time_diff_in_hours, get_last_day, now_datetime
 from frappe import _
  
-
 # -------------------- Helpers --------------------
 def safe(val):
     return val if val not in (None, "") else ""
