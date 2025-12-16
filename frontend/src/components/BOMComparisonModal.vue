@@ -161,3 +161,6 @@ const closeModal = () => emit("close");
 
 
 </script>
+<style>
+/* only custom overrides here */
+</style>

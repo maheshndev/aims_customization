@@ -11,6 +11,14 @@ frappe.pages["mss-schedule-tool"].on_page_load = function (wrapper) {
 
 function load_vue_app() {
     console.log("Loading MSS Vue App…");
+    
+    if (!document.querySelector("#mss-vue-css")) {
+        const link = document.createElement("link");
+        link.id = "mss-vue-css";
+        link.rel = "stylesheet";
+        link.href = "/assets/aims_customization/mss-vue-app/main.css";
+        document.head.appendChild(link);
+    }
 
     const script = document.createElement("script");
     script.type = "module";

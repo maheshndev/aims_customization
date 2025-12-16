@@ -7,22 +7,24 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <button @click="selectAll"
-          class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700 transition text-sm m-1">
+          class="px-3 py-1 bg-blue-100 text-black rounded hover:bg-blue-200 transition text-sm m-1">
           Select All
         </button>
 
         <button @click="unselectAll"
-          class="px-3 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition text-sm m-1">
+          class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-200 transition text-sm m-1">
           Unselect All
         </button>
 
         <span class="text-xs text-gray-500">{{ selectedItems.length }} selected</span>
-      </div>
-
-      <button v-if="selectedItems.length" @click="createSalesOrder"
-        class="px-4 py-2 bg-black text-black rounded-lg hover:bg-gray-800 transition text-sm m-1">
+        
+        <button v-if="selectedItems.length" @click="createSalesOrder"
+        class="px-3 py-2 bg-indigo-100 text-black rounded-lg hover:bg-indigo-200 transition text-sm m-1 left">
         Create Sales Orders
       </button>
+      </div>
+
+      
     </div>
 
     <!-- Loader -->
@@ -49,7 +51,10 @@
         </thead>
 
         <tbody class="divide-y divide-gray-100">
-          <tr v-for="(item, index) in items" :key="item.item_code" class="hover:bg-gray-50 transition">
+          <tr v-for="(item, index) in items" :key="item.item_code"  :class="[
+            'hover:bg-gray-50 transition',
+            selectedItems.includes(item) ? 'bg-blue-50' : ''
+          ]">
 
             <!-- Checkbox -->
             <td class="px-1 py-1 text-center border whitespace-nowrap">
@@ -247,3 +252,6 @@ export default {
   },
 };
 </script>
+<style>
+/* only custom overrides here */
+</style>

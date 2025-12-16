@@ -8,9 +8,9 @@
     <div v-if="error" class="text-red-500 mb-2">{{ error }}</div>
 
     <!-- Actions -->
-    <div v-if="materials.length && !loading" class="flex justify-end gap-2 mb-3">
-      <button class="px-3 py-1 bg-blue-600 text-black rounded m-1" @click="selectAll">Select All</button>
-      <button class="px-3 py-1 bg-gray-500 text-black rounded m-1" @click="unselectAll">Unselect All</button>
+    <div v-if="materials.length && !loading" class="flex justify-start gap-2 mb-3">
+      <button class="px-3 py-1 bg-blue-100 text-black rounded m-1" @click="selectAll">Select All</button>
+      <button class="px-3 py-1 bg-gray-200 text-black rounded m-1" @click="unselectAll">Unselect All</button>
     </div>
 
     <!-- Table -->
@@ -122,3 +122,6 @@ const emitUpdate = () => {
 
 watch(() => props.boms, fetchMaterials, { deep: true, immediate: true });
 </script>
+<style>
+/* only custom overrides here */
+</style>

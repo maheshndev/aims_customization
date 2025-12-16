@@ -71,3 +71,6 @@ export default {
 	},
 };
 </script>
+<style>
+/* only custom overrides here */
+</style>

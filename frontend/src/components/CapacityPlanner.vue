@@ -2,10 +2,10 @@
   <div class="capacity-planner p-4 bg-white rounded shadow-sm">
     <div class="flex items-center justify-between mb-3">
       <div>
-        <button @click="validateAll" class="px-3 py-1 bg-blue-600 text-black rounded">Validate</button>
-        <button @click="computePreview" class="px-3 py-1 bg-indigo-600 text-black rounded ml-2">Preview
+        <button @click="validateAll" class="px-3 py-1 bg-blue-100 text-black rounded">Validate</button>
+        <button @click="computePreview" class="px-3 py-1 bg-indigo-100 text-black rounded ml-2">Preview
           Schedule</button>
-        <button @click="planAndCreate" :disabled="!canPlan" class="px-3 py-1 bg-green-600 text-black rounded ml-2">Plan
+        <button @click="planAndCreate" :disabled="!canPlan" class="px-3 py-1 bg-gray-200 text-black rounded ml-2">Plan
           & Create Work Orders</button>
       </div>
     </div>
@@ -307,3 +307,6 @@ async function planAndCreate() {
 }
 
 </script>
+<style>
+/* only custom overrides here */
+</style>

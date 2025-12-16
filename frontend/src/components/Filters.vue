@@ -2,13 +2,13 @@
 	<div class="p-4 shadow-md border border-gray-200 rounded-lg relative">
 
 		<!-- Filter Row (Month, Year, Customer) -->
-		<div class="flex flex-wrap gap-4">
+		<div class="flex flex-wrap gap-3">
 
 			<!-- Month -->
 			<div class="relative flex-1  m-1">
 				<label class="filter-label mb-1 block">Month</label>
 				<div class="relative">
-					<select v-model="localFilters.month" class="filter-input pr-10 px-5 p-1 rounded-sm">
+					<select v-model="localFilters.month" class="filter-input pr-5 p-1 rounded-sm">
 						<option value="">Select Month</option>
 						<option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
 					</select>
@@ -23,7 +23,7 @@
 			<div class="relative flex-1 m-1">
 				<label class="filter-label mb-1 block">Year</label>
 				<div class="relative">
-					<select v-model="localFilters.year" class="filter-input pr-10 px-5 p-1 rounded-sm">
+					<select v-model="localFilters.year" class="filter-input pr-5 p-1 rounded-sm">
 						<option value="">Select Year</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
@@ -39,7 +39,7 @@
 				<label class="filter-label mb-1 block">Customer</label>
 				<div class="relative ">
 					<input type="text" v-model="searchCustomer" placeholder="Search customer..."
-						class="filter-input w-full pr-8 px-3 p-1 rounded-sm" @focus="dropdownOpen = true"
+						class="filter-input w-full pr-5  p-1 rounded-sm" @focus="dropdownOpen = true"
 						@input="dropdownOpen = true" @keydown.down.prevent="highlightNext"
 						@keydown.up.prevent="highlightPrev" @keydown.enter.prevent="selectHighlighted"
 						@keydown.esc.prevent="dropdownOpen = false"  />
@@ -55,7 +55,7 @@
 					class="absolute left-0 w-full border rounded-lg shadow-lg mt-1 z-15 max-h-40 overflow-y-auto bg-white animate-fadeIn">
 					<li v-for="(c, index) in filteredCustomers" :key="c.value" @click="selectCustomer(c)"
 						@mouseenter="highlightedIndex = index" :class="[
-							'px-2 py-1 text-sm cursor-pointer rounded-md transition',
+							'px-3 py-1 text-sm cursor-pointer rounded-md transition',
 							highlightedIndex === index ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'
 						]" >
 						{{ c.label }}
@@ -69,13 +69,13 @@
 		</div>
 
 		<!-- Action Buttons -->
-		<div class="flex justify-end gap-2 mt-4">
-			<button class="bg-blue-500 hover:bg-blue-700 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
-				@click="resetFilters" tooltip="Hover for more!" theme="gray" :variant="'solid'">
+		<div class="flex justify-start gap-2 mt-4">
+			<button class="bg-gray-200 hover:bg-gray-200 border border-gray-300 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
+				@click="resetFilters" tooltip="Hover for more!">
 				Reset All
 			</button>
 
-			<button class="bg-blue-600 hover:bg-blue-800 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
+			<button class="bg-blue-100 hover:bg-blue-200 border border-gray-300 text-black font-semibold py-1 px-3 rounded min-w-[200px] m-1"
 				@click="onApplyFilters">
 				Apply Filters
 			</button>
@@ -212,7 +212,7 @@ export default {
 };
 </script>
 
-<style scoped>
+<style>
 @keyframes fadeIn {
 	from {
 		opacity: 0;

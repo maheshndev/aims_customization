@@ -5,7 +5,7 @@
     <div class="flex items-center gap-2 mb-3">
       <button
         @click="selectAll"
-        class="px-3 py-1 bg-blue-600 text-black rounded text-sm"
+        class="px-3 py-1 bg-blue-100 text-black rounded text-sm"
         :disabled="!jobCards.length"
       >
         Select All
@@ -13,13 +13,13 @@
 
       <button
         @click="unselectAll"
-        class="px-3 py-1 bg-gray-300 text-black rounded text-sm"
+        class="px-3 py-1 bg-gray-200 text-black rounded text-sm"
         :disabled="!selectedJobCards.length"
       >
         Unselect All
       </button>
 
-      <span class="text-sm text-gray-600 ml-2">
+      <span class="text-sm text-gray-200 ml-2">
         Selected: {{ selectedJobCards.length }}
       </span>
     </div>
@@ -203,3 +203,6 @@ watch(
   { immediate: true }
 );
 </script>
+<style>
+/* only custom overrides here */
+</style>
