@@ -81,9 +81,9 @@
             <th class="px-3 py-2 border whitespace-nowrap">Item Code</th>
             <th class="px-3 py-2 border whitespace-nowrap">Item Name</th>
             <th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
-            <th class="px-3 py-2 border text-right whitespace-nowrap">Item Group</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Item Group</th>
             <th class="px-3 py-2 border text-right whitespace-nowrap">Rate</th>
-            <th class="px-3 py-2 border text-right whitespace-nowrap">BOM No</th>
+            <th class="px-3 py-2 border whitespace-nowrap">BOM No</th>
           </tr>
         </thead>
 
@@ -203,7 +203,8 @@ const createMixPlannerBOM = () => {
   // Build URL with FG Item + Qty + Type
   const url = `/app/bom/new-bom` + `?item=${fgItem}` + `&bom_type=${bom_type}`;
 
-  window.location.href = url;
+  // window.location.href = url;
+  window.open(url, "_blank");
 };
 
 // ----------------------------------------------------

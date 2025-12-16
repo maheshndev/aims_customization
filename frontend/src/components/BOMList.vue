@@ -13,7 +13,6 @@
 
     <!-- Actions -->
     <div v-if="filteredBOMs.length && !loading" class="flex justify-between items-center mb-3">
-
       <div class="flex gap-3">
         <button class="px-3 py-1 bg-blue-600 text-black rounded shadow hover:bg-blue-700 m-1" @click="selectAll">
           Select All
@@ -25,9 +24,6 @@
           class="px-3 py-1 bg-purple-600 text-black rounded hover:bg-purple-700 m-1">
           Compare BOMs
         </button>
-
-
-
       </div>
     </div>
 
@@ -55,7 +51,6 @@
             <th class="px-3 py-2 border text-left whitespace-nowrap">Cycle Time</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Workstation / Machine</th>
             <th class="px-3 py-2 border text-left whitespace-nowrap">Moulds</th>
-
           </tr>
         </thead>
 
@@ -85,7 +80,6 @@
                   {{ op.workstation }}
                 </option>
               </select>
-
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">
               <select v-model="bom.selected_mould" class="border rounded px-2 py-1">
@@ -94,7 +88,6 @@
                   {{ mould.mould_no }} : {{ mould.mould_name }}
                 </option>
               </select>
-
             </td>
           </tr>
         </tbody>
@@ -107,7 +100,6 @@
     </div>
 
   </div>
-
 </template>
 
 <script setup>
@@ -116,7 +108,7 @@ import { api } from "../services/api";
 
 const props = defineProps({
   salesOrders: { type: Array, default: () => [] },
-  selected: { type: Array, default: () => [] }, // v-model:selected
+  selected: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["update:selected", "bom-loaded"]);
@@ -126,7 +118,6 @@ const loading = ref(false);
 const error = ref(null);
 
 const selectedLocal = ref([]);
-
 const search = ref("");
 
 // ---------------------------------------------------
@@ -154,17 +145,33 @@ const isAllSelected = computed(() => {
   );
 });
 
-// ---------------------------------------------------
-// Watch Local Selection → Emit to parent
-// ---------------------------------------------------
-watch(selectedLocal, () => {
-  const selectedObjects = boms.value.filter((b) =>
-    selectedLocal.value.includes(b)
-  );
 
-  emit("update:selected", selectedLocal.value); // selected BOM numbers
-  emit("update:capBOMs", selectedObjects);     // full objects including operations
-});
+// ---------------------------------------------------
+// Watch selected_mould changes to update cavity
+// ---------------------------------------------------
+watch(
+  boms,
+  (newBOMs) => {
+    newBOMs.forEach((bom) => {
+      watch(
+        () => bom.selected_mould,
+        (newMould) => {
+          const mould = bom.moulds.find((m) => m.mould_no === newMould);
+          bom.cavity = mould ? mould.cavity_count : 0;
+
+          // Emit updated BOMs to parent
+          const selectedObjects = boms.value.filter((b) =>
+            selectedLocal.value.includes(b)
+          );
+          emit("update:capBOMs", selectedObjects);
+          emit("update:selected", selectedObjects);
+        },
+        { immediate: true }
+      );
+    });
+  },
+  { deep: true, immediate: true }
+);
 
 
 // ---------------------------------------------------
@@ -180,6 +187,14 @@ const unselectAll = () => {
 
 const toggleSelectAll = () => {
   isAllSelected.value ? unselectAll() : selectAll();
+};
+
+// ---------------------------------------------------
+// Helper: Get Cavity Count for selected mould
+// ---------------------------------------------------
+const selectedCavity = (selectedMould, moulds) => {
+  const mould = moulds.find((m) => m.mould_no === selectedMould);
+  return mould ? mould.cavity_count : 0;
 };
 
 // ---------------------------------------------------
@@ -221,7 +236,5 @@ const fetchBOMs = async () => {
   }
 };
 
-
 watch(() => props.salesOrders, fetchBOMs, { deep: true, immediate: true });
-
 </script>

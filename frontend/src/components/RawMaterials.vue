@@ -40,12 +40,7 @@
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.bom_no }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_code }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_name }}</td>
-            <td class="border px-3 py-2 whitespace-nowrap">
-              <input type="number"
-                     v-model.number="rm.total_required_qty"
-                     @input="emitUpdate"
-                     class="w-full border px-2 py-1 rounded whitespace-nowrap" />
-            </td>
+            <td class="border px-3 py-2 whitespace-nowrap"> {{rm.total_required_qty}} </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.available_qty }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ rm.consumed_qty }}</td>
           </tr>
