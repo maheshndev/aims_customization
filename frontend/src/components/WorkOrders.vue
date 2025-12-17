@@ -10,14 +10,14 @@
 		<div v-if="workOrders.length" class="overflow-auto rounded-b-2xl">
 			<!-- Actions -->
 			<div class="flex items-center gap-3 mb-3">
-				<button class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700 m-1" @click="selectAll">
+				<button class="px-3 py-1 bg-blue-100 text-black rounded hover:bg-blue-300 m-1" @click="selectAll">
 					Select All
 				</button>
 
-				<button class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700 m-1" @click="unselectAll">
+				<button class="px-3 py-1 bg-gray-200 text-black rounded hover:bg-gray-300 m-1" @click="unselectAll">
 					Unselect All
 				</button>
-				<button class="px-3 py-1 bg-gray-600 text-black rounded hover:bg-gray-700 m-1"
+				<button class="px-3 py-1 bg-gray-200 text-black rounded hover:bg-gray-300 m-1"
 					@click="refreshWorkOrders">
 					Refresh Work Orders
 				</button>
@@ -209,3 +209,6 @@ watch(
 	{ immediate: true }
 );
 </script>
+<style>
+/* only custom overrides here */
+</style>

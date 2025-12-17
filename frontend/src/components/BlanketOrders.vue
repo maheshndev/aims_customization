@@ -4,10 +4,10 @@
     <!-- Actions -->
     <div class="flex justify-between items-center mb-4">
       <div class="flex gap-2">
-        <button @click="selectAll" class="px-3 py-1 bg-blue-600 text-black text-sm rounded hover:bg-blue-700 m-1">
+        <button @click="selectAll" class="px-3 py-1 bg-blue-100 text-black text-sm rounded hover:bg-blue-200 m-1">
           Select All
         </button>
-        <button @click="unselectAll" class="px-3 py-1 bg-gray-700 text-black text-sm rounded hover:bg-black m-1">
+        <button @click="unselectAll" class="px-3 py-1 bg-gray-200 text-black text-sm rounded hover:bg-gray-300 m-1">
           Unselect All
         </button>
       </div>
@@ -164,3 +164,6 @@ export default {
   },
 };
 </script>
+<style>
+/* only custom overrides here */
+</style>

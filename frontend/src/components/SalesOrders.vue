@@ -9,11 +9,11 @@
     </div>
 
     <!-- ACTIONS -->
-    <div v-if="orders.length && !loading" class="flex justify-end gap-3 mb-3">
-      <button class="px-3 py-1 bg-blue-600 text-black rounded shadow" @click="selectAll">
+    <div v-if="orders.length && !loading" class="flex justify-start gap-3 mb-3">
+      <button class="px-3 py-1 bg-blue-100 text-black rounded shadow" @click="selectAll">
         Select All
       </button>
-      <button class="px-3 py-1 bg-gray-500 text-black rounded shadow" @click="unselectAll">
+      <button class="px-3 py-1 bg-gray-200 text-black rounded shadow" @click="unselectAll">
         Unselect All
       </button>
     </div>
@@ -38,12 +38,19 @@
         </thead>
 
         <tbody class="divide-y divide-gray-200">
-          <tr v-for="(so, index) in orders" :key="so.name" class="hover:bg-gray-50">
+          <tr v-for="(so, index) in orders" :key="so.name" :class="[
+            'hover:bg-gray-50 transition',
+            selectedLocal.includes(index) ? 'bg-blue-50' : '',
+          ]">
             <td class="border px-3 py-2">
               <input type="checkbox" :value="so.name" v-model="selectedLocal" />
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ so.name }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">
+              <span class="cursor-pointer hover:underline hover:text-blue-600" @click="OpenSalesOrder(so.name)">
+                {{ so.name }}
+              </span>
+            </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.customer_name }}</td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">
               {{ so.total_qty }}
@@ -67,7 +74,7 @@
     <!-- FINISHED GOODS SECTION -->
     <div v-if="fgItems.length" class="mt-6 border-t pt-4 overflow-auto rounded-b-xl">
       <h3 class="font-bold text-lg mb-2">Finished Good Items (from selected SOs)</h3>
-      <button class="px-3 py-1 bg-green-500 text-black rounded shadow hover:bg-green-600 m-1"
+      <button class="px-3 py-1 bg-gray-200 text-black rounded shadow hover:bg-green-300 m-1"
         @click="createMixPlannerBOM">
         Create Planner Mix BOM
       </button>
@@ -75,7 +82,6 @@
       <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
         <thead class="bg-gray-100">
           <tr>
-
             <th>Selected</th>
             <th class="px-3 py-2 border whitespace-nowrap">#</th>
             <th class="px-3 py-2 border whitespace-nowrap">Item Code</th>
@@ -88,7 +94,10 @@
         </thead>
 
         <tbody class="divide-y divide-gray-100">
-          <tr v-for="(item, index) in fgItems" :key="item.item_code" class="hover:bg-gray-50">
+          <tr v-for="(item, index) in fgItems" :key="item.item_code" class="hover:bg-gray-50" :class="[
+            'hover:bg-gray-50 transition',
+            selectedFGItems.includes(item) ? 'bg-blue-50' : ''
+          ]">
             <td class="border px-3 py-2">
               <input type="checkbox" :value="item" v-model="selectedFGItems" />
             </td>
@@ -104,7 +113,7 @@
             <td class="border px-3 py-2 text-right whitespace-nowrap">
               {{ item.rate }}
             </td>
-             <td class="border px-3 py-2 text-right whitespace-nowrap">
+            <td class="border px-3 py-2 text-right whitespace-nowrap">
               {{ item.bom_no }}
             </td>
           </tr>
@@ -207,6 +216,10 @@ const createMixPlannerBOM = () => {
   window.open(url, "_blank");
 };
 
+const OpenSalesOrder = (salesOrderID) => {
+  const url = `/app/sales-order/` + salesOrderID;
+  window.open(url, "_blank");
+};
 // ----------------------------------------------------
 // FETCH ORDERS WHEN FILTERS CHANGE
 // ----------------------------------------------------
@@ -219,8 +232,6 @@ const fetchOrders = async () => {
   error.value = null;
 
   try {
-
-
     if (props.filters.customer || props.filters.month || props.filters.year) {
       const res = await api.getSalesOrders(props.filters);
 
@@ -229,11 +240,9 @@ const fetchOrders = async () => {
       fgItems.value = [];
 
       emit("so-loaded", orders.value);
+    } else {
+      orders.value = [];
     }
-    else {
-      orders.value = []
-    }
-
   } catch (err) {
     console.error(err);
     error.value = "Failed to load Sales Orders.";
@@ -244,3 +253,6 @@ const fetchOrders = async () => {
 
 watch(() => [props.filters], fetchOrders, { immediate: true, deep: true });
 </script>
+<style>
+/* only custom overrides here */
+</style>

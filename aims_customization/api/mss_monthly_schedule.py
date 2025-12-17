@@ -4,7 +4,7 @@ import json
 from datetime import datetime, date, timedelta, time
 import calendar
 import frappe
-from frappe.utils import nowdate, get_datetime, getdate, flt, time_diff_in_hours, get_last_day
+from frappe.utils import nowdate, get_datetime, getdate, flt, time_diff_in_hours, get_last_day, now_datetime
 from frappe import _
  
 # -------------------- Helpers --------------------
@@ -1286,6 +1286,7 @@ def calculate_start_end(start_dt, required_hours, shift_windows):
         remaining,
         shift_windows
     )
+    
 def get_shift_windows(base_date):
     shifts = frappe.get_all(
         "Shift Type",
@@ -1294,13 +1295,23 @@ def get_shift_windows(base_date):
 
     windows = []
     for s in shifts:
-        start = datetime.combine(base_date, _to_time(s.start_time))
-        end = datetime.combine(base_date, _to_time(s.end_time))
+        start_t = _to_time(s.start_time)
+        end_t = _to_time(s.end_time)
+
+        if not start_t or not end_t:
+            continue
+
+        start = get_datetime(f"{base_date} {start_t}")
+        end = get_datetime(f"{base_date} {end_t}")
+
+        # Overnight shift
         if end <= start:
-            end += timedelta(days=1)
+            end = end + timedelta(days=1)
+
         windows.append((start, end))
 
     return windows
+
 def find_warehouse_like(company, pattern):
     return frappe.db.get_value(
         "Warehouse",
@@ -1385,7 +1396,8 @@ def create_capacity_based_work_orders(line, sales_order):
     shift_windows = get_shift_windows(base_date.date())
 
     qty_chunks = split_qty_by_capacity(qty, per_hour_qty, shift_windows)
-
+    
+    
     created = []
 
     for chunk_qty, hours in qty_chunks:
@@ -1404,20 +1416,33 @@ def create_capacity_based_work_orders(line, sales_order):
         wo.qty = chunk_qty
         wo.bom_no = bom_no
         wo.sales_order = sales_order
-        wo.workstation = machine
+        bom = frappe.get_doc("BOM", bom_no)
 
+        # 🔹 Copy Operations
+        for op in bom.operations:
+            wo.append("operations", {
+                "operation": op.operation,
+                "workstation": machine,
+                "time_in_mins": op.time_in_mins or 1,
+                "hour_rate": op.hour_rate,
+                "batch_size": op.batch_size,
+                "sequence_id": op.sequence_id,
+                "description": op.description,
+            })
+        # wo.workstation = machine
+        # wo.transfer_material_against = "Work Order"
         # ✅ MANDATORY FIELDS FIXED
         wo.fg_warehouse = fg_warehouse
         wo.wip_warehouse = wip_warehouse
-
-        wo.planned_start_date = start_dt
-        wo.planned_end_date = end_dt
+        print("\n planned_start_date=", get_datetime(start_dt), "\nplanned_end_date=", end_dt)
+        wo.planned_start_date = get_datetime(start_dt)
+        wo.planned_end_date = get_datetime(end_dt)
         wo.expected_delivery_date = end_dt.date()
         wo.use_multi_level_bom = 1
 
         wo.flags.ignore_permissions = True
         wo.insert()
-        wo.submit()
+        # wo.submit()
 
         created.append(wo.name)
         base_date = end_dt
