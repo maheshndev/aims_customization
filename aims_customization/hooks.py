@@ -16,13 +16,13 @@ after_migrate = [
     "aims_customization.patches.v_0.add_field_customer_approval_email_on_quotation.execute",
     "aims_customization.patches.v_0.add_customer_po_attachment_field_on_sales_order.execute",
     "aims_customization.patches.v_0.add_short_close_reason_field.execute",
-    "aims_customization.patches.v_0.add_part_specification_tab_on_item.execute",
-    "aims_customization.patches.v_0.add_packing_details_tab_on_item.execute",
-    "aims_customization.patches.v_0.add_section_on_bom.execute",
+   
+    
+    
     "aims_customization.patches.v_0.add_rm_percentage_field_on_bom.execute",
     "aims_customization.patches.v_0.add_pre_feasibility_item_field_on_lead.execute",
     "aims_customization.patches.v_0.add_bom_type_field_on_bom.execute",
-    "aims_customization.patches.v_0.add_rework_and_checking_details.execute",
+   
     "aims_customization.patches.v_0.change_the_datatype_qty_field_on_bomitem_from_float_to_data.execute",
     "aims_customization.patches.v_0.add_status_for_design_feasibility_on_quotation.execute",
     "aims_customization.patches.v_0.add_mould_detail_tab_on_item_master.execute",
@@ -44,7 +44,7 @@ doctype_js = {
     "public/js/hide_workflow_action_closed_lead.js",
     "public/js/short_close_field_show_only_feasibility_reject.js"],
     "Pre Feasibility":["public/js/fetched_current_login_user_name_on_preparedby_field_on_pre_feasibility.js",
-    "public/js/store_part_no_on_lead.js","public/js/prefeasibility_template.js","public/js/store_part_no_on_lead.js",],
+    "public/js/prefeasibility_template.js"],
     "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
     "Item":["public/js/fetched_cavity_from_mould_on_item.js","public/js/is_mold_and_is_molding_show_hide_mandatory_mold_details_tab_fiedls.js"],
     "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
