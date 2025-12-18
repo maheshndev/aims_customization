@@ -2,15 +2,25 @@ import axios from "axios";
 
 export const api = {
 	// -------------------- Level 1 --------------------
-	getCustomers: (search) =>
+	// In your API service file (e.g., api.js)
+
+	getCustomers: (search, customerId) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_customers", {
-			params: { search_text: search },
+			params: {
+				search_text: search,
+				customer_id: customerId,
+			},
 		}),
 
-	getBlanketOrders: (params) =>
-		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
-			params,
-		}),
+	getBlanketOrders: (filters) =>
+    axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
+        params: { 
+            customer: filters.customer, 
+            month: filters.month,
+            year: filters.year,
+            // search_text will be null/undefined, allowing the backend to handle the search logic
+        },
+    }),
 
 	getBlanketOrdersSearch: (search) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
@@ -26,7 +36,15 @@ export const api = {
 			}
 		);
 	},
-
+		getBlanketOrdersWithItems(filters) {
+		return axios.get(
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders_with_items",{
+			params: { 
+            customer: filters.customer,
+            // search_text will be null/undefined, allowing the backend to handle the search logic
+        },
+		});
+	},
 	createSalesOrderFromBOItems: (items) =>
 		axios.post(
 			"/api/method/aims_customization.api.mss_monthly_schedule.create_sales_order",
@@ -35,10 +53,17 @@ export const api = {
 		),
 
 	// -------------------- Level 3 --------------------
-	getSalesOrders: (params) =>
+	getSalesOrders: (filters, bo_list) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_sales_orders", {
-			params,
-		}),
+			params:{
+			customer: filters.customer, 
+            month: filters.month,
+            year: filters.year,
+			bo_list: bo_list,
+			},
+		
+		}
+		 ),
 
 	// -------------------- Level 4 --------------------
 	getBOMsForSalesOrder: (sales_orders) =>

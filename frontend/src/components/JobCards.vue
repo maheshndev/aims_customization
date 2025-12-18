@@ -37,7 +37,7 @@
     <!-- Table -->
     <div v-if="jobCards.length && !loading" class="overflow-auto rounded-b-2xl">
       <table class="table-auto min-w-[1400px] border-collapse w-full">
-        <thead class="bg-gray-100">
+        <thead class="bg-gray-100 uppercase">
           <tr>
             <th class="border px-3 py-2 text-center">
               <input
