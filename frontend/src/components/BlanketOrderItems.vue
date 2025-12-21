@@ -3,7 +3,7 @@
 
     <!-- ================= TOP CONTROLS ================= -->
     <div
-      class="sticky top-0 bg-white z-20 flex flex-col md:flex-row justify-between items-start md:items-center p-4 border-b border-gray-200 gap-3">
+      class=" top-0 bg-white z-20 flex flex-col md:flex-row justify-between items-start md:items-center p-4 border-b border-gray-200 gap-3">
 
       <div class="flex flex-wrap items-center gap-2">
         <button @click="selectAll"

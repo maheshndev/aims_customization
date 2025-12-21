@@ -13,14 +13,14 @@ export const api = {
 		}),
 
 	getBlanketOrders: (filters) =>
-    axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
-        params: { 
-            customer: filters.customer, 
-            month: filters.month,
-            year: filters.year,
-            // search_text will be null/undefined, allowing the backend to handle the search logic
-        },
-    }),
+		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
+			params: {
+				customer: filters.customer,
+				month: filters.month,
+				year: filters.year,
+				// search_text will be null/undefined, allowing the backend to handle the search logic
+			},
+		}),
 
 	getBlanketOrdersSearch: (search) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
@@ -36,14 +36,16 @@ export const api = {
 			}
 		);
 	},
-		getBlanketOrdersWithItems(filters) {
+	getBlanketOrdersWithItems(filters) {
 		return axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders_with_items",{
-			params: { 
-            customer: filters.customer,
-            // search_text will be null/undefined, allowing the backend to handle the search logic
-        },
-		});
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders_with_items",
+			{
+				params: {
+					customer: filters.customer,
+					// search_text will be null/undefined, allowing the backend to handle the search logic
+				},
+			}
+		);
 	},
 	createSalesOrderFromBOItems: (items) =>
 		axios.post(
@@ -55,15 +57,13 @@ export const api = {
 	// -------------------- Level 3 --------------------
 	getSalesOrders: (filters, bo_list) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_sales_orders", {
-			params:{
-			customer: filters.customer, 
-            month: filters.month,
-            year: filters.year,
-			bo_list: bo_list,
+			params: {
+				customer: filters.customer,
+				month: filters.month,
+				year: filters.year,
+				bo_list: bo_list,
 			},
-		
-		}
-		 ),
+		}),
 
 	// -------------------- Level 4 --------------------
 	getBOMsForSalesOrder: (sales_orders) =>
@@ -84,6 +84,13 @@ export const api = {
 		),
 
 	// -------------------- Capacity Planner Section --------------------
+		getCapacityPlan: (payload) =>
+			axios.post(
+				"/api/method/aims_customization.api.mss_monthly_schedule.get_capacity_plan",
+				{ payload_json: JSON.stringify(payload) },
+				{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+			),
+
 	getShifts() {
 		return axios.get("/api/resource/Shift Type", {
 			params: { fields: ["name", "start_time", "end_time"] },
@@ -110,7 +117,7 @@ export const api = {
 	getWorkstations: () =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_workstations"),
 
-	validate_capacity: (payload) =>
+	validateCapacity: (payload) =>
 		axios.post(
 			"/api/method/aims_customization.api.mss_monthly_schedule.validate_capacity",
 			{
@@ -146,11 +153,11 @@ export const api = {
 		),
 
 	// -------------------- Level 8 --------------------
-	getProductionStatus: (bo_list) =>
+	getProductionSummary: (customer, month, year) =>
 		axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_status",
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
 			{
-				params: { bo_list },
+				params: { customer, month, year },
 			}
 		),
 };

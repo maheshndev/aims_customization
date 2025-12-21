@@ -13,7 +13,7 @@
 
     <SectionCard title="Open Blanket Order Line Items">
       <!-- Step 1: Select Blanket Order LINE ITEMS -->
-      <BlanketOrderItems :filters="filters" :selected-bo-names="selected.blanketOrders.map(b => b.name)"
+      <BlanketOrderItems :filters="filters" :selected-bo-names="selected.blanketOrders.map((b) => b.name)"
         v-model:selected="selected.items" />
     </SectionCard>
 
@@ -21,7 +21,6 @@
     <SectionCard title="Generated Sales Orders (Scheduled Orders)">
       <SalesOrders :filters="filters" :bo-items="selected.items" v-model:selected="selected.salesOrders" />
     </SectionCard>
-
 
     <!-- BOMs -->
     <SectionCard title="Bill Of Material">
@@ -52,9 +51,13 @@
       <JobCards :work-orders="selected.workOrders" v-model:selected="selected.jobCards" />
     </SectionCard>
 
-    <!-- Production Summary -->
+    <!-- Production Summary Section -->
     <SectionCard title="Production Summary">
-      <ProductionSummary :job-cards="selected.jobCards" :summary="state.productionSummary" />
+      <ProductionSummary :filters="{
+        customer: state.selectedCustomer,
+        month: state.selectedMonth,
+        year: state.selectedYear,
+      }" :job-cards="selected.jobCards" />
     </SectionCard>
   </div>
 </template>

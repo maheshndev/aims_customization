@@ -104,7 +104,7 @@ const error = ref(null);
 const selectedLocal = ref([]);
 const search = ref("");
 
-const headers = ["#", "Sales Order", "BOM", "FG Item", "Qty", "Type", "Customer", "Req Qty", "Cavity", "PCS wt", "Runner", "Shot", "Gross", "Cycle", "Machine", "Mould"];
+const headers = ["#", "Sales Order", "BOM", "FG Item", "Qty", "Type", "Customer", "Req Qty", "Cavity", "PCS wt", "Runner", "Shot", "Gross", "Cycle Time", "Machine (Workstation)", "Mould"];
 
 // ---------------------------------------------------
 // Computed: Handle Filter & Header Select

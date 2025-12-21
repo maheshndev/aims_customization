@@ -11,11 +11,14 @@
 
     <!-- ACTIONS -->
     <div v-if="orders.length && !loading" class="flex justify-start gap-3 mb-3">
-      <button class="px-3 py-1 bg-blue-100 text-black rounded shadow" @click="selectAll">
+      <button class="px-3 py-1 bg-blue-100 text-black rounded " @click="selectAll">
         Select All
       </button>
-      <button class="px-3 py-1 bg-gray-200 text-black rounded shadow" @click="unselectAll">
+      <button class="px-3 py-1 bg-gray-200 text-black rounded " @click="unselectAll">
         Unselect All
+      </button>
+      <button class="px-3 py-1 bg-green-100 text-black rounded  hover:bg-green-200" @click="refreshOrders">
+        🔄 Refresh
       </button>
     </div>
 
@@ -235,12 +238,9 @@ const fetchOrders = async () => {
 
   try {
     if (props.filters.customer || props.filters.month || props.filters.year) {
-      console.log(props.boItems);
-
       const res = await api.getSalesOrders({
         ...props.filters,
       });
-
 
       orders.value = res.data.message || [];
       selectedLocal.value = [];
@@ -256,6 +256,13 @@ const fetchOrders = async () => {
   } finally {
     loading.value = false;
   }
+};
+const refreshOrders = async () => {
+  selectedLocal.value = [];
+  selectedFGItems.value = [];
+  fgItems.value = [];
+
+  await fetchOrders();
 };
 
 watch(() => [props.filters], fetchOrders, { immediate: true, deep: true });
