@@ -1,29 +1,29 @@
 <template>
   <div class="p-6 bg-gray-50 min-h-screen font-sans space-y-6">
-    <h2 class="p-2">MSS - Schedule Tool</h2>
+    <h2 class="p-2">Monthly Schedule Sheet (MSS)</h2>
     <!-- Filters -->
     <SectionCard title="Filters">
       <Filters v-model="filters" @apply-filters="onApplyFilters" />
     </SectionCard>
 
-    <SectionCard title="Blanket Orders">
-      <!-- Pass filters to fetch list, use v-model:selected for selection -->
+    <!-- Pass filters to fetch list, use v-model:selected for selection -->
+    <!-- <SectionCard title="Open Blanket Orders">
       <BlanketOrders :filters="filters" v-model:selected="selected.blanketOrders" />
-    </SectionCard>
+    </SectionCard> -->
 
-    <SectionCard title="Items for Selected BO(s)">
-      <!-- Fetch items in BlanketOrderItems based on selected BOs -->
-      <BlanketOrderItems :selected-bo-names="selected.blanketOrders.map((b) => b.name)"
+    <SectionCard title="Open Blanket Order Line Items">
+      <!-- Step 1: Select Blanket Order LINE ITEMS -->
+      <BlanketOrderItems :filters="filters" :selected-bo-names="selected.blanketOrders.map((b) => b.name)"
         v-model:selected="selected.items" />
     </SectionCard>
 
-    <!-- Sales Orders -->
-    <SectionCard title="Sales Orders">
-      <SalesOrders v-model:selected="selected.salesOrders" :filters="filters" :bo-items="selected.items" />
+    <!-- Step 2: Load Sales Orders ONLY from selected BO items -->
+    <SectionCard title="Generated Sales Orders (Scheduled Orders)">
+      <SalesOrders :filters="filters" :bo-items="selected.items" v-model:selected="selected.salesOrders" />
     </SectionCard>
 
     <!-- BOMs -->
-    <SectionCard title="BOMs">
+    <SectionCard title="Bill Of Material">
       <BOMList :sales-orders="selected.salesOrders" v-model:selected="selected.boms"
         @update:capBOMs="(val) => (selected.bomsObjects = val)" />
     </SectionCard>
@@ -33,7 +33,7 @@
       <RawMaterials :boms="selected.boms" :filters="filters" v-model:selected="selected.rawMaterials" />
     </SectionCard>
 
-    <SectionCard title="Capacity Planning">
+    <SectionCard title="Capacity Planner">
       <CapacityPlanner :boms="selected.boms" :cap-boms="selected.bomsObjects" :filters="filters"
         :available-machine-hours="machineCapacity" @capacity-updated="handleCapacityUpdate" />
     </SectionCard>
@@ -43,7 +43,7 @@
 
     <!-- Work Orders -->
     <SectionCard title="Work Orders">
-      <WorkOrders :sales-orders="selected.salesOrders"  v-model:selected="selected.workOrders" />
+      <WorkOrders :sales-orders="selected.salesOrders" v-model:selected="selected.workOrders" />
     </SectionCard>
 
     <!-- Job Cards -->
@@ -51,9 +51,13 @@
       <JobCards :work-orders="selected.workOrders" v-model:selected="selected.jobCards" />
     </SectionCard>
 
-    <!-- Production Summary -->
+    <!-- Production Summary Section -->
     <SectionCard title="Production Summary">
-      <ProductionSummary :job-cards="selected.jobCards" :summary="state.productionSummary" />
+      <ProductionSummary :filters="{
+        customer: state.selectedCustomer,
+        month: state.selectedMonth,
+        year: state.selectedYear,
+      }" :job-cards="selected.jobCards" />
     </SectionCard>
   </div>
 </template>
@@ -73,6 +77,7 @@ import WorkOrders from "../components/WorkOrders.vue";
 import JobCards from "../components/JobCards.vue";
 import ProductionSummary from "../components/ProductionSummary.vue";
 import CapacityPlanner from "../components/CapacityPlanner.vue";
+import BOMComparisonModal from "../components/BOMComparisonModal.vue";
 
 export default {
   name: "MSSDashboard",
@@ -83,6 +88,7 @@ export default {
     BlanketOrderItems,
     SalesOrders,
     BOMList,
+    BOMComparisonModal,
     RawMaterials,
     WorkOrders,
     JobCards,

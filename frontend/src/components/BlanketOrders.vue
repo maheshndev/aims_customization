@@ -26,7 +26,7 @@
     <!-- Table -->
     <div v-if="orders.length && !loading" class="overflow-auto rounded-b-2xl">
       <table class="min-w-[1200px] table-auto border border-gray-300 divide-y divide-gray-200">
-        <thead class="bg-gray-100 sticky">
+        <thead class="bg-gray-100 sticky uppercase">
           <tr>
             <th class="px-2 py-1 w-12 text-center border">
               <input type="checkbox" :checked="isAllSelected" @change="toggleAll" />

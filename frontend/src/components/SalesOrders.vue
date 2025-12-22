@@ -1,5 +1,6 @@
 <template>
   <div class="sales-orders rounded-xl shadow-sm p-2">
+    <p>System performs monthly machine capacity planning for the selected line.</p>
     <!-- Loading -->
     <div v-if="loading" class="text-gray-500 animate-pulse">Loading Sales Orders...</div>
 
@@ -10,26 +11,29 @@
 
     <!-- ACTIONS -->
     <div v-if="orders.length && !loading" class="flex justify-start gap-3 mb-3">
-      <button class="px-3 py-1 bg-blue-100 text-black rounded shadow" @click="selectAll">
+      <button class="px-3 py-1 bg-blue-100 text-black rounded " @click="selectAll">
         Select All
       </button>
-      <button class="px-3 py-1 bg-gray-200 text-black rounded shadow" @click="unselectAll">
+      <button class="px-3 py-1 bg-gray-200 text-black rounded " @click="unselectAll">
         Unselect All
+      </button>
+      <button class="px-3 py-1 bg-green-100 text-black rounded  hover:bg-green-200" @click="refreshOrders">
+        🔄 Refresh
       </button>
     </div>
 
     <!-- SALES ORDER TABLE -->
     <div v-if="orders.length && !loading" class="overflow-auto rounded-b-xl">
       <table class="min-w-[1200px] table-auto divide-y divide-gray-200 border">
-        <thead class="bg-gray-100">
+        <thead class="bg-gray-100 uppercase">
           <tr>
             <th class="px-3 py-2 border">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
             </th>
             <th class="px-3 py-2 border whitespace-nowrap">#</th>
-            <th class="px-3 py-2 border whitespace-nowrap">SO ID</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Sales Order ID</th>
             <th class="px-3 py-2 border whitespace-nowrap">Customer</th>
-            <th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
+            <th class="px-3 py-2 border text-right whitespace-nowrap">Total Qty</th>
             <th class="px-3 py-2 border whitespace-nowrap">Month</th>
             <th class="px-3 py-2 border whitespace-nowrap">Transaction</th>
             <th class="px-3 py-2 border whitespace-nowrap">Delivery</th>
@@ -73,14 +77,14 @@
 
     <!-- FINISHED GOODS SECTION -->
     <div v-if="fgItems.length" class="mt-6 border-t pt-4 overflow-auto rounded-b-xl">
-      <h3 class="font-bold text-lg mb-2">Finished Good Items (from selected SOs)</h3>
+      <h3 class="font-bold text-lg mb-2">Sales Order Line Items</h3>
       <button class="px-3 py-1 bg-gray-200 text-black rounded shadow hover:bg-green-300 m-1"
         @click="createMixPlannerBOM">
         Create Planner Mix BOM
       </button>
 
       <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
-        <thead class="bg-gray-100">
+        <thead class="bg-gray-100 uppercase">
           <tr>
             <th>Selected</th>
             <th class="px-3 py-2 border whitespace-nowrap">#</th>
@@ -140,6 +144,7 @@ const orders = ref([]);
 const selectedLocal = ref([]);
 const fgItems = ref([]);
 const selectedFGItems = ref([]);
+
 
 // ----------------------------------------------------
 // ALL SELECTED CHECKBOX
@@ -233,7 +238,9 @@ const fetchOrders = async () => {
 
   try {
     if (props.filters.customer || props.filters.month || props.filters.year) {
-      const res = await api.getSalesOrders(props.filters);
+      const res = await api.getSalesOrders({
+        ...props.filters,
+      });
 
       orders.value = res.data.message || [];
       selectedLocal.value = [];
@@ -249,6 +256,13 @@ const fetchOrders = async () => {
   } finally {
     loading.value = false;
   }
+};
+const refreshOrders = async () => {
+  selectedLocal.value = [];
+  selectedFGItems.value = [];
+  fgItems.value = [];
+
+  await fetchOrders();
 };
 
 watch(() => [props.filters], fetchOrders, { immediate: true, deep: true });
