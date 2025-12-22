@@ -85,7 +85,8 @@ frappe.ui.form.on('Item', {
             'tool_life',
             'total_shots',
             'mould_name',
-            'mould_ty'
+            'mould_ty',
+            'total_lifecycle_shot'
         ];
 
         if (frm.doc.is_moulding) {

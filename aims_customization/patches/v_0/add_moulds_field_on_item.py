@@ -65,9 +65,15 @@ def execute():
         },
         {
             "fieldname": "total_shots",
-            "label": "Total Shots",
+            "label": "Maintenance Required Per Shot",
             "fieldtype": "Data",
             "insert_after": "tool_life"
+        },
+        {
+            "fieldname": "total_lifecycle_shot",
+            "label": "Total Lifecycle Shot",
+            "fieldtype": "Data",
+            "insert_after": "total_shots"
         }
        
     ]
