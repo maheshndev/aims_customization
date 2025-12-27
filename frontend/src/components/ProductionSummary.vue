@@ -30,30 +30,30 @@
       <table class="min-w-[1200px] w-full border-collapse text-sm">
         <thead class="bg-gray-100">
           <tr>
-            <th class="th">#</th>
-            <th class="th">Item</th>
-            <th class="th">Order Qty</th>
-            <th class="th">Planned</th>
-            <th class="th">Produced</th>
-            <th class="th">Pending</th>
-            <th class="th">WIP</th>
-            <th class="th">Stock</th>
-            <th class="th">Dispatched</th>
-            <th class="th">Balance</th>
+            <th class="th whitespace-nowrap">#</th>
+            <th class="th whitespace-nowrap">Item</th>
+            <th class="th whitespace-nowrap">Order Qty</th>
+            <th class="th whitespace-nowrap">Planned</th>
+            <th class="th whitespace-nowrap">Produced</th>
+            <th class="th whitespace-nowrap">Pending</th>
+            <th class="th whitespace-nowrap">WIP</th>
+            <th class="th whitespace-nowrap">Stock</th>
+            <th class="th whitespace-nowrap">Dispatched</th>
+            <th class="th whitespace-nowrap">Balance</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(r, i) in items" :key="r.item_code || i">
             <td class="td">{{ i + 1 }}</td>
-            <td class="td font-medium">{{ r.item_name }}</td>
-            <td class="td">{{ r.order_qty }}</td>
-            <td class="td">{{ r.planned_qty }}</td>
-            <td class="td text-green-600 font-semibold">{{ r.produced_qty }}</td>
-            <td class="td text-orange-600">{{ r.pending_qty }}</td>
-            <td class="td text-purple-600">{{ r.wip_qty }}</td>
-            <td class="td">{{ r.available_stock }}</td>
-            <td class="td text-blue-600">{{ r.dispatched_qty }}</td>
-            <td class="td text-red-600">{{ r.balance_to_dispatch }}</td>
+            <td class="td whitespace-nowrap font-medium">{{ r.item_name }}</td>
+            <td class="td whitespace-nowrap">{{ r.order_qty }}</td>
+            <td class="td whitespace-nowrap">{{ r.planned_qty }}</td>
+            <td class="td whitespace-nowrap text-green-600 font-semibold">{{ r.produced_qty }}</td>
+            <td class="td whitespace-nowrap text-orange-600">{{ r.pending_qty }}</td>
+            <td class="td whitespace-nowrap text-purple-600">{{ r.wip_qty }}</td>
+            <td class="td whitespace-nowrap">{{ r.available_stock }}</td>
+            <td class="td whitespace-nowrap text-blue-600">{{ r.dispatched_qty }}</td>
+            <td class="td whitespace-nowrap text-red-600">{{ r.balance_to_dispatch }}</td>
           </tr>
         </tbody>
       </table>
