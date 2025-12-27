@@ -53,11 +53,7 @@
 
     <!-- Production Summary Section -->
     <SectionCard title="Production Summary">
-      <ProductionSummary :filters="{
-        customer: state.selectedCustomer,
-        month: state.selectedMonth,
-        year: state.selectedYear,
-      }" :job-cards="selected.jobCards" />
+      <ProductionSummary :filters="filters" :job-cards="selected.jobCards" />
     </SectionCard>
   </div>
 </template>

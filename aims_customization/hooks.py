@@ -34,7 +34,8 @@ after_migrate = [
     "aims_customization.patches.v_0.add_mould_name_field_on_item.execute",
     "aims_customization.patches.v_0.add_design_document_attachment_on_quotation.execute",
     "aims_customization.patches.v_0.add_other_than_mould_or_moulding_item.execute",
-    "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute"
+    "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute",
+    "aims_customization.patches.v_0.add_mould_in_workorder.execute"
 
     
 ]
@@ -49,7 +50,8 @@ doctype_js = {
     "Item":["public/js/fetched_cavity_from_mould_on_item.js","public/js/is_mold_and_is_molding_show_hide_mandatory_mold_details_tab_fiedls.js"],
     "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
     "Sales Invoice": ["public/js/sales_invoice_and_credit_note_default_print_format_setting.js",
-                      "public/js/default_value_for_declaration.js"]
+                      "public/js/default_value_for_declaration.js"],
+    "Work Order":"public/js/add_filter_for_mould_field_in_workorder.js"
 }
 
 
