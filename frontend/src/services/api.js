@@ -116,19 +116,31 @@ export const api = {
 
 	getWorkstations: () =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_workstations"),
-
+	// --------------------------- new work order and validate capacity ---------------------------
 	validateCapacity: (payload) =>
 		axios.post(
 			"/api/method/aims_customization.api.mss_monthly_schedule.validate_capacity",
 			{
-				payload_json: JSON.stringify(payload), // ← correct
+				payload: JSON.stringify(payload), // ← correct
 			},
+			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+		),
+	createWorkOrdersFromMSS: (payload) =>
+		axios.post(
+			"/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders_from_mss",
+			{ payload: JSON.stringify(payload) },
 			{
 				headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+				withCredentials: true,
 			}
 		),
 
-	
+	previewCapacityPlan: (payload) =>
+		axios.post(
+			"/api/method/aims_customization.api.mss_monthly_schedule.preview_capacity_plan",
+			{ payload: JSON.stringify(payload) },
+			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+		),
 	// -------------------- Level 6 --------------------
 
 	getWorkOrders: (so_list) =>
@@ -152,7 +164,7 @@ export const api = {
 		// if (!customer || !month || !year) {
 		// 	return Promise.reject(new Error("Customer, month and year are required"));
 		// }
-	
+
 		return axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
 			{
@@ -160,13 +172,12 @@ export const api = {
 			}
 		);
 	},
-	getProductionSummary(customer, month, year, config = {}) {
-		// Support abort signal and error handling
+	getProductionSummary(customer, month, year, options = {}) {
 		return axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
 			{
-				params: { customer: customer, month: month, year: year },
-				...config
+				params: { customer, month, year },
+				signal: options.signal,
 			}
 		);
 	},
