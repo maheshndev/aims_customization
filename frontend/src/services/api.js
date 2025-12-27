@@ -84,12 +84,12 @@ export const api = {
 		),
 
 	// -------------------- Capacity Planner Section --------------------
-		getCapacityPlan: (payload) =>
-			axios.post(
-				"/api/method/aims_customization.api.mss_monthly_schedule.get_capacity_plan",
-				{ payload_json: JSON.stringify(payload) },
-				{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
-			),
+	getCapacityPlan: (payload) =>
+		axios.post(
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_capacity_plan",
+			{ payload_json: JSON.stringify(payload) },
+			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+		),
 
 	getShifts() {
 		return axios.get("/api/resource/Shift Type", {
@@ -128,12 +128,7 @@ export const api = {
 			}
 		),
 
-	createWorkOrders: (so_list) =>
-		axios.post(
-			"/api/method/aims_customization.api.mss_monthly_schedule.create_work_orders",
-			{ so_list },
-			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
-		),
+	
 	// -------------------- Level 6 --------------------
 
 	getWorkOrders: (so_list) =>
@@ -152,12 +147,27 @@ export const api = {
 			}
 		),
 
-	// -------------------- Level 8 --------------------
-	getProductionSummary: (customer, month, year) =>
-		axios.get(
+	// -------------------- Level 8: Production Summary --------------------
+	getProductionSummary(customer, month, year) {
+		// if (!customer || !month || !year) {
+		// 	return Promise.reject(new Error("Customer, month and year are required"));
+		// }
+	
+		return axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
 			{
-				params: { customer, month, year },
+				params: { customer: customer, month: month, year: year },
 			}
-		),
+		);
+	},
+	getProductionSummary(customer, month, year, config = {}) {
+		// Support abort signal and error handling
+		return axios.get(
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
+			{
+				params: { customer: customer, month: month, year: year },
+				...config
+			}
+		);
+	},
 };
