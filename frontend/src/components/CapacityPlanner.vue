@@ -285,7 +285,7 @@ async function loadPreview() {
 		})),
 	};
 
-	const res = await api.getCapacityPlan(payload);
+	const res = await api.previewCapacityPlan(payload);
 	
 	console.log("Preview Data: ",res.data);
 	const list = res?.data?.message || [];

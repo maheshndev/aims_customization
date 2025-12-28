@@ -84,38 +84,15 @@ export const api = {
 		),
 
 	// -------------------- Capacity Planner Section --------------------
-	getCapacityPlan: (payload) =>
-		axios.post(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_capacity_plan",
-			{ payload_json: JSON.stringify(payload) },
-			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
-		),
+	
 
 	getShifts() {
 		return axios.get("/api/resource/Shift Type", {
 			params: { fields: ["name", "start_time", "end_time"] },
 		});
 	},
-	createMSSPlan: ({ lines, filters, plan_start_date, plan_end_date, production_utilization }) =>
-		axios.post(
-			"/api/method/aims_customization.api.mss_monthly_schedule.create_mss_plan",
-			{
-				payload_json: JSON.stringify({
-					lines,
-					filters,
-					plan_start_date,
-					plan_end_date,
-					production_utilization,
-				}),
-			},
-			{
-				headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
-				withCredentials: true,
-			}
-		),
+	
 
-	getWorkstations: () =>
-		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_workstations"),
 	// --------------------------- new work order and validate capacity ---------------------------
 	validateCapacity: (payload) =>
 		axios.post(
