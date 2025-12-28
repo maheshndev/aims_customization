@@ -244,7 +244,7 @@ async function validateCapacity() {
 
 	const res = await api.validateCapacity(payload);
 	const result = res?.data?.message || [];
-	console.log("validate capacity:", result);
+	
 	
 	const map = Object.fromEntries(result.map((r) => [r.rowKey, r]));
 
@@ -287,7 +287,7 @@ async function loadPreview() {
 
 	const res = await api.previewCapacityPlan(payload);
 	
-	console.log("Preview Data: ",res.data);
+	
 	const list = res?.data?.message || [];
 
 	list.forEach((p) => {
@@ -318,7 +318,6 @@ async function togglePreview(row) {
 	};
 
 	const res = await api.previewCapacityPlan(payload);
-	console.log("togglePreview : ",res.data.message);
 	const list = res?.data.message || [];
 	
 	
