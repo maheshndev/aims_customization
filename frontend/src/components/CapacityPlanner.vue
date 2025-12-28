@@ -89,20 +89,33 @@
 								<input type="checkbox" :value="r.rowKey" v-model="selectedKeys" />
 							</td>
 							<td class="border p-2 whitespace-nowrap">{{ i + 1 }}</td>
-							<td class="border p-2 whitespace-nowrap font-medium">{{ r.customer }}</td>
+							<td class="border p-2 whitespace-nowrap font-medium">
+								{{ r.customer }}
+							</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.sales_order }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.item_code }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.bom_no }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.machine }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.mould || "—" }}</td>
-							<td class="border p-2 whitespace-nowrap text-right">{{ r.schedule_qty }}</td>
-							<td class="border p-2 whitespace-nowrap text-right">{{ r.cycle_time }}</td>
+							<td class="border p-2 whitespace-nowrap text-right">
+								{{ r.schedule_qty }}
+							</td>
+							<td class="border p-2 whitespace-nowrap text-right">
+								{{ r.cycle_time }}
+							</td>
 							<td class="border p-2 whitespace-nowrap text-right">{{ r.cavity }}</td>
-							<td class="border p-2 whitespace-nowrap text-right">{{ r.pcs_per_hour }}</td>
-							<td class="border p-2 whitespace-nowrap text-right">{{ r.required_hours }}</td>
-							<td class="border p-2 whitespace-nowrap text-right">{{ r.available_hours }}</td>
-							<td class="border p-2 whitespace-nowrap text-right">{{ r.capacity_gap }}</td>
-							
+							<td class="border p-2 whitespace-nowrap text-right">
+								{{ r.pcs_per_hour }}
+							</td>
+							<td class="border p-2 whitespace-nowrap text-right">
+								{{ r.required_hours }}
+							</td>
+							<td class="border p-2 whitespace-nowrap text-right">
+								{{ r.available_hours }}
+							</td>
+							<td class="border p-2 whitespace-nowrap text-right">
+								{{ r.capacity_gap }}
+							</td>
 
 							<!-- STATUS -->
 							<td class="border p-2 whitespace-nowrap">
@@ -132,7 +145,7 @@
 										:key="idx"
 										class="px-2 py-1 border rounded text-xs bg-white"
 									>
-										Shift {{ p.shift_no }} → {{ p.qty }} ({{
+										Shift {{ p.shift_no }} → Qty: {{ p.qty }} ({{
 											p.planned_hours
 										}}
 										hrs)
@@ -148,12 +161,10 @@
 		<!-- SUMMARY -->
 		<div class="text-sm flex gap-6">
 			<div>
-				Required Hours:
-				<b>{{ totalRequiredHours }}</b>
+				Required Hours: <b>{{ totalRequiredHours }}</b>
 			</div>
 			<div>
-				Selected Rows:
-				<b>{{ selectedRows.length }}</b>
+				Selected Rows: <b>{{ selectedRows.length }}</b>
 			</div>
 		</div>
 	</div>
@@ -173,7 +184,6 @@ const rows = ref([]);
 const preview = ref({});
 const selectedKeys = ref([]);
 const selectAll = ref(false);
-
 const utilization = ref(90);
 const planStart = ref(today());
 const planEnd = ref(null);
@@ -215,107 +225,107 @@ function toggleAll() {
 
 /* ---------------- VALIDATE ---------------- */
 async function validateCapacity() {
-  const payload = {
-    production_utilization: utilization.value,
-    plan_start_date: planStart.value,
-    plan_end_date: planEnd.value,
-    lines: selectedRows.value.map(r => ({
-      row_key: r.rowKey,
-      item_code: r.item_code,
-      schedule_qty: r.schedule_qty,
-      cycle_time: r.cycle_time,
-      cavity: r.cavity,
-      machine: r.machine,
-      mould: r.mould || null,
-      bom_no: r.bom_no,
-      sales_order: r.sales_order
-    }))
-  };
+	const payload = {
+		production_utilization: utilization.value,
+		plan_start_date: planStart.value,
+		plan_end_date: planEnd.value,
+		lines: selectedRows.value.map((r) => ({
+			row_key: r.rowKey,
+			item_code: r.item_code,
+			schedule_qty: r.schedule_qty,
+			cycle_time: r.cycle_time,
+			cavity: r.cavity,
+			machine: r.machine,
+			mould: r.mould || null,
+			bom_no: r.bom_no,
+			sales_order: r.sales_order,
+		})),
+	};
 
-  const res = await api.validateCapacity(payload);
-  const result = res?.message || [];
+	const res = await api.validateCapacity(payload);
+	const result = res?.data?.message || [];
+	console.log("validate capacity:", result);
+	
+	const map = Object.fromEntries(result.map((r) => [r.rowKey, r]));
 
-  const map = Object.fromEntries(
-    result.map(r => [r.rowKey, r])
-  );
+	// 🔥 FORCE reactive update
+	rows.value = rows.value.map((r) => {
+		const v = map[r.rowKey];
+		if (!v) return r;
 
-  // 🔥 FORCE reactive update
-  rows.value = rows.value.map(r => {
-    const v = map[r.rowKey];
-    if (!v) return r;
-
-    return {
-      ...r,
-      required_hours: v.required_hours,
-      available_hours: v.available_hours,
-      capacity_gap: v.capacity_gap,
-      validation_error: v.ok ? null : "Insufficient capacity"
-    };
-  });
+		return {
+			...r,
+			pcs_per_hour: v.pcs_per_hour,
+			required_hours: v.required_hours,
+			available_hours: v.available_hours,
+			capacity_gap: v.capacity_gap,
+			validation_error: v.ok ? null : "Insufficient capacity",
+		};
+	});
 }
 
 /* ---------------- PREVIEW ---------------- */
 async function loadPreview() {
-  preview.value = {};
+	preview.value = {};
 
-  const payload = {
-    production_utilization: utilization.value,
-    plan_start_date: planStart.value,
-    plan_end_date: planEnd.value,
-    lines: selectedRows.value.map((r) => ({
-      row_key: r.rowKey,
-      item_code: r.item_code,
-      schedule_qty: r.schedule_qty,
-      machine: r.machine,
-      cycle_time: r.cycle_time,
-      cavity: r.cavity,
-      mould: r.mould,
-      bom_no: r.bom_no,
-	  sales_order: r.sales_order,
-    })),
-  };
+	const payload = {
+		production_utilization: utilization.value,
+		plan_start_date: planStart.value,
+		plan_end_date: planEnd.value,
+		lines: selectedRows.value.map((r) => ({
+			row_key: r.rowKey,
+			item_code: r.item_code,
+			schedule_qty: r.schedule_qty,
+			machine: r.machine,
+			cycle_time: r.cycle_time,
+			cavity: r.cavity,
+			mould: r.mould,
+			bom_no: r.bom_no,
+			sales_order: r.sales_order,
+		})),
+	};
 
-  const res = await api.getCapacityPlan(payload);
-  const list = res?.message || [];
+	const res = await api.getCapacityPlan(payload);
+	
+	console.log("Preview Data: ",res.data);
+	const list = res?.data?.message || [];
 
-  list.forEach((p) => {
-    preview.value[p.row_key] = p.preview;
-  });
+	list.forEach((p) => {
+		preview.value[p.row_key] = p.preview;
+	});
 }
-
 
 async function togglePreview(row) {
-  if (preview.value[row.rowKey]) {
-    delete preview.value[row.rowKey];
-    return;
-  }
+	
 
-  const payload = {
-    production_utilization: utilization.value,
-    plan_start_date: planStart.value,
-    plan_end_date: planEnd.value,
-    lines: [{
-      row_key: row.rowKey,
-      item_code: row.item_code,
-      schedule_qty: row.schedule_qty,
-      cycle_time: row.cycle_time,
-      cavity: row.cavity,
-      machine: row.machine,
-      mould: row.mould,
-      bom_no: row.bom_no,
-      sales_order: row.sales_order
-    }]
-  };
+	const payload = {
+		production_utilization: utilization.value,
+		plan_start_date: planStart.value,
+		plan_end_date: planEnd.value,
+		lines: [
+			{
+				row_key: row.rowKey,
+				item_code: row.item_code,
+				schedule_qty: row.schedule_qty,
+				cycle_time: row.cycle_time,
+				cavity: row.cavity,
+				machine: row.machine,
+				mould: row.mould,
+				bom_no: row.bom_no,
+				sales_order: row.sales_order,
+			},
+		],
+	};
 
-  const res = await api.previewCapacityPlan(payload);
-  const list = res?.message || [];
-
-  if (list.length) {
-    preview.value[row.rowKey] = list[0].preview;
-  }
+	const res = await api.previewCapacityPlan(payload);
+	console.log("togglePreview : ",res.data.message);
+	const list = res?.data.message || [];
+	
+	
+	if (list.length) {
+		preview.value[row.rowKey] = list[0].preview;
+	}
 }
-
-
 
 /* ---------------- CREATE ---------------- */
 async function createWorkOrders() {
@@ -336,6 +346,10 @@ async function createWorkOrders() {
 	};
 
 	const res = await api.createWorkOrdersFromMSS(payload);
-	alert.success(`${res.created_work_orders.length} Work Orders created`);
+	frappe.msgprint({
+		title: "Successfully Create Work Orders",
+		indicator: "green",
+		message: `<b>${res.data.message.created_work_orders.length} Work Orders created</b>`,
+	});
 }
 </script>

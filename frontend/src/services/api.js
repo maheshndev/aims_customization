@@ -160,25 +160,10 @@ export const api = {
 		),
 
 	// -------------------- Level 8: Production Summary --------------------
-	getProductionSummary(customer, month, year) {
-		// if (!customer || !month || !year) {
-		// 	return Promise.reject(new Error("Customer, month and year are required"));
-		// }
-
+	getProductionControlDashboard(customer) {
 		return axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
-			{
-				params: { customer: customer, month: month, year: year },
-			}
-		);
-	},
-	getProductionSummary(customer, month, year, options = {}) {
-		return axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_summary",
-			{
-				params: { customer, month, year },
-				signal: options.signal,
-			}
+			"/api/method/aims_customization.api.production_control_dashboard.get_production_control_dashboard",
+			{ params: { customer } }
 		);
 	},
 };

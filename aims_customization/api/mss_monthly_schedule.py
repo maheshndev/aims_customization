@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta, time
 import calendar
 import frappe
-from frappe.utils import nowdate, get_datetime, flt, get_last_day, get_first_day, cint
+from frappe.utils import nowdate, get_datetime, flt, get_last_day, get_first_day, cint, getdate, add_days
 from frappe import _
 from frappe.model.document import Document
 
@@ -476,7 +476,6 @@ def get_sales_orders(search_text: str = None, month: str = None, year: str =None
         like = f"%{search_text}%"
         params.extend([like, like])
 
-   
     date_filter = get_date_range(month, year)
 
     if date_filter:
@@ -800,6 +799,7 @@ def get_raw_materials_for_boms(boms: list = None):
 ##### ------------- Helpers for Capacity Planning -------------------- #####
 
 def _to_time(val):
+    """Convert Frappe time field (time or timedelta) to datetime.time"""
     if isinstance(val, time):
         return val
     if isinstance(val, timedelta):
@@ -807,58 +807,56 @@ def _to_time(val):
         return time((s // 3600) % 24, (s % 3600) // 60, s % 60)
     return None
 
+def combine_datetime(date, t):
+    """Safe combine date and Frappe time/timedelta"""
+    return datetime.combine(date, _to_time(t))
+
 def pcs_per_hour(cycle_time, cavity):
     cycle = flt(cycle_time)
     cavity = max(1, cint(cavity))
-
     if cycle <= 0:
         frappe.throw(_("Invalid cycle time"))
-
     return (3600 / cycle) * cavity
 
 def get_holidays(holiday_list):
     holidays = set()
-    if not holiday_list:
-        return holidays
-
-    for h in frappe.get_all(
-        "Holiday",
-        filters={"parent": holiday_list},
-        fields=["holiday_date"]
-    ):
-        holidays.add(h.holiday_date)
-
+    if holiday_list:
+        for h in frappe.get_all("Holiday", filters={"parent": holiday_list}, fields=["holiday_date"]):
+            holidays.add(h.holiday_date)
     return holidays
 
 def get_shift_windows(start_date, end_date):
+    """Return list of shift windows using Shift Type, with night shift support"""
     windows = []
-    day = get_datetime(start_date)
+    start_date = getdate(start_date)
+    end_date = getdate(end_date)
 
-    while day.date() <= get_datetime(end_date).date():
-        windows.extend([
-            (day.replace(hour=6),  day.replace(hour=14)),
-            (day.replace(hour=14), day.replace(hour=22)),
-            (day.replace(hour=22), (day + timedelta(days=1)).replace(hour=6))
-        ])
-        day += timedelta(days=1)
+    shift_types = frappe.get_all(
+        "Shift Type",
+        fields=["name", "start_time", "end_time"],
+        order_by="start_time"
+    )
+
+    day = start_date
+    while day <= end_date:
+        for shift in shift_types:
+            st = combine_datetime(day, shift.start_time)
+            et = combine_datetime(add_days(day, 1) if shift.end_time <= shift.start_time else day, shift.end_time)
+            windows.append({"shift_type": shift.name, "start": st, "end": et})
+        day = add_days(day, 1)
 
     return windows
 
 def has_overlap(machine, mould, start, end):
-    filters = {
-    "status": ["!=", "Cancelled"],
-    "workstation": machine
-    }
+    """Check if a machine/mould is busy in given window"""
+    filters = {"status": ["!=", "Cancelled"], "workstation": machine}
+    if mould:
+        filters["mould"] = mould
 
     wos = frappe.get_all(
         "Work Order",
         filters=filters,
-        fields=[
-            "actual_start_date",
-            "actual_end_date",
-            "planned_start_date",
-            "planned_end_date"
-        ]
+        fields=["actual_start_date", "actual_end_date", "planned_start_date", "planned_end_date"]
     )
 
     for wo in wos:
@@ -866,133 +864,90 @@ def has_overlap(machine, mould, start, end):
         et = wo.actual_end_date or wo.planned_end_date
         if st and et and st < end and et > start:
             return True
+    return False
 
 def allocate_qty_in_window(remaining, start, end, pcs_hr, utilization):
     hours = (end - start).total_seconds() / 3600
     usable_hours = hours * (utilization / 100)
-
     allowed_qty = int(min(remaining, usable_hours * pcs_hr))
     actual_end = start + timedelta(hours=(allowed_qty / pcs_hr)) if allowed_qty > 0 else start
-
     return allowed_qty, actual_end
 
 def resolve_warehouses(company, item_code):
-   
-    fg = frappe.db.get_value(
-        "Item Default",
-        {
-            "parent": item_code,
-            "company": company
-        },
-        "default_warehouse"
-    )
-
-    if not fg:
-        fg = frappe.db.get_single_value(
-            "Manufacturing Settings",
-            "default_finished_goods_warehouse"
-        )
-
-    if not fg:
-        fg = frappe.db.get_value(
-            "Warehouse",
-            {
-                "warehouse_name": ["like", "%Finished Goods%"],
-                "company": company,
-                "disabled": 0
-            },
-            "name"
-        )
-
-    wip = frappe.db.get_single_value(
-        "Manufacturing Settings",
-        "default_wip_warehouse"
-    )
-
-    if not wip:
-        wip = frappe.db.get_value(
-            "Warehouse",
-            {
-                "warehouse_name": ["like", "%Work In Progress%"],
-                "company": company,
-                "disabled": 0
-            },
-            "name"
-        )
+    """Return FG and WIP warehouses"""
+    fg = frappe.db.get_value("Item Default", {"parent": item_code, "company": company}, "default_warehouse") \
+        or frappe.db.get_single_value("Manufacturing Settings", "default_finished_goods_warehouse") \
+        or frappe.db.get_value("Warehouse", {"warehouse_name": ["like", "%Finished Goods%"], "company": company, "disabled": 0}, "name")
+    
+    wip = frappe.db.get_single_value("Manufacturing Settings", "default_wip_warehouse") \
+        or frappe.db.get_value("Warehouse", {"warehouse_name": ["like", "%Work In Progress%"], "company": company, "disabled": 0}, "name")
 
     if not fg or not wip:
-        frappe.throw(
-            _(
-                "FG / WIP warehouse not configured for company {0}. "
-                "Please set Item Default, Manufacturing Settings, "
-                "or create warehouses named 'Finished Goods' and 'Work In Progress'."
-            ).format(company)
-        )
-
+        frappe.throw(_("FG / WIP warehouse not configured for company {0}").format(company))
+    
     return fg, wip
 
-# ----------------------------------------------------------------------
-# API: VALIDATE CAPACITY
-# ----------------------------------------------------------------------
-@frappe.whitelist()
-def validate_capacity(payload):
-    payload = frappe.parse_json(payload)
-    utilization = flt(payload.get("production_utilization", 100))
-    lines = payload.get("lines", [])
-
-    result = []
-
-    for ln in lines:
-        pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
-        required_hours = ln["schedule_qty"] / pcs_hr
-
-        windows = get_shift_windows(
-            payload["plan_start_date"],
-            payload["plan_end_date"]
-        )
-
-        available = 0
-        for st, et in windows:
-            shift_hours = (et - st).total_seconds() / 3600
-            available += shift_hours * utilization / 100
-
-        result.append({
-            "rowKey": ln["row_key"],
-            "required_hours": round(required_hours, 2),
-            "available_hours": round(available, 2),
-            "capacity_gap": round(available - required_hours, 2),
-            "ok": required_hours <= available
-        })
-
-    return result
-
 def get_last_wo_end(machine, mould=None):
-    filters = {
-        "status": ["!=", "Cancelled"],
-        "workstation": machine
-    }
+    filters = {"status": ["!=", "Cancelled"], "workstation": machine}
     if mould:
         filters["mould"] = mould
 
     wo = frappe.get_all(
         "Work Order",
         filters=filters,
-        fields=[
-            "actual_end_date",
-            "planned_end_date"
-        ],
+        fields=["actual_end_date", "planned_end_date"],
         order_by="COALESCE(actual_end_date, planned_end_date) desc",
         limit=1
     )
-
     if not wo:
         return None
-
     return wo[0].actual_end_date or wo[0].planned_end_date
 
-# ----------------------------------------------------------------------
+def create_work_order(doc_args, operations_args):
+    """Create Work Order and assign operations"""
+    wo = frappe.new_doc("Work Order")
+    for k, v in doc_args.items():
+        setattr(wo, k, v)
+    wo.flags.ignore_permissions = True
+    wo.insert()
+
+    # Assign operations with workstation
+    for op_args in operations_args:
+        op = wo.append("operations", {})
+        for k, v in op_args.items():
+            setattr(op, k, v)
+    wo.save(ignore_permissions=True)
+    return wo.name
+
+# -----------------------------
+# API: VALIDATE CAPACITY
+# -----------------------------
+@frappe.whitelist()
+def validate_capacity(payload):
+    payload = frappe.parse_json(payload)
+    utilization = flt(payload.get("production_utilization", 100))
+    lines = payload.get("lines", [])
+    result = []
+
+    for ln in lines:
+        pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
+        required_hours = ln["schedule_qty"] / pcs_hr
+        windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
+        available = sum((w["end"] - w["start"]).total_seconds()/3600 * utilization/100 for w in windows)
+
+        result.append({
+            "rowKey": ln["row_key"],
+            "pcs_per_hour": round(pcs_hr, 2),
+            "required_hours": round(required_hours, 2),
+            "available_hours": round(available, 2),
+            "capacity_gap": round(available - required_hours, 2),
+            "ok": required_hours <= available
+        })
+    return result
+
+# -----------------------------
 # API: PREVIEW SCHEDULE
-# ----------------------------------------------------------------------
+# -----------------------------
 @frappe.whitelist()
 def preview_capacity_plan(payload):
     payload = frappe.parse_json(payload)
@@ -1001,231 +956,104 @@ def preview_capacity_plan(payload):
 
     pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
     remaining = flt(ln["schedule_qty"])
+    windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
 
-    windows = get_shift_windows(
-        payload["plan_start_date"],
-        payload["plan_end_date"]
-    )
-
-    current_start = (
-        get_last_wo_end(ln["machine"], ln.get("mould"))
-        or get_datetime(f"{payload['plan_start_date']} 06:00:00")
-    )
-
+    current_start = get_last_wo_end(ln["machine"], ln.get("mould")) or combine_datetime(getdate(payload['plan_start_date']), time(6,0))
     preview = []
     shift_no = 1
 
-    for st, et in windows:
+    for w in windows:
+        st, et = w["start"], w["end"]
         if remaining <= 0:
             break
-
-        if st < current_start:
-            st = current_start
+        st = max(st, current_start)
         if st >= et:
             continue
 
-        shift_hours = (et - st).total_seconds() / 3600
-        usable_hours = shift_hours * utilization / 100
-        max_qty = usable_hours * pcs_hr
-        used = min(remaining, max_qty)
-
-        used_hours = used / pcs_hr
-        actual_end = st + timedelta(hours=used_hours)
+        allowed, actual_end = allocate_qty_in_window(remaining, st, et, pcs_hr, utilization)
+        if allowed <= 0:
+            continue
 
         preview.append({
             "shift_no": shift_no,
             "start": st,
             "end": actual_end,
-            "planned_hours": round(used_hours, 2),
-            "qty": round(used, 2)
+            "planned_hours": round(allowed/pcs_hr, 2),
+            "qty": round(allowed, 2)
         })
-
-        remaining -= used
+        remaining -= allowed
         current_start = actual_end
         shift_no += 1
 
-    return [{
-        "row_key": ln["row_key"],
-        "preview": preview
-    }]
+    return [{"row_key": ln["row_key"], "preview": preview}]
 
-@frappe.whitelist()
-def get_capacity_plan(payload_json):
-    payload = json.loads(payload_json)
-    utilization = flt(payload.get("production_utilization") or 100)
-    result = []
-
-    for ln in payload["lines"]:
-        pcs_hr = pcs_per_hour(ln.get("cycle_time"), ln.get("cavity"))
-        remaining = flt(ln["schedule_qty"])
-        preview = []
-
-        windows = get_shift_windows(
-            get_datetime(payload["plan_start_date"]),
-            get_datetime(payload["plan_end_date"])
-        )
-
-        for start, end in windows:
-            if remaining <= 0:
-                break
-
-            used, _ = allocate_qty_in_window(
-                remaining, start, end, pcs_hr, utilization
-            )
-
-            if used <= 0:
-                continue
-
-            shift_no = 1
-
-            preview.append({
-                "shift_no": shift_no,
-                "start": start,
-                "end": end,
-                "planned_hours": round((end - start).total_seconds() / 3600, 2),
-                "qty": used
-            })
-
-            shift_no += 1
-            remaining -= used
-
-        result.append({
-            "item": ln["item_code"],
-            "bom_no": ln.get("bom_no"),
-            "preview": preview
-        })
-
-    return result
-
-# ----------------------------------------------------------------------
+# -----------------------------
 # API: CREATE WORK ORDERS
-# ----------------------------------------------------------------------
+# -----------------------------
 @frappe.whitelist()
-def create_work_orders_from_mss(payload=None):
-    if not payload:
-        frappe.throw("Payload missing")
-
+def create_work_orders_from_mss(payload):
     payload = frappe.parse_json(payload)
     utilization = flt(payload.get("production_utilization", 100))
-
     created = []
 
     for ln in payload.get("lines", []):
         pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
         remaining = flt(ln["schedule_qty"])
-
-        windows = get_shift_windows(
-            payload["plan_start_date"],
-            payload.get("plan_end_date")
-        )
-
-        current_start = (
-            get_last_wo_end(ln["machine"], ln.get("mould"))
-            or get_datetime(f"{payload['plan_start_date']} 06:00:00")
-        )
-        
         so = frappe.get_doc("Sales Order", ln.get("sales_order"))
         fg, wip = resolve_warehouses(so.company, ln["item_code"])
+        windows = get_shift_windows(payload["plan_start_date"], payload.get("plan_end_date"))
 
-        for st, et in windows:
+        current_start = get_last_wo_end(ln["machine"], ln.get("mould")) or combine_datetime(getdate(payload['plan_start_date']), time(6,0))
+
+        # Fetch operations from BOM
+        bom_ops = frappe.get_all(
+            "BOM Operation",
+            filters={"parent": ln.get("bom_no")},
+            fields=["operation", "workstation", "description", "time_in_mins", "workstation_type"],
+            order_by="idx asc"
+        )
+
+        operations_args = []
+        for op in bom_ops:
+            operations_args.append({
+                "workstation": op.workstation,
+                "operation": op.operation,
+                "bom_no": ln.get("bom_no"),
+                "description": op.description,
+                "workstation_type": op.workstation_type,
+                "status": "Pending",
+                "time_in_mins": op.time_in_mins or 1
+            })
+
+        for w in windows:
+            st, et = w["start"], w["end"]
             if remaining <= 0:
                 break
-
-            if st < current_start:
-                st = current_start
-            if st >= et:
+            st = max(st, current_start)
+            if st >= et or has_overlap(ln["machine"], ln.get("mould"), st, et):
                 continue
 
-            shift_hours = (et - st).total_seconds() / 3600
-            usable_hours = shift_hours * utilization / 100
-            max_qty = usable_hours * pcs_hr
-            used = min(remaining, max_qty)
-
+            used, actual_end = allocate_qty_in_window(remaining, st, et, pcs_hr, utilization)
             if used <= 0:
                 continue
 
-            used_hours = used / pcs_hr
-            actual_end = st + timedelta(hours=used_hours)
+            doc_args = {
+                "company": so.company,
+                "production_item": ln["item_code"],
+                "bom_no": ln["bom_no"],
+                "mould": ln.get("mould"),
+                "sales_order": ln.get("sales_order"),
+                "fg_warehouse": fg,
+                "wip_warehouse": wip,
+                "qty": used,
+                "planned_start_date": st,
+                "planned_end_date": actual_end
+            }
 
-            wo = frappe.new_doc("Work Order")
-            wo.company = so.company
-            wo.production_item = ln["item_code"]
-            wo.bom_no = ln["bom_no"]
-            wo.mould = ln.get("mould")
-            wo.sales_order = ln.get("sales_order")
-            wo.fg_warehouse = fg
-            wo.wip_warehouse = wip
-            wo.qty = used
-            wo.planned_start_date = st
-            wo.planned_end_date = actual_end
-            wo.flags.ignore_permissions = True
-            wo.insert()
-
-            for op in wo.operations or []:
-                op.workstation = ln["machine"]
-            wo.save(ignore_permissions=True)
-
-            created.append(wo.name)
-
+            wo_name = create_work_order(doc_args, operations_args)
+            created.append(wo_name)
             remaining -= used
             current_start = actual_end
-
-    return {
-        "status": "success",
-        "created_work_orders": created
-    }
-
-@frappe.whitelist()
-def create_mss_plan(payload_json):
-    payload = json.loads(payload_json)
-    utilization = flt(payload.get("production_utilization") or 100)
-    created = []
-
-    for ln in payload["lines"]:
-        pcs_hr = pcs_per_hour(ln.get("cycle_time"), ln.get("cavity"))
-        remaining = flt(ln["schedule_qty"])
-
-        so = frappe.get_doc("Sales Order", ln["sales_order"])
-        fg, wip = resolve_warehouses(so.company, ln["item_code"])
-        
-
-        windows = get_shift_windows(
-            get_datetime(payload["plan_start_date"]),
-            get_datetime(payload["plan_end_date"])
-        )
-
-        for start, end in windows:
-            if remaining <= 0:
-                break
-
-            if has_overlap(ln["machine"], ln.get("mould"), start, end):
-                continue
-
-            allowed, actual_end = allocate_qty_in_window(
-                remaining, start, end, pcs_hr, utilization
-            )
-
-            if allowed <= 0:
-                continue
-
-            wo = frappe.new_doc("Work Order")
-            wo.company = so.company
-            wo.production_item = ln["item_code"]
-            wo.qty = allowed
-            wo.bom_no = ln["bom_no"]
-            wo.workstation = ln["machine"]
-            wo.mould = ln.get("mould")
-            wo.sales_order = ln["sales_order"]
-            wo.planned_start_date = start
-            wo.planned_end_date = actual_end
-            wo.fg_warehouse = fg
-            wo.wip_warehouse = wip
-            wo.flags.ignore_permissions = True
-            wo.insert()
-
-            created.append(wo.name)
-            
-            remaining -= allowed
 
         if remaining > 0:
             frappe.throw(_("Insufficient capacity for {0}").format(ln["item_code"]))
@@ -1383,89 +1211,133 @@ def get_job_cards_for_work_orders(wo_list: str | list = None):
 ##### -------------------- Level 9: Production Summary -------------------- #####
 
 @frappe.whitelist()
-def get_production_summary(customer=None, month=None, year=None):
+def get_production_control_dashboard(customer = None, month: str = None, year: str = None):
+    if not customer:
+        return []
 
-    if not customer or not month or not year:
-        return {"items": [], "totals": {}}
-
-    month = str(month).zfill(2)
-    from_date = get_first_day(f"{year}-{month}-01")
-    to_date = get_last_day(from_date)
-
-    bo_list = frappe.get_all(
-        "Blanket Order",
-        filters={
-            "customer": customer,
-            "order_date": ["between", [from_date, to_date]],
-            "docstatus": 1
-        },
-        fields=["name"]
-    )
-
-    if not bo_list:
-        return {"items": [], "totals": {}}
-
-    bo_names = [b.name for b in bo_list]
-
-    data = frappe.db.sql("""
+    rows = frappe.db.sql("""
         SELECT
+            bo.name AS blanket_order,
+            boi.name AS bo_item,
             boi.item_code,
             boi.item_name,
-            SUM(boi.qty) AS order_qty,
-            COALESCE(SUM(wo.qty), 0) AS planned_qty,
-            COALESCE(SUM(wo.produced_qty), 0) AS produced_qty,
-            COALESCE(SUM(sle_del.qty), 0) AS dispatched_qty,
-            COALESCE(SUM(sle_wip.qty), 0) AS material_transferred,
-            COALESCE(bin.actual_qty, 0) AS stock_qty
+            boi.qty AS order_qty,
+
+            so.name AS sales_order,
+
+            bom.name AS bom_no,
+
+            wo.name AS work_order,
+            wo.status AS wo_status,
+            wo.qty AS wo_qty,
+            wo.produced_qty,
+            wo.planned_start_date,
+            wo.planned_end_date,
+
+            jc.name AS job_card,
+            jc.status AS job_card_status,
+            jc.start_time,
+            jc.end_time,
+
+            dn.name AS delivery_note,
+            dn.posting_date
+
         FROM `tabBlanket Order Item` boi
-        JOIN `tabBlanket Order` bo ON bo.name = boi.parent
+        INNER JOIN `tabBlanket Order` bo
+            ON bo.name = boi.parent AND bo.docstatus = 1
+
+        LEFT JOIN `tabSales Order Item` soi
+            ON soi.blanket_order = bo.name
+            AND soi.item_code = boi.item_code
+        LEFT JOIN `tabSales Order` so
+            ON so.name = soi.parent AND so.docstatus = 1
+
+        LEFT JOIN `tabBOM` bom
+            ON bom.item = boi.item_code
+            AND bom.is_active = 1
+
         LEFT JOIN `tabWork Order` wo
-            ON wo.sales_order = bo.name
+            ON wo.sales_order = so.name
             AND wo.production_item = boi.item_code
             AND wo.docstatus = 1
-        LEFT JOIN `tabStock Ledger Entry` sle_del
-            ON sle_del.voucher_type = 'Delivery Note'
-            AND sle_del.item_code = boi.item_code
-            AND sle_del.docstatus = 1
-        LEFT JOIN `tabStock Ledger Entry` sle_wip
-            ON sle_wip.voucher_type = 'Stock Entry'
-            AND sle_wip.purpose = 'Material Transfer for Manufacture'
-            AND sle_wip.item_code = boi.item_code
-            AND sle_wip.docstatus = 1
-        LEFT JOIN `tabBin` bin ON bin.item_code = boi.item_code
-        WHERE bo.name IN %(bo_names)s
-        GROUP BY boi.item_code
-    """, {"bo_names": tuple(bo_names)}, as_dict=True)
 
-    items = []
-    totals = dict(planned=0, produced=0, pending=0, wip=0, dispatched=0)
+        LEFT JOIN `tabJob Card` jc
+            ON jc.work_order = wo.name
+            AND jc.docstatus = 1
 
-    for d in data:
-        planned = flt(d.planned_qty)
-        produced = flt(d.produced_qty)
-        pending = planned - produced
-        wip = max(flt(d.material_transferred) - produced, 0)
-        balance = flt(d.order_qty) - flt(d.dispatched_qty)
+        LEFT JOIN `tabDelivery Note Item` dni
+            ON dni.against_sales_order = so.name
+            AND dni.item_code = boi.item_code
+        LEFT JOIN `tabDelivery Note` dn
+            ON dn.name = dni.parent
+            AND dn.docstatus = 1
 
-        items.append({
-            "item_code": d.item_code,
-            "item_name": d.item_name,
-            "order_qty": flt(d.order_qty),
-            "planned_qty": planned,
-            "produced_qty": produced,
-            "pending_qty": pending,
-            "wip_qty": wip,
-            "available_stock": flt(d.stock_qty),
-            "dispatched_qty": flt(d.dispatched_qty),
-            "balance_to_dispatch": balance
-        })
+        WHERE bo.customer = %(customer)s
+        ORDER BY bo.name, boi.idx
+    """, {"customer": customer}, as_dict=True)
 
-        totals["planned"] += planned
-        totals["produced"] += produced
-        totals["pending"] += pending
-        totals["wip"] += wip
-        totals["dispatched"] += flt(d.dispatched_qty)
+    return normalize(rows)
+def normalize(rows):
+    data = {}
 
-    return {"items": items, "totals": totals}
+    for r in rows:
+        key = (r.blanket_order, r.bo_item)
 
+        if key not in data:
+            data[key] = {
+                "blanket_order": r.blanket_order,
+                "item_code": r.item_code,
+                "item_name": r.item_name,
+                "order_qty": flt(r.order_qty),
+                "sales_order": r.sales_order,
+                "bom": r.bom_no,
+                "work_order": r.work_order,
+                "wo_status": r.wo_status,
+                "produced_qty": flt(r.produced_qty),
+                "job_cards": [],
+                "delivery_notes": [],
+                "timeline": []
+            }
 
+            if r.planned_start_date and r.planned_end_date:
+                data[key]["timeline"].append({
+                    "label": "Work Order",
+                    "start": r.planned_start_date,
+                    "end": r.planned_end_date
+                })
+
+        if r.job_card and r.start_time and r.end_time:
+            data[key]["job_cards"].append({
+                "name": r.job_card,
+                "status": r.job_card_status
+            })
+
+            data[key]["timeline"].append({
+                "label": f"Job Card {r.job_card}",
+                "start": r.start_time,
+                "end": r.end_time
+            })
+
+        if r.delivery_note:
+            data[key]["delivery_notes"].append(r.delivery_note)
+
+    result = []
+    for row in data.values():
+        row["status"] = compute_status(row)
+        result.append(row)
+
+    return result
+def compute_status(r):
+    if not r["bom"]:
+        return "BOM Missing"
+
+    if not r["work_order"]:
+        return "Work Order Not Created"
+
+    if r["produced_qty"] >= r["order_qty"]:
+        return "Production Completed"
+
+    if r["job_cards"]:
+        return "In Production"
+
+    return "Planned"
