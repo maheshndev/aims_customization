@@ -1,10 +1,44 @@
 import frappe
-from frappe import _
-from frappe.utils import cint
-import json
 import calendar
-from datetime import date
-from frappe.utils import getdate, flt, cint
+from frappe.utils import nowdate, getdate
+from frappe.utils.data import flt, cint
+
+# ---------------------------------------------------------------------
+# COMMON HELPERS
+# ---------------------------------------------------------------------
+
+def get_month_days(month, year):
+    return calendar.monthrange(int(year), int(month))[1]
+
+def shift_hours_between(st, et):
+    start = st.hour + st.minute / 60
+    end = et.hour + et.minute / 60
+    if end < start:
+        return (24 - start) + end
+    return end - start
+
+def get_shift_info():
+    shifts = frappe.get_all(
+        "Shift Type",
+        fields=["start_time", "end_time"]
+    )
+
+    daily_hours = 0
+    for s in shifts:
+        daily_hours += shift_hours_between(s.start_time, s.end_time)
+
+    return {
+        "shift_count": len(shifts),
+        "daily_hours": round(daily_hours, 2)
+    }
+
+def pcs_per_hour(cycle_time, cavity):
+    return (3600 / max(1, flt(cycle_time))) * max(1, cint(cavity))
+
+
+# ---------------------------------------------------------------------
+# CUSTOMER SEARCH
+# ---------------------------------------------------------------------
 
 @frappe.whitelist()
 def get_customer_list(search_text: str = None, customer_id: str = None, limit: int = 20):
@@ -28,62 +62,41 @@ def get_customer_list(search_text: str = None, customer_id: str = None, limit: i
     
     return [{"name": r["name"], "customer_name": r["customer_name"]} for r in rows]
 
-
-def get_month_days(month, year):
-    return calendar.monthrange(int(year), int(month))[1]
-
-def get_shift_hours():
-    shifts = frappe.get_all(
-        "Shift Type",
-        fields=["start_time", "end_time"]
-    )
-
-    total_hours = 0
-    for s in shifts:
-        st = s.start_time
-        et = s.end_time
-        if et < st:
-            total_hours += (24 - st.hour) + et.hour
-        else:
-            total_hours += (et.hour - st.hour)
-
-    return {
-        "shift_count": len(shifts),
-        "daily_hours": total_hours
-    }
-
-def pcs_per_hour(cycle_time, cavity):
-    return (3600 / flt(cycle_time)) * max(1, cint(cavity))
-
-
 @frappe.whitelist()
-def get_machine_capacity_monthly(month, year, customer, utilization=90):
+def get_machine_capacity_monthly(month=None, year=None, customer=None, utilization=90):
+
+    today = getdate(nowdate())
+    # ✅ SAFE parsing
+    try:
+        month = int(month) if month not in (None, "", 0) else today.month
+        year = int(year) if year not in (None, "", 0) else today.year
+    except Exception:
+        frappe.throw("Invalid month or year")
+
     month_days = get_month_days(month, year)
-    shift_info = get_shift_hours()
+    shift = get_shift_info()
 
     machines = frappe.get_all(
         "Workstation",
-        fields=["name"],
-        filters={"disabled": 0}
+        filters={"disabled": 0},
+        pluck="name"
     )
 
     data = []
 
-    for m in machines:
+    for machine in machines:
         required_hrs = frappe.db.sql("""
-            SELECT SUM(wo.qty / (
-                (3600 / IFNULL(i.cycle_time,1)) * IFNULL(i.cavity,1)
-            ))
-            FROM `tabWork Order` wo
-            JOIN `tabItem` i ON i.name = wo.production_item
-            WHERE wo.workstation = %s
+            SELECT COALESCE(SUM(woo.time_in_mins), 0) / 60
+            FROM `tabWork Order Operation` woo
+            JOIN `tabWork Order` wo ON wo.name = woo.parent
+            WHERE woo.workstation = %s
               AND MONTH(wo.planned_start_date) = %s
               AND YEAR(wo.planned_start_date) = %s
-        """, (m.name, month, year))[0][0] or 0
+              AND (%s IS NULL OR %s = '' OR wo.customer = %s)
+        """, (machine, month, year, customer, customer, customer))[0][0]
 
         month_capacity = (
-            shift_info["daily_hours"]
-            * shift_info["shift_count"]
+            shift["daily_hours"]
             * month_days
             * (flt(utilization) / 100)
         )
@@ -91,38 +104,75 @@ def get_machine_capacity_monthly(month, year, customer, utilization=90):
         balance = month_capacity - required_hrs
 
         data.append({
-            "machine": m.name,
+            "machine": machine,
             "month_days": month_days,
-            "daily_capacity_hrs": shift_info["daily_hours"],
-            "shifts": shift_info["shift_count"],
+            "daily_capacity_hrs": shift["daily_hours"],
+            "shifts": shift["shift_count"],
             "utilization": utilization,
             "month_capacity": round(month_capacity, 2),
             "required_hours": round(required_hrs, 2),
             "balance_hours": round(balance, 2),
-            "required_shifts": round(required_hrs / shift_info["daily_hours"], 2)
+            "required_shifts": round(
+                required_hrs / shift["daily_hours"], 2
+            ) if shift["daily_hours"] else 0
         })
 
     return data
 
+
+
+
+# ---------------------------------------------------------------------
+# ITEM CAPACITY (TABLE 2 – MACHINE WISE)
+# ---------------------------------------------------------------------
+
 @frappe.whitelist()
-def get_item_capacity_monthly(month, year, customer):
+def get_item_capacity_monthly(month, year, customer=None, machines=None):
+    """
+    Fetch item capacity for selected machines in a given month/year
+    """
+
+    # normalize machines input
+    if isinstance(machines, str):
+        machines = [machines]
+
+    if not machines:
+        return []
+
+    month_days = get_month_days(month, year)
+    shift = get_shift_info()
+
     rows = frappe.db.sql("""
         SELECT
             so.customer_name,
             so.name AS sales_order,
-            soi.item_code,
-            soi.item_name,
+            wo.production_item,
+            i.item_name,
             soi.qty AS schedule_qty,
-            i.cycle_time,
+            wo.mould,
             i.cavity,
-            wo.workstation
-        FROM `tabSales Order Item` soi
-        JOIN `tabSales Order` so ON so.name = soi.parent
-        LEFT JOIN `tabWork Order` wo ON wo.sales_order = so.name
-        JOIN `tabItem` i ON i.name = soi.item_code
-        WHERE MONTH(so.transaction_date) = %s
-          AND YEAR(so.transaction_date) = %s
-    """, (month, year), as_dict=True)
+            i.cycle_time,
+            woo.workstation
+        FROM `tabWork Order Operation` woo
+        JOIN `tabWork Order` wo ON wo.name = woo.parent
+        JOIN `tabItem` i ON i.name = wo.production_item
+        JOIN `tabSales Order` so ON so.name = wo.sales_order
+        JOIN `tabSales Order Item` soi
+             ON soi.parent = so.name
+            AND soi.item_code = wo.production_item
+        WHERE woo.workstation IN %(machines)s
+          AND MONTH(wo.planned_start_date) = %(month)s
+          AND YEAR(wo.planned_start_date) = %(year)s
+          {customer_filter}
+        ORDER BY so.customer_name, so.name
+    """.format(
+        customer_filter="AND wo.customer = %(customer)s" if customer else ""
+    ), {
+        "machines": tuple(machines),
+        "month": month,
+        "year": year,
+        "customer": customer
+    }, as_dict=True)
 
     result = []
 
@@ -133,14 +183,18 @@ def get_item_capacity_monthly(month, year, customer):
         result.append({
             "customer": r.customer_name,
             "sales_order": r.sales_order,
-            "item_code": r.item_code,
+            "item_code": r.production_item,
             "item_name": r.item_name,
             "schedule_qty": r.schedule_qty,
+            "mould": r.mould,
             "cavity": r.cavity,
             "cycle_time": r.cycle_time,
             "machine": r.workstation,
             "machine_hourly_capacity": round(pcs_hr, 2),
-            "loading_hours": round(loading_hrs, 2)
+            "loading_hours": round(loading_hrs, 2),
+            "month_days": month_days,
+            "daily_capacity_hrs": shift["daily_hours"],
+            "utilization": 90
         })
 
     return result
