@@ -4,7 +4,6 @@
 
 		<div class="flex flex-wrap gap-4">
 			
-
 			<div class="relative flex-1 min-w-[150px] max-w-[200px]">
 				<label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
 				<div class="relative">
@@ -122,12 +121,11 @@ export default {
 	data() {
 		return {
 			dropdownOpen: false,
-			searchCustomerText: "", // Input text for search
-			customers: [], // Search results
+			searchCustomerText: "", 
+			customers: [], 
 			highlightedIndex: -1,
 			localFilters: { ...this.modelValue },
 			customerSearchLoading: false,
-			// Debounced function holder
 			debouncedFetchCustomers: null,
 
 			monthOptions: [
@@ -177,7 +175,6 @@ export default {
 	},
 
 	methods: {
-		// --- Utility ---
 		debounce(func, delay) {
 			let timeout;
 			return function (...args) {
@@ -188,11 +185,9 @@ export default {
 			};
 		},
 
-		// --- Customer Logic ---
 		async fetchCustomers(searchText = "") {
 			this.customerSearchLoading = true;
 			try {
-				// The API call uses the corrected `getCustomers` which supports (search, customerId)
 				const res = await api.getCustomers(searchText);
 				this.customers = res.data.message.map((c) => ({
 					value: c.name,
@@ -206,32 +201,23 @@ export default {
 			}
 		},
 
-		// NEW: Handle focus event to immediately load the default list
 		async handleCustomerFocus() {
 			this.dropdownOpen = true;
 
-			// If input is empty and we don't have customers loaded, fetch the default list immediately (no debounce)
 			if (!this.searchCustomerText && this.customers.length === 0) {
 				await this.fetchCustomers("");
 			}
 		},
 
-		// FIX: Always trigger the debounced fetch, letting the backend handle the empty search string.
 		handleCustomerInput() {
-			// Clear selected customer when user starts typing
 			this.localFilters.customer = "";
-
-			// Always trigger the debounced fetch. If searchCustomerText is empty,
-			// the backend will return the default top list.
 			this.debouncedFetchCustomers(this.searchCustomerText);
 		},
 
 		async setInitialCustomerDisplay(customerId) {
-			// Fetch customer name by ID to display it in the input field
 			if (!customerId) return;
 
 			try {
-				// Call the improved backend function with customer_id
 				const res = await api.getCustomers(null, customerId);
 				if (res.data.message && res.data.message.length > 0) {
 					const customer = res.data.message[0];
@@ -239,19 +225,18 @@ export default {
 				}
 			} catch (error) {
 				console.error("Failed to fetch initial customer display:", error);
-				this.searchCustomerText = customerId; // Fallback to ID
+				this.searchCustomerText = customerId; 
 			}
 		},
 
 		selectCustomer(customer) {
 			this.localFilters.customer = customer.value;
-			this.searchCustomerText = customer.label; // Set input value to display label
+			this.searchCustomerText = customer.label; 
 			this.dropdownOpen = false;
-			this.customers = []; // Clear results after selection
+			this.customers = []; 
 			this.highlightedIndex = -1;
 		},
 
-		// --- Navigation ---
 		highlightNext() {
 			if (this.highlightedIndex < this.customers.length - 1) this.highlightedIndex++;
 		},
@@ -263,7 +248,6 @@ export default {
 				this.selectCustomer(this.customers[this.highlightedIndex]);
 		},
 
-		// --- Clearing ---
 		clearCustomerFilterOnly() {
 			this.localFilters.customer = "";
 			this.dropdownOpen = false;
@@ -302,10 +286,8 @@ export default {
 	},
 
 	mounted() {
-		// Initialize debounced function on mount
 		this.debouncedFetchCustomers = this.debounce(this.fetchCustomers, 300);
 
-		// Set initial customer display name if a customer ID is already set
 		if (this.localFilters.customer) {
 			this.setInitialCustomerDisplay(this.localFilters.customer);
 		}

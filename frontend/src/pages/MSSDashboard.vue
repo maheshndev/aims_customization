@@ -11,8 +11,8 @@
       <BlanketOrders :filters="filters" v-model:selected="selected.blanketOrders" />
     </SectionCard> -->
 
-    <SectionCard title="Open Blanket Order Line Items">
       <!-- Step 1: Select Blanket Order LINE ITEMS -->
+    <SectionCard title="Open Blanket Order Line Items">
       <BlanketOrderItems :filters="filters" :selected-bo-names="selected.blanketOrders.map((b) => b.name)"
         v-model:selected="selected.items" />
     </SectionCard>
@@ -22,36 +22,38 @@
       <SalesOrders :filters="filters" :bo-items="selected.items" v-model:selected="selected.salesOrders" />
     </SectionCard>
 
-    <!-- BOMs -->
+    <!-- Step 3: BOMs -->
     <SectionCard title="Bill Of Material">
       <BOMList :sales-orders="selected.salesOrders" v-model:selected="selected.boms"
         @update:capBOMs="(val) => (selected.bomsObjects = val)" />
     </SectionCard>
 
-    <!-- Raw Materials -->
+    <!-- Step 4: Raw Materials -->
     <SectionCard title="Raw Materials">
       <RawMaterials :boms="selected.boms" :filters="filters" v-model:selected="selected.rawMaterials" />
     </SectionCard>
 
+    <!-- Step 5: Capacity Planner -->
     <SectionCard title="Capacity Planner">
       <CapacityPlanner :boms="selected.boms" :cap-boms="selected.bomsObjects" :filters="filters"
         :available-machine-hours="machineCapacity" @capacity-updated="handleCapacityUpdate" />
     </SectionCard>
 
-    <BOMComparisonModal :open-compare="state.showCompareModal" :boms="selectedBOMObjects" :raw-materials="rawMaterials"
+    <!-- BOM Comparison Modal -->
+    <BOMComparisonModal :open-compare="state.showCompareModal" :boms="selected.bomsObjects" :raw-materials="selected.rawMaterials"
       @close="state.showCompareModal = false" />
 
-    <!-- Work Orders -->
+    <!--Step 6: Work Orders -->
     <SectionCard title="Work Orders">
       <WorkOrders :sales-orders="selected.salesOrders" v-model:selected="selected.workOrders" />
     </SectionCard>
 
-    <!-- Job Cards -->
+    <!-- Step 7: Job Cards -->
     <SectionCard title="Job Cards">
       <JobCards :work-orders="selected.workOrders" v-model:selected="selected.jobCards" />
     </SectionCard>
 
-    <!-- Production Summary Section -->
+    <!-- Step 8: Production Summary Section -->
     <SectionCard title="Production Summary">
       <ProductionSummary :filters="filters" :job-cards="selected.jobCards" />
     </SectionCard>
@@ -146,6 +148,3 @@ export default {
   },
 };
 </script>
-<style>
-/* only custom overrides here */
-</style>

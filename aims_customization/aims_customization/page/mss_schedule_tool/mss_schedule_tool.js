@@ -31,15 +31,20 @@ function load_vue_app() {
             const mountDiv = document.querySelector("#mss-vue-app");
 
             if (mountDiv) {
-                console.log("Mount point found, initializing Vue app…");
+                console.log("Mount point found, initializing MSS Dashboard…");
 
-                if (window.__MSS_VUE_MOUNTED__) {
+                if (window.__MSS_DASHBOARD_MOUNTED__) {
                     clearInterval(interval);
                     return;
                 }
 
-                window.__MSS_VUE_MOUNTED__ = true;
-                window.initVueApp();
+                window.__MSS_DASHBOARD_MOUNTED__ = true;
+                if (window.initMSSDashboard) {
+                    window.initMSSDashboard();
+                } else if (window.initVueApp) {
+                    // fallback for older builds
+                    window.initVueApp();
+                }
 
                 clearInterval(interval); // ← stop repeats
             }

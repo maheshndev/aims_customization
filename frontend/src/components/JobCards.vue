@@ -1,7 +1,6 @@
 <template>
   <div class="job-cards rounded shadow-sm p-4 bg-white">
 
-    <!-- Header Actions -->
     <div class="flex items-center gap-2 mb-3">
       <button @click="selectAll" :disabled="!jobCards.length" class="px-3 py-1 bg-blue-100 text-black rounded text-sm">
         Select All
@@ -12,11 +11,9 @@
       <span class="text-sm text-gray-500 ml-2">Selected: {{ selectedJobCards.length }}</span>
     </div>
 
-    <!-- Loading / Error -->
     <div v-if="loading" class="text-gray-500">Loading Job Cards...</div>
     <div v-if="error" class="text-red-500 mb-2">{{ error }}</div>
 
-    <!-- Table -->
     <div v-if="jobCards.length && !loading" class="overflow-auto rounded-b-2xl">
       <table class="table-auto min-w-[1400px] border-collapse w-full">
         <thead class="bg-gray-100 uppercase">
@@ -90,21 +87,18 @@
 import { ref, watch, computed } from "vue";
 import { api } from "../services/api";
 
-/* ---------------- Props ---------------- */
 const props = defineProps({
   workOrders: { type: Array, default: () => [] }
 });
 
-/* ---------------- Emits ---------------- */
 const emit = defineEmits(["update:selected"]);
 
-/* ---------------- State ---------------- */
 const jobCards = ref([]);
 const selectedIds = ref([]);
 const loading = ref(false);
 const error = ref(null);
 
-/* ---------------- Computed ---------------- */
+
 const selectedJobCards = computed(() =>
   jobCards.value.filter(jc => selectedIds.value.includes(jc.job_card))
 );
@@ -113,15 +107,12 @@ const isAllSelected = computed(() =>
   jobCards.value.length && selectedIds.value.length === jobCards.value.length
 );
 
-/* ---------------- Actions ---------------- */
 function selectAll() { selectedIds.value = jobCards.value.map(jc => jc.job_card); }
 function unselectAll() { selectedIds.value = []; }
 function toggleAll(e) { e.target.checked ? selectAll() : unselectAll(); }
 
-/* ---------------- Watch Selection ---------------- */
 watch(selectedJobCards, (val) => { emit("update:selected", val); });
 
-/* ---------------- Fetch Job Cards ---------------- */
 async function fetchJobCards() {
   if (!props.workOrders.length) return;
   loading.value = true;
@@ -141,10 +132,6 @@ async function fetchJobCards() {
   }
 }
 
-/* ---------------- Watch Work Orders ---------------- */
 watch(() => props.workOrders, fetchJobCards, { immediate: true });
 </script>
 
-<style>
-/* Tailwind + custom overrides */
-</style>

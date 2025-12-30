@@ -1,15 +1,12 @@
 <template>
   <div class="sales-orders rounded-xl shadow-sm p-2">
     <p>System performs monthly machine capacity planning for the selected line.</p>
-    <!-- Loading -->
     <div v-if="loading" class="text-gray-500 animate-pulse">Loading Sales Orders...</div>
 
-    <!-- Error -->
     <div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4">
       {{ error }}
     </div>
 
-    <!-- ACTIONS -->
     <div v-if="orders.length && !loading" class="flex justify-start gap-3 mb-3">
       <button class="px-3 py-1 bg-blue-100 text-black rounded " @click="selectAll">
         Select All
@@ -22,7 +19,6 @@
       </button>
     </div>
 
-    <!-- SALES ORDER TABLE -->
     <div v-if="orders.length && !loading" class="overflow-auto rounded-b-xl">
       <table class="min-w-[1200px] table-auto divide-y divide-gray-200 border">
         <thead class="bg-gray-100 uppercase">
@@ -70,12 +66,10 @@
       </table>
     </div>
 
-    <!-- EMPTY STATE -->
     <div v-if="!orders.length && !loading" class="text-gray-500 text-center mt-4">
       No Sales Orders found.
     </div>
 
-    <!-- FINISHED GOODS SECTION -->
     <div v-if="fgItems.length" class="mt-6 border-t pt-4 overflow-auto rounded-b-xl">
       <h3 class="font-bold text-lg mb-2">Sales Order Line Items</h3>
       <button class="px-3 py-1 bg-gray-200 text-black rounded shadow hover:bg-green-300 m-1"
@@ -145,17 +139,10 @@ const selectedLocal = ref([]);
 const fgItems = ref([]);
 const selectedFGItems = ref([]);
 
-
-// ----------------------------------------------------
-// ALL SELECTED CHECKBOX
-// ----------------------------------------------------
 const isAllSelected = computed(
   () => orders.value.length > 0 && selectedLocal.value.length === orders.value.length
 );
 
-// ----------------------------------------------------
-// SELECT HANDLERS
-// ----------------------------------------------------
 const selectAll = () => {
   selectedLocal.value = orders.value.map((o) => o.name);
   processFGItems();
@@ -169,9 +156,6 @@ const unselectAll = () => {
 
 const toggleSelectAll = () => (isAllSelected.value ? unselectAll() : selectAll());
 
-// ----------------------------------------------------
-// Collect FG items from selected Sales Orders
-// ----------------------------------------------------
 const processFGItems = () => {
   const selectedOrders = orders.value.filter((o) => selectedLocal.value.includes(o.name));
 
@@ -186,7 +170,6 @@ const processFGItems = () => {
   emit("update:selected", selectedLocal.value);
 };
 
-// When checkbox changes
 watch(selectedLocal, processFGItems);
 
 const createMixPlannerBOM = () => {
@@ -211,13 +194,11 @@ const createMixPlannerBOM = () => {
   } else if (item_group === "Semi Finish Good") {
     bom_type = "SFG";
   } else {
-    bom_type = ""; // default or ignore
+    bom_type = ""; 
   }
 
-  // Build URL with FG Item + Qty + Type
   const url = `/app/bom/new-bom` + `?item=${fgItem}` + `&bom_type=${bom_type}`;
 
-  // window.location.href = url;
   window.open(url, "_blank");
 };
 
@@ -225,9 +206,7 @@ const OpenSalesOrder = (salesOrderID) => {
   const url = `/app/sales-order/` + salesOrderID;
   window.open(url, "_blank");
 };
-// ----------------------------------------------------
-// FETCH ORDERS WHEN FILTERS CHANGE
-// ----------------------------------------------------
+
 const fetchOrders = async () => {
   if (!props.filters) {
     return;
@@ -267,6 +246,3 @@ const refreshOrders = async () => {
 
 watch(() => [props.filters], fetchOrders, { immediate: true, deep: true });
 </script>
-<style>
-/* only custom overrides here */
-</style>

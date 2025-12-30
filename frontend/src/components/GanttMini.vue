@@ -25,7 +25,6 @@ const props = defineProps({
   }
 })
 
-/* ---------------- TIME RANGE ---------------- */
 const minTime = computed(() =>
   Math.min(...props.bars.map(b => +new Date(b.start)))
 )
@@ -34,7 +33,6 @@ const maxTime = computed(() =>
   Math.max(...props.bars.map(b => +new Date(b.end)))
 )
 
-/* ---------------- STYLE CALC ---------------- */
 function barStyle(b) {
   if (!b.start || !b.end || minTime.value === maxTime.value) {
     return { display: "none" }

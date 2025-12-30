@@ -2,18 +2,15 @@
   <div v-if="open" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
     <div class="bg-white rounded-xl shadow-xl w-11/12 max-w-6xl p-6 relative">
 
-      <!-- Header -->
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold">BOM Comparison</h2>
         <button @click="closeModal" class="text-gray-500 hover:text-black text-xl">✕</button>
       </div>
 
-      <!-- Validation -->
       <div v-if="boms.length < 2" class="text-red-600 font-medium text-center py-4">
         Please select at least 2 BOMs to compare.
       </div>
 
-      <!-- MAIN COMPARISON GRID -->
       <div v-if="boms.length >= 2" class="overflow-x-auto">
 
         <table class="min-w-full border border-gray-300 rounded-md">
@@ -48,7 +45,6 @@
 
       </div>
 
-      <!-- RAW MATERIAL COMPARISON -->
       <div class="mt-6">
         <h3 class="text-lg font-semibold mb-2">Raw Material Comparison</h3>
 
@@ -84,7 +80,6 @@
 
       </div>
 
-      <!-- Footer -->
       <div class="mt-6 text-right">
         <button
           @click="closeModal"
@@ -103,15 +98,12 @@ import { computed } from "vue";
 
 const props = defineProps({
   open: Boolean,
-  boms: { type: Array, default: () => [] },          // selected BOM objects
-  rawMaterials: { type: Object, default: () => ({}) } // { bom_no: [RM list] }
+  boms: { type: Array, default: () => [] },          
+  rawMaterials: { type: Object, default: () => ({}) } 
 });
 
 const emit = defineEmits(["close"]);
 
-// ----------------------------------------------------------
-// Fields to compare
-// ----------------------------------------------------------
 const fields = [
   { key: "item_code", label: "Item Code" },
   { key: "bom_qty", label: "BOM Qty" },
@@ -125,17 +117,11 @@ const fields = [
   { key: "uom", label: "UOM" },
 ];
 
-// ----------------------------------------------------------
-// Check if a field differs across selected BOMs
-// ----------------------------------------------------------
 const isDifferent = (key) => {
   const values = props.boms.map(b => b[key]);
   return new Set(values).size > 1;
 };
 
-// ----------------------------------------------------------
-// Combine all raw material item codes
-// ----------------------------------------------------------
 const allRawMaterials = computed(() => {
   const set = new Set();
   for (const bomNo in props.rawMaterials) {
@@ -144,9 +130,6 @@ const allRawMaterials = computed(() => {
   return [...set];
 });
 
-// ----------------------------------------------------------
-// Check raw material differences
-// ----------------------------------------------------------
 const isRawMaterialDifferent = (rmCode) => {
   const values = props.boms.map(b => {
     const rm = props.rawMaterials[b.bom_no]?.find(r => r.rm_item_code === rmCode);
@@ -158,9 +141,4 @@ const isRawMaterialDifferent = (rmCode) => {
 
 const closeModal = () => emit("close");
 
-
-
 </script>
-<style>
-/* only custom overrides here */
-</style>

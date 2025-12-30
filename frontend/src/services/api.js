@@ -2,8 +2,6 @@ import axios from "axios";
 
 export const api = {
 	// -------------------- Level 1 --------------------
-	// In your API service file (e.g., api.js)
-
 	getCustomers: (search, customerId) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_customers", {
 			params: {
@@ -11,7 +9,6 @@ export const api = {
 				customer_id: customerId,
 			},
 		}),
-
 	getBlanketOrders: (filters) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
 			params: {
@@ -21,12 +18,10 @@ export const api = {
 				// search_text will be null/undefined, allowing the backend to handle the search logic
 			},
 		}),
-
 	getBlanketOrdersSearch: (search) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_blanket_orders", {
 			params: { search_text: search },
 		}),
-
 	// -------------------- Level 2 --------------------
 	getBlanketOrderItems(bo_list) {
 		return axios.get(
@@ -53,7 +48,6 @@ export const api = {
 			{ items },
 			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
 		),
-
 	// -------------------- Level 3 --------------------
 	getSalesOrders: (filters, bo_list) =>
 		axios.get("/api/method/aims_customization.api.mss_monthly_schedule.get_sales_orders", {
@@ -64,7 +58,6 @@ export const api = {
 				bo_list: bo_list,
 			},
 		}),
-
 	// -------------------- Level 4 --------------------
 	getBOMsForSalesOrder: (sales_orders) =>
 		axios.get(
@@ -73,7 +66,6 @@ export const api = {
 				params: { sales_orders: JSON.stringify(sales_orders) },
 			}
 		),
-
 	// -------------------- Level 5 --------------------
 	getRawMaterialsForBOMs: (boms) =>
 		axios.get(
@@ -82,17 +74,12 @@ export const api = {
 				params: { boms: JSON.stringify(boms) },
 			}
 		),
-
 	// -------------------- Capacity Planner Section --------------------
-	
-
 	getShifts() {
 		return axios.get("/api/resource/Shift Type", {
 			params: { fields: ["name", "start_time", "end_time"] },
 		});
 	},
-	
-
 	// --------------------------- new work order and validate capacity ---------------------------
 	validateCapacity: (payload) =>
 		axios.post(
@@ -111,7 +98,6 @@ export const api = {
 				withCredentials: true,
 			}
 		),
-
 	previewCapacityPlan: (payload) =>
 		axios.post(
 			"/api/method/aims_customization.api.mss_monthly_schedule.preview_capacity_plan",
@@ -119,7 +105,6 @@ export const api = {
 			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
 		),
 	// -------------------- Level 6 --------------------
-
 	getWorkOrders: (so_list) =>
 		axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_work_orders_for_so",
@@ -135,7 +120,6 @@ export const api = {
 				params: { wo_list: JSON.stringify(wo_list) },
 			}
 		),
-
 	// -------------------- Level 8: Production Summary --------------------
 	getProductionControlDashboard(customer) {
 		return axios.get(

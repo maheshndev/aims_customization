@@ -1,7 +1,6 @@
 <template>
   <div class="blanket-order-items p-2 shadow-md border border-gray-200 rounded-lg">
 
-    <!-- ================= TOP CONTROLS ================= -->
     <div
       class=" top-0 bg-white z-20 flex flex-col md:flex-row justify-between items-start md:items-center p-4 border-b border-gray-200 gap-3">
 
@@ -25,7 +24,6 @@
           Create Sales Orders
         </button>
 
-        <!-- 🔍 Item Search -->
         <input v-model="searchText" type="text" placeholder="Search By: Item Name / Item Code / Blanket Order ID "
           class="px-3 py-2 border rounded-lg text-sm w-full md:w-64 focus:outline-none focus:ring focus:border-indigo-300" />
       </div>
@@ -33,17 +31,14 @@
 
     </div>
 
-    <!-- ================= LOADER ================= -->
     <div v-if="loading" class="text-gray-500 animate-pulse py-6 text-center">
       Loading Finished Goods Items...
     </div>
 
-    <!-- ================= ERROR ================= -->
     <div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4 text-sm mx-4 mt-2">
       {{ error }}
     </div>
 
-    <!-- ================= TABLE ================= -->
     <div v-if="filteredItems.length && !loading" class="overflow-auto rounded-b-2xl">
       <table class="min-w-[1200px] table-auto divide-y divide-gray-200 text-sm">
         <thead class="bg-gray-100 sticky top-0 z-10 uppercase">
@@ -63,26 +58,21 @@
             selectedItems.includes(item) ? 'bg-blue-50' : ''
           ]">
 
-            <!-- Checkbox -->
             <td class="px-1 py-1 text-center border">
               <input type="checkbox" class="w-4 h-4" :value="item" v-model="selectedItems" />
             </td>
 
-            <!-- Index -->
             <td class="px-1 py-1 text-center border">
               {{ index + 1 }}
             </td>
 
-            <!-- Dynamic Cells -->
             <td v-for="key in fieldKeys" :key="key" class="px-1 py-1 border text-gray-800 whitespace-nowrap">
 
-              <!-- Editable Schedule Qty -->
               <template v-if="key === 'schedule_qty'">
                 <input type="number" :min="0" :max="item.remaining_bo_qty" v-model.number="item.schedule_qty"
                   @input="validateScheduleQty(item)" class="w-full border px-2 py-1 rounded" />
               </template>
 
-              <!-- Readonly Fields -->
               <template v-else>
                 {{ item[key] }}
               </template>
@@ -92,7 +82,6 @@
       </table>
     </div>
 
-    <!-- ================= EMPTY STATE ================= -->
     <div v-if="selectedBoNames.length && !filteredItems.length && !loading"
       class="text-gray-500 mt-4 text-center text-sm px-4">
       No items found for the selected Blanket Orders.
@@ -122,7 +111,6 @@ export default {
     const error = ref(null);
     const searchText = ref("");
 
-    /* ================= TABLE HEADERS ================= */
     const headers = [
       "Customer",
       "Blanket Order No.",
@@ -149,7 +137,6 @@ export default {
       "rate"
     ];
 
-    /* ================= FILTERED ITEMS ================= */
     const filteredItems = computed(() => {
       if (!searchText.value) return items.value;
 
@@ -163,7 +150,6 @@ export default {
       );
     });
 
-    /* ================= LOAD DATA ================= */
     const loadItems = async () => {
       loading.value = true;
       error.value = null;
@@ -183,7 +169,6 @@ export default {
       loading.value = false;
     };
 
-    /* ================= SELECTION ================= */
     const selectAll = () => {
       selectedItems.value = [...filteredItems.value];
     };
@@ -192,7 +177,6 @@ export default {
       selectedItems.value = [];
     };
 
-    /* ================= CREATE SALES ORDER ================= */
     const createSalesOrder = async () => {
       if (!selectedItems.value.length) return;
 
@@ -240,19 +224,6 @@ export default {
       }
     };
 
-    /* ================= WATCH ================= */
-    // watch(
-    //   () => props.selectedBoNames,
-    //   (v) => {
-    //     if (v && v.length) loadItems();
-    //     else {
-    //       items.value = [];
-    //       selectedItems.value = [];
-    //     }
-    //   },
-    //   { immediate: true }
-    // );
-
     watch(
       () => props.filters,
       (newFilters) => {
@@ -268,12 +239,10 @@ export default {
     const validateScheduleQty = (item) => {
       if (item.schedule_qty == null) return;
 
-      // Prevent negative values
       if (item.schedule_qty < 0) {
         item.schedule_qty = 0;
       }
 
-      // Prevent exceeding order qty
       if (item.schedule_qty > item.remaining_bo_qty) {
         item.schedule_qty = item.remaining_bo_qty;
 
@@ -303,6 +272,3 @@ export default {
 };
 </script>
 
-<style>
-/* Custom styles only if required */
-</style>

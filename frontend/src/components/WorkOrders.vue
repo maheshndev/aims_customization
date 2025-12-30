@@ -106,7 +106,6 @@
 import { ref, computed, watch } from "vue";
 import { api } from "../services/api";
 
-/* ---------------- Props ---------------- */
 const props = defineProps({
     salesOrders: { 
         type: Array, 
@@ -116,23 +115,17 @@ const props = defineProps({
     selected: { type: Array, default: () => [] },
 });
 
-/* ---------------- Emits ---------------- */
 const emit = defineEmits(["update:selected"]); 
-
-/* ---------------- State ---------------- */
 const workOrders = ref([]);
 const selectedWorkOrders = ref([]);
 const loading = ref(false);
 const error = ref(null);
 
-/* ---------------- Computed ---------------- */
 const isAllSelected = computed(
     () =>
         workOrders.value.length > 0 &&
         selectedWorkOrders.value.length === workOrders.value.length
 );
-
-/* ---------------- Methods ---------------- */
 
 function statusClass(status) {
     if (status === 'Completed') return 'bg-green-50 hover:bg-green-100';
@@ -195,8 +188,6 @@ function unselectAll() {
 const toggleSelectAll = () =>
     isAllSelected.value ? unselectAll() : selectAll();
 
-/* ---------------- Watchers ---------------- */
-
 watch(
     selectedWorkOrders,
     (val) => {
@@ -224,6 +215,3 @@ watch(
     { immediate: true, deep: true }
 );
 </script>
-<style>
-/* only custom overrides here */
-</style>

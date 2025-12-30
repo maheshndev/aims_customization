@@ -8,6 +8,4 @@
 <script>
 export default { props: { title: String } };
 </script>
-<style>
-/* only custom overrides here */
-</style>
+

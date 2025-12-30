@@ -1,19 +1,15 @@
 <template>
   <div class="rounded shadow-sm p-4 bg-white">
 
-    <!-- Loading -->
     <div v-if="loading" class="text-gray-500">
       Loading Finished Goods...
     </div>
 
-    <!-- Error -->
     <div v-if="error" class="text-red-500 mb-2">
       {{ error }}
     </div>
 
-    <!-- Table -->
     <div v-if="items.length && !loading" class="overflow-auto">
-      <!-- Actions -->
       <div class="flex items-center gap-3 mb-3">
         <button
           class="px-3 py-1 bg-blue-600 text-black rounded hover:bg-blue-700"
@@ -81,7 +77,6 @@
       </table>
     </div>
 
-    <!-- No Data -->
     <div v-if="!items.length && !loading" class="text-gray-500">
       No Finished Goods found.
     </div>
@@ -109,7 +104,6 @@ const isAllSelected = computed(
     selectedItems.value.length === items.value.length
 );
 
-// Fetch FG items
 const fetchFinishGoods = async () => {
   if (!props.salesOrders.length) {
     items.value = [];
@@ -138,7 +132,6 @@ const fetchFinishGoods = async () => {
   }
 };
 
-// Selection helpers
 function toggleSelectAll(e) {
   e.target.checked ? selectAll() : unselectAll();
 }
@@ -151,7 +144,6 @@ function unselectAll() {
   selectedItems.value = [];
 }
 
-// Emit selection
 watch(
   () => selectedItems.value,
   (val) => emit("update:selected", val),

@@ -58,8 +58,7 @@ def get_date_range(month=None, year=None):
                 try:
                     m = list(calendar.month_name).index(s.title())
                 except Exception:
-                    m = None
-                    
+                    m = None             
     if y and m:  
         start_date = f"{y}-{m:02d}-01"
         end_date = get_last_day(start_date)
@@ -73,7 +72,6 @@ def get_date_range(month=None, year=None):
 
     return None
 
-
 def _get_bin_totals(item_code: str) -> dict:
     row = frappe.db.sql("""
         SELECT IFNULL(SUM(actual_qty),0) AS actual_qty,
@@ -81,6 +79,17 @@ def _get_bin_totals(item_code: str) -> dict:
         FROM `tabBin` WHERE item_code=%s
     """, (item_code,), as_dict=True)
     return row[0] if row else {"actual_qty": 0, "stock_value": 0}
+
+def _get_jobcard_consumed_for_wo(wo_name: str, item_code: str) -> float:
+    row = frappe.db.sql("""
+        SELECT IFNULL(SUM(sei.qty),0) AS consumed_qty
+        FROM `tabStock Entry Detail` sei
+        JOIN `tabStock Entry` se ON se.name = sei.parent
+        WHERE se.job_card IN (SELECT name FROM `tabJob Card` WHERE work_order=%s)
+          AND sei.item_code=%s AND se.docstatus=1
+          AND se.purpose IN ('Manufacture','Material Consumption for Manufacture')
+    """, (wo_name, item_code), as_dict=True)
+    return row[0].get("consumed_qty", 0) if row else 0
 
 def _get_dispatched_totals(sales_order: str, item_code: str) -> dict:
     row = frappe.db.sql("""
@@ -100,17 +109,6 @@ def _get_production_totals(sales_order: str, item_code: str) -> dict:
         WHERE sales_order=%s AND production_item=%s
     """, (sales_order, item_code), as_dict=True)
     return row[0] if row else {"produced_qty": 0, "material_transferred_for_manufacturing": 0}
-
-def _get_jobcard_consumed_for_wo(wo_name: str, item_code: str) -> float:
-    row = frappe.db.sql("""
-        SELECT IFNULL(SUM(sei.qty),0) AS consumed_qty
-        FROM `tabStock Entry Detail` sei
-        JOIN `tabStock Entry` se ON se.name = sei.parent
-        WHERE se.job_card IN (SELECT name FROM `tabJob Card` WHERE work_order=%s)
-          AND sei.item_code=%s AND se.docstatus=1
-          AND se.purpose IN ('Manufacture','Material Consumption for Manufacture')
-    """, (wo_name, item_code), as_dict=True)
-    return row[0].get("consumed_qty", 0) if row else 0
 
 def _get_reserved_qty(item_code: str) -> float:
     row = frappe.db.sql("""
@@ -142,9 +140,7 @@ def _get_so_consumed_qty(bo_name, item_code):
 
     return data[0].qty or 0
 
-
 ##### -------------------- Level 0: Customers in Filters Section -------------------- #####
-
 @frappe.whitelist()
 def get_customers(search_text: str = None, customer_id: str = None, limit: int = 20):
     
@@ -157,7 +153,6 @@ def get_customers(search_text: str = None, customer_id: str = None, limit: int =
     elif search_text:
         sql += " AND (name LIKE %s OR customer_name LIKE %s)"
         params.extend([f"%{search_text}%", f"%{search_text}%"])
-        
         sql += " ORDER BY customer_name ASC LIMIT %s"
         params.append(limit)
     else:
@@ -169,7 +164,6 @@ def get_customers(search_text: str = None, customer_id: str = None, limit: int =
     return [{"name": r["name"], "customer_name": r["customer_name"]} for r in rows]
 
 ##### -------------------- Level 1: Blanket Orders Section -------------------- #####
-
 @frappe.whitelist()
 def get_blanket_orders(search_text=None, customer=None, month=None, year=None, limit=500):
     
@@ -209,7 +203,6 @@ def get_blanket_orders(search_text=None, customer=None, month=None, year=None, l
 
     bo_names = [r["name"] for r in rows]
     placeholders = ", ".join(["%s"] * len(bo_names))
-
     total_qty_map = {}
     total_qty_rows = frappe.db.sql(f"""
         SELECT parent, SUM(qty) AS total_qty
@@ -237,11 +230,9 @@ def get_blanket_orders(search_text=None, customer=None, month=None, year=None, l
     result = []
     for r in rows:
         bo_name = r["name"]
-        
         total_bo_qty = total_qty_map.get(bo_name, 0.0)
         used_qty = used_qty_map.get(bo_name, 0.0)
         remaining_qty = total_bo_qty - used_qty
-        
         r["total_blanket_qty"] = total_bo_qty
         r["remaining_qty"] = remaining_qty
         r["month"] = _month_str_from_date(r["order_date"])
@@ -250,25 +241,15 @@ def get_blanket_orders(search_text=None, customer=None, month=None, year=None, l
 
     return result
 
-
 ##### -------------------- Level 2: Items for Blanket Orders Section -------------------- #####
-
-
 @frappe.whitelist()
-def get_blanket_orders_with_items(
-    search_text=None,
-    customer=None,
-    month=None,
-    year=None,
-    limit=500
-):
+def get_blanket_orders_with_items( search_text=None, customer=None, month=None, year=None, limit=500 ):
     sql = """
         SELECT
             bo.name AS bo_name,
             bo.customer,
             bo.customer_name,
             bo.order_date,
-
             boi.item_code,
             boi.item_name,
             boi.qty AS order_qty,
@@ -281,7 +262,7 @@ def get_blanket_orders_with_items(
             bo.docstatus = 1
             AND bo.blanket_order_type = 'Selling'
     """
-
+    
     params = []
 
     if customer:
@@ -310,7 +291,7 @@ def get_blanket_orders_with_items(
 
     sql += " ORDER BY bo.order_date DESC, bo.name, boi.idx LIMIT %s"
     params.append(limit)
-
+    
     rows = frappe.db.sql(sql, tuple(params), as_dict=True) or []
     if not rows:
         return []
@@ -408,20 +389,17 @@ def create_sales_order(items: str | list):
         so.company = bo.company
         so.blanket_order = bo_name
         so.delivery_date = nowdate()
-        so.currency = getattr(bo, "currency", None) or \
-                      frappe.get_value("Company", bo.company, "default_currency") or "USD"
+        so.currency = getattr(bo, "currency", None) or frappe.get_value("Company", bo.company, "default_currency") or "USD"
         so.status = "Draft"
 
         for it in bo_items:
             item_doc = frappe.get_doc("Item", it.get("item_code"))
 
             warehouse = (
-                it.get("warehouse") or
-                frappe.get_value("Item Default", {"parent": it.get("item_code")}, "default_warehouse") or ""
+                it.get("warehouse") or frappe.get_value("Item Default", {"parent": it.get("item_code")}, "default_warehouse") or ""
             )
             bom_no = (
-                it.get("bom_no") or
-                frappe.get_value("BOM", {"item": it.get("item_code"), "is_default": 1}, "name")
+                it.get("bom_no") or frappe.get_value("BOM", {"item": it.get("item_code"), "is_default": 1}, "name")
             )
             rate = it.get("rate") or item_doc.standard_rate or 0
 
@@ -489,7 +467,6 @@ def get_sales_orders(search_text: str = None, month: str = None, year: str =None
    
     sql += " ORDER BY so.transaction_date DESC LIMIT %s"
     params.append(limit)
-
     orders = frappe.db.sql(sql, tuple(params), as_dict=True) or []
     result = []
 
@@ -529,9 +506,6 @@ def get_sales_orders(search_text: str = None, month: str = None, year: str =None
 @frappe.whitelist()
 def get_boms_for_sales_orders(sales_orders: str | list = None):
 
-    # ------------------------------
-    # Parse input
-    # ------------------------------
     if isinstance(sales_orders, str):
         try:
             sales_orders = json.loads(sales_orders)
@@ -544,14 +518,11 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
     result = []
     mould_cache = {}
 
-    # ------------------------------
-    # Fetch ONLY submitted Sales Orders
-    # ------------------------------
     sales_orders_data = frappe.get_all(
         "Sales Order",
         filters={
             "name": ["in", sales_orders],
-            "docstatus": 1  # ✅ SUBMITTED ONLY
+            "docstatus": 1  
         },
         fields=["name", "customer"]
     )
@@ -562,27 +533,18 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
     if not valid_so_names:
         return []
 
-    # ------------------------------
-    # Fetch Sales Order Items
-    # ------------------------------
     so_items = frappe.get_all(
         "Sales Order Item",
         filters={"parent": ["in", list(valid_so_names)]},
         fields=["parent", "item_code", "qty", "bom_no"]
     )
 
-    # ------------------------------
-    # Process each SO Item
-    # ------------------------------
     for so_item in so_items:
         so_name = so_item.parent
         item_code = so_item.item_code
         required_qty = flt(so_item.qty or 0)
         forced_bom = so_item.bom_no
 
-        # --------------------------
-        # BOM resolution
-        # --------------------------
         bom_filters = {"name": forced_bom} if forced_bom else {
             "item": item_code,
             "is_active": 1
@@ -598,9 +560,6 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
         if not boms:
             continue
 
-        # --------------------------
-        # Item master data
-        # --------------------------
         item_data = frappe.db.get_value(
             "Item",
             item_code,
@@ -611,9 +570,6 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
             as_dict=True
         ) or {}
 
-        # --------------------------
-        # Moulds (cached)
-        # --------------------------
         mould_nos = frappe.get_all(
             "Mould Selection",
             filters={"parent": item_code},
@@ -641,9 +597,6 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
 
             moulds = [mould_cache[m] for m in mould_nos if m in mould_cache]
 
-        # --------------------------
-        # Build result per BOM
-        # --------------------------
         for bom in boms:
             bom_no = bom.bom_no
 
@@ -677,25 +630,21 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "bom_no": bom_no,
                 "bom_type": bom.bom_type or "",
                 "bom_qty": flt(bom.bom_qty or 0),
-
                 "cavity": int(flt(item_data.get("cavity") or 0)),
                 "pcs_wt": flt(item_data.get("pcs_wt") or 0),
                 "runner_wt": flt(item_data.get("runner_wt") or 0),
                 "shot_wt": flt(item_data.get("shot_wt") or 0),
                 "gross_wt": flt(item_data.get("gross_wt") or 0),
                 "cycle_time": flt(item_data.get("cycle_time") or 0),
-
                 "bom_items": bom_items,
                 "bom_operations": bom_operations,
                 "moulds": moulds,
-
                 "required_for_selected_qty": required_qty,
             })
 
     return result
 
 ##### -------------------- Level 5: Raw Materials for BOMs Section -------------------- #####
-
 @frappe.whitelist()
 def get_raw_materials_for_boms(boms: list = None):
    
@@ -730,7 +679,6 @@ def get_raw_materials_for_boms(boms: list = None):
 
         for comp in components:
             comp_item_code = comp["item_code"]
-            
             qty_per_bom_unit = flt(comp.get("qty"))
             comp_required = (req_qty / bom_qty) * qty_per_bom_unit
 
@@ -768,14 +716,11 @@ def get_raw_materials_for_boms(boms: list = None):
     
     for rm_code, v in rm_totals.items():
         item_master = item_data_map.get(rm_code, {})
-        
         bin_tot = _get_bin_totals(rm_code) 
-
         required = round(v["total_required_qty"], 6)
         available = flt(bin_tot.get("actual_qty", 0))
         consumed = consumed_map.get(rm_code, 0)
         projected = flt(bin_tot.get("projected_qty", 0))
-        
         balance_qty = available - required
         is_sufficient = balance_qty >= 0
 
@@ -799,7 +744,6 @@ def get_raw_materials_for_boms(boms: list = None):
 ##### ------------- Helpers for Capacity Planning -------------------- #####
 
 def _to_time(val):
-    """Convert Frappe time field (time or timedelta) to datetime.time"""
     if isinstance(val, time):
         return val
     if isinstance(val, timedelta):
@@ -808,7 +752,6 @@ def _to_time(val):
     return None
 
 def combine_datetime(date, t):
-    """Safe combine date and Frappe time/timedelta"""
     return datetime.combine(date, _to_time(t))
 
 def pcs_per_hour(cycle_time, cavity):
@@ -826,7 +769,6 @@ def get_holidays(holiday_list):
     return holidays
 
 def get_shift_windows(start_date, end_date):
-    """Return list of shift windows using Shift Type, with night shift support"""
     windows = []
     start_date = getdate(start_date)
     end_date = getdate(end_date)
@@ -848,7 +790,6 @@ def get_shift_windows(start_date, end_date):
     return windows
 
 def has_overlap(machine, mould, start, end):
-    """Check if a machine/mould is busy in given window"""
     filters = {"status": ["!=", "Cancelled"], "workstation": machine}
     if mould:
         filters["mould"] = mould
@@ -874,7 +815,6 @@ def allocate_qty_in_window(remaining, start, end, pcs_hr, utilization):
     return allowed_qty, actual_end
 
 def resolve_warehouses(company, item_code):
-    """Return FG and WIP warehouses"""
     fg = frappe.db.get_value("Item Default", {"parent": item_code, "company": company}, "default_warehouse") \
         or frappe.db.get_single_value("Manufacturing Settings", "default_finished_goods_warehouse") \
         or frappe.db.get_value("Warehouse", {"warehouse_name": ["like", "%Finished Goods%"], "company": company, "disabled": 0}, "name")
@@ -904,14 +844,12 @@ def get_last_wo_end(machine, mould=None):
     return wo[0].actual_end_date or wo[0].planned_end_date
 
 def create_work_order(doc_args, operations_args):
-    """Create Work Order and assign operations"""
     wo = frappe.new_doc("Work Order")
     for k, v in doc_args.items():
         setattr(wo, k, v)
     wo.flags.ignore_permissions = True
     wo.insert()
 
-    # Assign operations with workstation
     for op_args in operations_args:
         op = wo.append("operations", {})
         for k, v in op_args.items():
@@ -1005,7 +943,6 @@ def create_work_orders_from_mss(payload):
 
         current_start = get_last_wo_end(ln["machine"], ln.get("mould")) or combine_datetime(getdate(payload['plan_start_date']), time(6,0))
 
-        # Fetch operations from BOM
         bom_ops = frappe.get_all(
             "BOM Operation",
             filters={"parent": ln.get("bom_no")},
@@ -1062,7 +999,6 @@ def create_work_orders_from_mss(payload):
 
 ########################################################################################################################        
 ##### -------------------- Level 7: Work Orders for Blanket Orders -------------------- #####
-
 @frappe.whitelist()
 def get_work_orders_for_so(so_list: str | list = None):
     
@@ -1209,7 +1145,6 @@ def get_job_cards_for_work_orders(wo_list: str | list = None):
     return result
 
 ##### -------------------- Level 9: Production Summary -------------------- #####
-
 @frappe.whitelist()
 def get_production_control_dashboard(customer = None, month: str = None, year: str = None):
     if not customer:
@@ -1222,23 +1157,18 @@ def get_production_control_dashboard(customer = None, month: str = None, year: s
             boi.item_code,
             boi.item_name,
             boi.qty AS order_qty,
-
             so.name AS sales_order,
-
             bom.name AS bom_no,
-
             wo.name AS work_order,
             wo.status AS wo_status,
             wo.qty AS wo_qty,
             wo.produced_qty,
             wo.planned_start_date,
             wo.planned_end_date,
-
             jc.name AS job_card,
             jc.status AS job_card_status,
             jc.start_time,
             jc.end_time,
-
             dn.name AS delivery_note,
             dn.posting_date
 

@@ -2,8 +2,13 @@ import { createApp } from "vue";
 import MSSDashboard from "./pages/MSSDashboard.vue";
 import "./style.css";
 
-window.initVueApp = function () {
+window.initMSSDashboard = function () {
     const app = createApp(MSSDashboard);
     app.mount("#mss-vue-app");
-    console.log("Vue app mounted successfully ✔️");
+    console.log("MSS Dashboard mounted successfully ✔️");
 };
+
+// Backwards compatibility
+window.initVueApp = window.initMSSDashboard;
+
+

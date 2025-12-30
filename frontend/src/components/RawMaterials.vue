@@ -147,11 +147,11 @@
 
 <script setup>
 import { ref, watch, computed } from "vue";
-import { api } from "../services/api"; // Ensure this path is correct
+import { api } from "../services/api"; 
 
 const props = defineProps({
 	boms: { type: Array, default: () => [] },
-	modelValue: { type: Array, default: () => [] }, // v-model:selected
+	modelValue: { type: Array, default: () => [] }, 
 });
 
 const emit = defineEmits(["update:modelValue", "raw-material-loaded"]);
@@ -161,9 +161,7 @@ const selectedRows = ref([]);
 const loading = ref(false);
 const error = ref(null);
 
-// -----------------
-// Select/Unselect All
-// -----------------
+
 const isAllSelected = computed(
 	() => materials.value.length && selectedRows.value.length === materials.value.length
 );
@@ -176,9 +174,6 @@ const unselectAll = () => {
 };
 const toggleSelectAll = () => (isAllSelected.value ? unselectAll() : selectAll());
 
-// -----------------
-// Fetch raw materials for selected BOMs
-// -----------------
 const fetchMaterials = async () => {
 	if (!props.boms.length) {
 		materials.value = [];
@@ -192,7 +187,6 @@ const fetchMaterials = async () => {
 	error.value = null;
 
 	try {
-		// Pass the full BOM objects to the backend for accurate calculation
 		const payload = props.boms.map((bom) => ({
 			bom_no: bom.bom_no,
 			required_for_selected_qty: bom.required_for_selected_qty,
@@ -201,7 +195,6 @@ const fetchMaterials = async () => {
 
 		materials.value = res.data.message || [];
 
-		// Reset selection and pre-select all fetched RMs
 		selectedRows.value = materials.value.slice();
 
 		emit("raw-material-loaded", materials.value);
@@ -213,14 +206,9 @@ const fetchMaterials = async () => {
 	}
 };
 
-// -----------------
-// Watchers for component communication
-// -----------------
 
-// Watch prop.boms to trigger fetching new data
 watch(() => props.boms, fetchMaterials, { deep: true, immediate: true });
 
-// Watch selectedRows to emit updates to parent component (v-model)
 watch(
 	selectedRows,
 	(newSelection) => {
@@ -229,13 +217,11 @@ watch(
 	{ deep: true }
 );
 
-// Sync selectedRows with modelValue from parent on initial load/change
 watch(
 	() => props.modelValue,
 	(newModelValue) => {
 		if (!newModelValue) return;
 
-		// A basic check to see if the content is different before syncing
 		const currentCodes = selectedRows.value
 			.map((item) => item.rm_item_code)
 			.sort()
@@ -246,7 +232,6 @@ watch(
 			.join(",");
 
 		if (currentCodes !== newCodes) {
-			// Filter the modelValue to ensure we only select items that exist in the fetched 'materials' list
 			const existingMaterials = newModelValue.filter((item) =>
 				materials.value.some((m) => m.rm_item_code === item.rm_item_code)
 			);
@@ -258,11 +243,9 @@ watch(
 </script>
 
 <style scoped>
-/* Scoped styles for table fixed columns */
 .sticky {
 	position: sticky;
 }
-
 .left-0 {
 	left: 0;
 }

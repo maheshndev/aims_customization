@@ -1,7 +1,6 @@
 <template>
   <div class="blanket-orders  rounded-lg shadow-sm p-4">
 
-    <!-- Actions -->
     <div class="flex justify-between items-center mb-4">
       <div class="flex gap-2">
         <button @click="selectAll" class="px-3 py-1 bg-blue-100 text-black text-sm rounded hover:bg-blue-200 m-1">
@@ -13,17 +12,14 @@
       </div>
     </div>
 
-    <!-- Loading -->
     <div v-if="loading" class="text-gray-500 py-4 text-center animate-pulse">
       Loading Blanket Orders…
     </div>
 
-    <!-- Error -->
     <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4">
       {{ error }}
     </div>
 
-    <!-- Table -->
     <div v-if="orders.length && !loading" class="overflow-auto rounded-b-2xl">
       <table class="min-w-[1200px] table-auto border border-gray-300 divide-y divide-gray-200">
         <thead class="bg-gray-100 sticky uppercase">
@@ -62,7 +58,6 @@
       </table>
     </div>
 
-    <!-- Empty State -->
     <div v-if="!orders.length && !loading" class="text-center text-gray-500 py-6">
       No Blanket Orders Found.
     </div>
@@ -139,14 +134,11 @@ export default {
       selectedBOrders.value = [];
     };
 
-
     watch(() => props.filters, fetchBlanketOrders, { deep: true, immediate: true });
 
-
-    // Watch selectedBOrders → emit selection to parent
     watch(selectedBOrders, (val) => {
       const selectedBOs = orders.value.filter(bo => val.includes(bo.name));
-      emit("update:selected", selectedBOs); // only selected BO objects
+      emit("update:selected", selectedBOs); 
     }, { deep: true });
 
 
@@ -164,6 +156,3 @@ export default {
   },
 };
 </script>
-<style>
-/* only custom overrides here */
-</style>

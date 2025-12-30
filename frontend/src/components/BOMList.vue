@@ -106,9 +106,6 @@ const search = ref("");
 
 const headers = ["#", "Sales Order", "BOM", "FG Item", "Qty", "Type", "Customer", "Req Qty", "Cavity", "PCS wt", "Runner", "Shot", "Gross", "Cycle Time", "Machine (Workstation)", "Mould"];
 
-// ---------------------------------------------------
-// Computed: Handle Filter & Header Select
-// ---------------------------------------------------
 const filteredBOMs = computed(() => {
   if (!search.value.trim()) return boms.value;
   const s = search.value.toLowerCase();
@@ -119,12 +116,7 @@ const isAllSelected = computed(() => {
   return filteredBOMs.value.length > 0 && selectedLocal.value.length === filteredBOMs.value.length;
 });
 
-// ---------------------------------------------------
-// THE FIX: Unified State Sync
-// ---------------------------------------------------
 
-// 1. Single Watcher for Mould -> Cavity update
-// This updates the local 'cavity' property whenever a mould is selected
 watch(() => boms.value, (newBoms) => {
   newBoms.forEach(bom => {
     const foundMould = bom.moulds.find(m => m.mould_no === bom.selected_mould);
@@ -134,9 +126,6 @@ watch(() => boms.value, (newBoms) => {
   });
 }, { deep: true });
 
-// 2. Combined Watcher for Selection OR Data Change
-// This ensures that if you click a checkbox OR change a mould, 
-// the parent component gets the latest data immediately.
 watch([selectedLocal, boms], () => {
   const selectedData = boms.value.filter(b => 
     selectedLocal.value.some(s => s.row_uid === b.row_uid)
@@ -146,9 +135,6 @@ watch([selectedLocal, boms], () => {
   emit("update:capBOMs", selectedData);
 }, { deep: true });
 
-// ---------------------------------------------------
-// Fetch BOM Logic
-// ---------------------------------------------------
 const fetchBOMs = async () => {
   if (!props.salesOrders.length) {
     boms.value = [];
@@ -174,7 +160,7 @@ const fetchBOMs = async () => {
       };
     });
     
-    selectedLocal.value = []; // Reset selection on new fetch
+    selectedLocal.value = []; 
     emit("bom-loaded", boms.value);
   } catch (err) {
     error.value = "Failed to fetch BOMs.";
