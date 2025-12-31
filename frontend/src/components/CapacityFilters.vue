@@ -161,12 +161,7 @@ export default {
 				this.searchCustomerText = "";
 			}
 		},
-		localFilters: {
-			deep: true,
-			handler(val) {
-				this.$emit("update:modelValue", val);
-			},
-		},
+		
 		searchCustomerText(newVal) {
 			if (!newVal) {
 				this.clearCustomerFilterOnly();

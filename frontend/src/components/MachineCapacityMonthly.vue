@@ -51,7 +51,7 @@ import { api } from "../services/capavityApi";
 
 const props = defineProps({
   filters: { type: Object, required: true },
-  selectedMachines: { type: Array, default: () => [] },
+  selectedMachines: { type: Array, required: true },
 });
 
 const emit = defineEmits(["update:selectedMachines"]);
@@ -59,39 +59,50 @@ const emit = defineEmits(["update:selectedMachines"]);
 const rows = ref([]);
 const localSelected = ref([]);
 
-/* 🔥 FIX: emit selection to parent */
-watch(localSelected, (val) => {
-  emit("update:selectedMachines", val);
-});
-
-/* sync from parent */
 watch(
   () => props.selectedMachines,
-  (val) => (localSelected.value = [...val]),
+  (val) => {
+    localSelected.value = [...val];
+  },
   { immediate: true }
 );
 
-/* Select all */
-const allSelected = computed(
-  () => rows.value.length && localSelected.value.length === rows.value.length
-);
+watch(localSelected, (val) => {
+  emit("update:selectedMachines", val); // ✅ FIXED
+});
+
+const allSelected = computed(() => {
+  return rows.value.length > 0 &&
+    localSelected.value.length === rows.value.length;
+});
 
 const toggleAll = (e) => {
-  localSelected.value = e.target.checked ? rows.value.map((r) => r.machine) : [];
+  localSelected.value = e.target.checked
+    ? rows.value.map(r => r.machine)
+    : [];
 };
 
-/* Load data */
 const loadMachineCapacity = async () => {
   const { month, year } = props.filters || {};
+
   if (!month || !year) {
     rows.value = [];
-    localSelected.value = [];
     return;
   }
 
-  const res = await api.getMachineCapacityMonthly(props.filters);
-  rows.value = res?.data?.message || [];
+  try {
+    const res = await api.getMachineCapacityMonthly(props.filters);
+    rows.value = res?.data?.message || [];
+   
+  } catch (e) {
+    console.error("Machine capacity failed", e);
+    rows.value = [];
+  }
 };
 
-watch(() => props.filters, loadMachineCapacity, { deep: true, immediate: true });
+watch(
+  () => [props.filters.month, props.filters.year],
+  loadMachineCapacity,
+  { immediate: true }
+);
 </script>

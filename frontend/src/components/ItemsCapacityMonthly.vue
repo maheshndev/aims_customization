@@ -43,28 +43,42 @@ import { ref, watch } from "vue";
 import { api } from "../services/capavityApi";
 
 const props = defineProps({
-	filters: Object,
-	machines: Array,
+  filters: Object,
+  machines: Array,
 });
 
 const rows = ref([]);
 
 const loadData = async () => {
-	const { customer, month, year } = props.filters || {};
-	if (!customer || !month || !year || !props.machines?.length) {
-		rows.value = [];
-		return;
-	}
+  const { customer, month, year } = props.filters || {};
 
-	const res = await api.getItemCapacityMonthly({
-		customer,
-		month,
-		year,
-		machines: props.machines,
-	});
+  if (!customer || !month || !year || !props.machines?.length) {
+    rows.value = [];
+    return;
+  }
 
-	rows.value = res?.data?.message || [];
+  try {
+    const res = await api.getItemCapacityMonthly({
+      customer,
+      month,
+      year,
+      machines: props.machines,
+    });
+    rows.value = res?.data?.message || [];
+  } catch (e) {
+    console.error("Item capacity failed", e);
+    rows.value = [];
+  }
 };
 
-watch([() => props.filters, () => props.machines], loadData, { deep: true, immediate: true });
+watch(
+  () => [
+    props.filters.customer,
+    props.filters.month,
+    props.filters.year,
+    props.machines.join(","),
+  ],
+  loadData,
+  { immediate: true }
+);
 </script>

@@ -14,13 +14,14 @@
 
 		<!-- Item Capacity -->
 		<SectionCard title="Item Loading Monthly Report">
-			<ItemsCapacityMonthly :filters="filters" :machines="selectedMachines" />
+			<ItemsCapacityMonthly :filters="appliedFilters" :machines="selectedMachines" />
+
 		</SectionCard>
 	</div>
 </template>
 
 <script>
-import { ref, reactive, toRefs } from "vue";
+import { ref, reactive } from "vue";
 
 import SectionCard from "../components/layout/SectionCard.vue";
 import CapacityFilters from "../components/CapacityFilters.vue";
@@ -38,26 +39,25 @@ export default {
 	},
 
 	setup() {
-		// Editable filters (UI state)
 		const filters = reactive({
 			customer: "",
 			month: "",
 			year: "",
 		});
 
-		// Applied filters (used for API calls)
-		const appliedFilters = reactive({ ...filters });
+		const appliedFilters = reactive({
+			customer: "",
+			month: "",
+			year: "",
+		});
 
-		// Selected machines from child
 		const selectedMachines = ref([]);
 
-		// Apply button handler
 		const onApplyFilters = (newFilters) => {
 			appliedFilters.customer = newFilters.customer;
 			appliedFilters.month = newFilters.month;
 			appliedFilters.year = newFilters.year;
 
-			// Reset selected machines
 			selectedMachines.value = [];
 		};
 
@@ -65,7 +65,7 @@ export default {
 			appliedFilters,
 			selectedMachines,
 			onApplyFilters,
-			filters, // keep v-model reactive
+			filters,
 		};
 	},
 };
