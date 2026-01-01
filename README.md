@@ -1,6 +1,21 @@
-### Aims Customization
+# Aims Customization
 
-For aims common and core customozation
+This Frappe app extends ERPNext functionalities with custom features. It includes:
+
+*   **Python Backend**: Augments doctypes and workflows with custom logic.
+*   **Vue.js Frontend**: A small Vue 3 + Vite application for interactive UIs.
+*   **API Exposure**: Seamless integration between frontend and backend.
+
+**Example: Exposing a Python function to the frontend**
+
+```python
+# filepath: aims_customization/api/foo.py
+import frappe
+
+@frappe.whitelist()
+def my_endpoint(arg=None):
+    return {"ok": True, "arg": arg}
+```
 
 ### Installation
 
@@ -27,6 +42,12 @@ Pre-commit is configured to use the following tools for checking and formatting 
 - eslint
 - prettier
 - pyupgrade
+
+Project / File Structure Guidelines:
+- Follow Frappe/ERPNext coding standards.
+
+[filestructure.md](filestructure.md):
+
 
 ### License
 

@@ -428,7 +428,7 @@ def create_sales_order(items: str | list):
 
 ##### -------------------- Level 3: Sales Orders Section -------------------- #####
 @frappe.whitelist()
-def get_sales_orders(search_text: str = None, month: str = None, year: str =None, customer: str = None, blanket_orders: list | str = None,  limit: int = 200 ):
+def get_sales_orders(search_text: str = None, month: str = None, year: str =None, customer: str = None, blanket_items: list | str = None,  limit: int = 200 ):
      
     sql = """
         SELECT 

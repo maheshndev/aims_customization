@@ -9,19 +9,18 @@
 
 		<!-- Machine Capacity -->
 		<SectionCard title="Machine and Item Capacity Monthly Report">
-			<MachineCapacityMonthly :filters="appliedFilters" v-model:selectedMachines="selectedMachines" />
+			<MachineCapacityMonthly :filters="filters" v-model:selected="selected.selectedMachines" />
 		</SectionCard>
 
 		<!-- Item Capacity -->
 		<SectionCard title="Item Loading Monthly Report">
-			<ItemsCapacityMonthly :filters="appliedFilters" :machines="selectedMachines" />
-
+			<ItemsCapacityMonthly :filters="appliedFilters" :selected-machines="selected.selectedMachines" />
 		</SectionCard>
 	</div>
 </template>
 
 <script>
-import { ref, reactive } from "vue";
+import { reactive } from "vue";
 
 import SectionCard from "../components/layout/SectionCard.vue";
 import CapacityFilters from "../components/CapacityFilters.vue";
@@ -45,28 +44,19 @@ export default {
 			year: "",
 		});
 
-		const appliedFilters = reactive({
-			customer: "",
-			month: "",
-			year: "",
+		const selected = reactive({
+			selectedMachines: []
 		});
 
-		const selectedMachines = ref([]);
+		const state = reactive({
+			selectedMachines: []
+		});
 
-		const onApplyFilters = (newFilters) => {
-			appliedFilters.customer = newFilters.customer;
-			appliedFilters.month = newFilters.month;
-			appliedFilters.year = newFilters.year;
-
-			selectedMachines.value = [];
+		const onApplyFilters = () => {
+			selected.selectedMachines = [];
 		};
 
-		return {
-			appliedFilters,
-			selectedMachines,
-			onApplyFilters,
-			filters,
-		};
+		return { filters, selected, state, onApplyFilters };
 	},
 };
 </script>

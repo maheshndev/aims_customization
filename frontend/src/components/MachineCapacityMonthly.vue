@@ -1,11 +1,29 @@
 <template>
   <div class="p-2 overflow-x-auto rounded-lg shadow-sm bg-white">
+    <div v-if="loading" class="text-gray-500 animate-pulse">Loading ...</div>
+
+    <div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4">
+      {{ error }}
+    </div>
+    <div v-if="rows.length && !loading" class="flex justify-start gap-3 mb-3">
+      <button class="px-3 py-1 bg-blue-100 text-black rounded" @click="selectAll">
+        Select All
+      </button>
+      <button class="px-3 py-1 bg-gray-200 text-black rounded" @click="unselectAll">
+        Unselect All
+      </button>
+      <button class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200" @click="refreshAll">
+        🔄 Refresh
+      </button>
+    </div>
+
     <table class="w-full text-sm border border-gray-300">
       <thead class="bg-gray-100 text-gray-700">
         <tr>
           <th class="px-2 py-1 border w-10 text-center">
-            <input type="checkbox" :checked="allSelected" @change="toggleAll" />
+            <input type="checkbox" :checked="isSelectedAll" @change="toggleSelectAll" />
           </th>
+          <th class="px-2 py-1 border">#</th>
           <th class="px-2 py-1 border">Machine</th>
           <th class="px-2 py-1 border">Month Days</th>
           <th class="px-2 py-1 border">Daily Hrs</th>
@@ -19,11 +37,11 @@
       </thead>
 
       <tbody>
-        <tr v-for="row in rows" :key="row.machine" class="hover:bg-gray-50">
+        <tr v-for="(row, index) in rows" :key="row.machine" class="hover:bg-gray-50">
           <td class="px-2 py-1 border text-center">
-            <input type="checkbox" :value="row.machine" v-model="localSelected" />
+            <input type="checkbox" :value="row.machine" v-model="selectedLocal" />
           </td>
-
+          <td class="px-2 py-1 border">{{ index + 1 }}</td>
           <td class="px-2 py-1 border">{{ row.machine }}</td>
           <td class="px-2 py-1 border">{{ row.month_days }}</td>
           <td class="px-2 py-1 border">{{ row.daily_capacity_hrs }}</td>
@@ -51,58 +69,50 @@ import { api } from "../services/capavityApi";
 
 const props = defineProps({
   filters: { type: Object, required: true },
-  selectedMachines: { type: Array, required: true },
 });
 
-const emit = defineEmits(["update:selectedMachines"]);
+const emit = defineEmits(["update:selected"]);
 
+const loading = ref(false);
+const error = ref(null);
 const rows = ref([]);
-const localSelected = ref([]);
+const selectedLocal = ref([]);
 
-watch(
-  () => props.selectedMachines,
-  (val) => {
-    localSelected.value = [...val];
-  },
-  { immediate: true }
+const isSelectedAll = computed(
+  () => rows.value.length > 0 && selectedLocal.value.length === rows.value.length
 );
 
-watch(localSelected, (val) => {
-  emit("update:selectedMachines", val); // ✅ FIXED
-});
+const toggleSelectAll = () => (isSelectedAll.value ? unselectAll() : selectAll());
 
-const allSelected = computed(() => {
-  return rows.value.length > 0 &&
-    localSelected.value.length === rows.value.length;
-});
+const selectAll = () => {
+  selectedLocal.value = rows.value.map((o) => o.machine);
+  emit("update:selected", [...selectedLocal.value]);
+};
 
-const toggleAll = (e) => {
-  localSelected.value = e.target.checked
-    ? rows.value.map(r => r.machine)
-    : [];
+const unselectAll = () => {
+  selectedLocal.value = [];
+  emit("update:selected", []);
 };
 
 const loadMachineCapacity = async () => {
-  const { month, year } = props.filters || {};
-
-  if (!month || !year) {
-    rows.value = [];
-    return;
-  }
+  loading.value = true;
+  error.value = null;
 
   try {
     const res = await api.getMachineCapacityMonthly(props.filters);
     rows.value = res?.data?.message || [];
-   
-  } catch (e) {
-    console.error("Machine capacity failed", e);
+  } catch (err) {
+    console.error(err);
+    error.value = "Failed to load data.";
     rows.value = [];
+  } finally {
+    loading.value = false;
   }
 };
-
-watch(
-  () => [props.filters.month, props.filters.year],
-  loadMachineCapacity,
-  { immediate: true }
-);
+const refreshAll = async () => {
+  selectedLocal.value = [];
+  rows.value =[];
+  await loadMachineCapacity();
+};
+watch(() => props.filters, loadMachineCapacity, { immediate: true, deep: true });
 </script>

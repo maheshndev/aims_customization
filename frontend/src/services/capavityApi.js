@@ -8,26 +8,32 @@ export const api = {
 		}),
 
 	getMachineCapacityMonthly: (filters) =>
-		axios.post(
+		axios.get(
 			"/api/method/aims_customization.api.mss_capacity_monthly.get_machine_capacity_monthly",
 			{
-				customer: filters.customer,
-				month: filters.month,
-				year: filters.year,
-			},
-			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+				params: {
+					customer: filters.customer,
+					month: filters.month,
+					year: filters.year,
+					utilization: 90,
+				},
+			}
 		),
 
 	// -------------------- Item Capacity Monthly --------------------
-	getItemCapacityMonthly: (filters) =>
+	getItemCapacityMonthly: (filters, machines) =>
 		axios.post(
 			"/api/method/aims_customization.api.mss_capacity_monthly.get_item_capacity_monthly",
 			{
-				customer: filters.customer,
-				month: filters.month,
-				year: filters.year,
-				machines: filters.machines,
+				customer: filters?.customer || null,
+				month: filters?.month || null,
+				year: filters?.year || null,
+				machines: machines || [],
 			},
-			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+			{
+				headers: {
+					"X-Frappe-CSRF-Token": frappe.csrf_token,
+				},
+			}
 		),
 };
