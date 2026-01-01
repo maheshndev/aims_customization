@@ -1146,128 +1146,122 @@ def get_job_cards_for_work_orders(wo_list: str | list = None):
 
 ##### -------------------- Level 9: Production Summary -------------------- #####
 @frappe.whitelist()
-def get_production_control_dashboard(customer = None, month: str = None, year: str = None):
+def get_production_control_dashboard(customer=None, month=None, year=None):
     if not customer:
-        return []
+        return {"ok": True, "data": []}
+    
+    month = cint(month) if month else None
+    year = cint(year) if year else None
+    date_range = get_date_range(month, year)
 
     rows = frappe.db.sql("""
         SELECT
             bo.name AS blanket_order,
-            boi.name AS bo_item,
             boi.item_code,
             boi.item_name,
             boi.qty AS order_qty,
             so.name AS sales_order,
-            bom.name AS bom_no,
-            wo.name AS work_order,
-            wo.status AS wo_status,
-            wo.qty AS wo_qty,
-            wo.produced_qty,
-            wo.planned_start_date,
-            wo.planned_end_date,
-            jc.name AS job_card,
-            jc.status AS job_card_status,
-            jc.start_time,
-            jc.end_time,
-            dn.name AS delivery_note,
-            dn.posting_date
-
+            so.transaction_date
         FROM `tabBlanket Order Item` boi
-        INNER JOIN `tabBlanket Order` bo
-            ON bo.name = boi.parent AND bo.docstatus = 1
-
+        JOIN `tabBlanket Order` bo ON bo.name = boi.parent AND bo.docstatus = 1
         LEFT JOIN `tabSales Order Item` soi
             ON soi.blanket_order = bo.name
             AND soi.item_code = boi.item_code
-        LEFT JOIN `tabSales Order` so
-            ON so.name = soi.parent AND so.docstatus = 1
-
-        LEFT JOIN `tabBOM` bom
-            ON bom.item = boi.item_code
-            AND bom.is_active = 1
-
-        LEFT JOIN `tabWork Order` wo
-            ON wo.sales_order = so.name
-            AND wo.production_item = boi.item_code
-            AND wo.docstatus = 1
-
-        LEFT JOIN `tabJob Card` jc
-            ON jc.work_order = wo.name
-            AND jc.docstatus = 1
-
-        LEFT JOIN `tabDelivery Note Item` dni
-            ON dni.against_sales_order = so.name
-            AND dni.item_code = boi.item_code
-        LEFT JOIN `tabDelivery Note` dn
-            ON dn.name = dni.parent
-            AND dn.docstatus = 1
-
+        LEFT JOIN `tabSales Order` so ON so.name = soi.parent AND so.docstatus = 1
         WHERE bo.customer = %(customer)s
-        ORDER BY bo.name, boi.idx
     """, {"customer": customer}, as_dict=True)
 
-    return normalize(rows)
-def normalize(rows):
-    data = {}
+    result = []
 
     for r in rows:
-        key = (r.blanket_order, r.bo_item)
+        production = _get_production_totals(r.sales_order, r.item_code)
+        dispatched = _get_dispatched_totals(r.sales_order, r.item_code)
+        consumed = _get_so_consumed_qty(r.blanket_order, r.item_code)
 
-        if key not in data:
-            data[key] = {
-                "blanket_order": r.blanket_order,
-                "item_code": r.item_code,
-                "item_name": r.item_name,
-                "order_qty": flt(r.order_qty),
-                "sales_order": r.sales_order,
-                "bom": r.bom_no,
-                "work_order": r.work_order,
-                "wo_status": r.wo_status,
-                "produced_qty": flt(r.produced_qty),
-                "job_cards": [],
-                "delivery_notes": [],
-                "timeline": []
-            }
+        timeline = _build_timeline(r.sales_order, r.item_code, date_range)
 
-            if r.planned_start_date and r.planned_end_date:
-                data[key]["timeline"].append({
-                    "label": "Work Order",
-                    "start": r.planned_start_date,
-                    "end": r.planned_end_date
-                })
-
-        if r.job_card and r.start_time and r.end_time:
-            data[key]["job_cards"].append({
-                "name": r.job_card,
-                "status": r.job_card_status
+        row = {
+            "blanket_order": r.blanket_order,
+            "item_code": r.item_code,
+            "item_name": r.item_name,
+            "order_qty": flt(r.order_qty),
+            "produced_qty": flt(production["produced_qty"]),
+            "dispatched_qty": flt(dispatched["qty"]),
+            "consumed_qty": flt(consumed),
+            "transaction_date": r.transaction_date,
+            "balance_qty": flt(r.order_qty) - flt(production["produced_qty"]),
+            "progress": _calc_progress(r.order_qty, production["produced_qty"]),
+            "timeline": timeline,
+            "status": compute_status({
+                "produced_qty": flt(production["produced_qty"]),
+                "order_qty": flt(r.order_qty)
             })
+        }
 
-            data[key]["timeline"].append({
-                "label": f"Job Card {r.job_card}",
-                "start": r.start_time,
-                "end": r.end_time
-            })
-
-        if r.delivery_note:
-            data[key]["delivery_notes"].append(r.delivery_note)
-
-    result = []
-    for row in data.values():
-        row["status"] = compute_status(row)
         result.append(row)
 
-    return result
-def compute_status(r):
-    if not r["bom"]:
-        return "BOM Missing"
+    return {"ok": True, "data": result}
 
-    if not r["work_order"]:
-        return "Work Order Not Created"
+
+def compute_status(r):
+    if r["produced_qty"] <= 0:
+        return "Planned"
+
+    if r["produced_qty"] < r["order_qty"]:
+        return "In Production"
 
     if r["produced_qty"] >= r["order_qty"]:
         return "Production Completed"
 
-    if r["job_cards"]:
-        return "In Production"
+    return "Unknown"
 
-    return "Planned"
+def _calc_progress(order_qty, produced_qty):
+    if not order_qty:
+        return 0
+    return round((produced_qty / order_qty) * 100, 2)
+
+
+def _build_timeline(sales_order, item_code, date_range):
+    timeline = []
+
+    wo_list = frappe.db.sql("""
+        SELECT name, planned_start_date, planned_end_date
+        FROM `tabWork Order`
+        WHERE sales_order=%s
+          AND production_item=%s
+          AND docstatus=1
+    """, (sales_order, item_code), as_dict=True)
+
+    for wo in wo_list:
+
+        # Work Order bar
+        if wo.planned_start_date and wo.planned_end_date:
+            timeline.append({
+                "label": "Work Order",
+                "start": wo.planned_start_date,
+                "end": wo.planned_end_date
+            })
+
+        # Job Card time logs
+        job_logs = frappe.db.sql("""
+            SELECT
+                jc.name AS job_card,
+                jctl.from_time,
+                jctl.to_time
+            FROM `tabJob Card` jc
+            JOIN `tabJob Card Time Log` jctl
+                ON jctl.parent = jc.name
+            WHERE jc.work_order = %s
+              AND jc.docstatus = 1
+              AND jctl.from_time IS NOT NULL
+              AND jctl.to_time IS NOT NULL
+        """, (wo.name,), as_dict=True)
+
+        for log in job_logs:
+            timeline.append({
+                "label": f"Job {log.job_card}",
+                "start": log.from_time,
+                "end": log.to_time
+            })
+
+    return timeline

@@ -1,12 +1,12 @@
 <template>
-  <div v-if="bars?.length" class="relative h-10 bg-gray-100 rounded">
+  <div v-if="hasBars" class="relative h-10 bg-gray-100 rounded overflow-hidden">
     <div
-      v-for="(b, i) in bars"
-      :key="i"
-      class="absolute h-6 rounded text-xs text-white px-1 flex items-center"
-      :style="barStyle(b)"
+      v-for="(bar, index) in normalizedBars"
+      :key="index"
+      class="absolute h-6 top-2 rounded text-[10px] text-white px-1 flex items-center whitespace-nowrap"
+      :style="getBarStyle(bar)"
     >
-      {{ b.label }}
+      {{ bar.label }}
     </div>
   </div>
 
@@ -25,29 +25,46 @@ const props = defineProps({
   }
 })
 
+/**
+ * Normalize & validate bars
+ */
+const normalizedBars = computed(() =>
+  props.bars
+    .filter(b => b?.start && b?.end)
+    .map(b => ({
+      label: b.label || "",
+      start: new Date(b.start).getTime(),
+      end: new Date(b.end).getTime()
+    }))
+    .filter(b => !isNaN(b.start) && !isNaN(b.end) && b.end > b.start)
+)
+
+const hasBars = computed(() => normalizedBars.value.length > 0)
+
 const minTime = computed(() =>
-  Math.min(...props.bars.map(b => +new Date(b.start)))
+  Math.min(...normalizedBars.value.map(b => b.start))
 )
 
 const maxTime = computed(() =>
-  Math.max(...props.bars.map(b => +new Date(b.end)))
+  Math.max(...normalizedBars.value.map(b => b.end))
 )
 
-function barStyle(b) {
-  if (!b.start || !b.end || minTime.value === maxTime.value) {
-    return { display: "none" }
-  }
+/**
+ * Calculate bar style
+ */
+function getBarStyle(bar) {
+  const total = maxTime.value - minTime.value
+  if (total <= 0) return { display: "none" }
 
-  const start = +new Date(b.start)
-  const end = +new Date(b.end)
-
-  const left = ((start - minTime.value) / (maxTime.value - minTime.value)) * 100
-  const width = ((end - start) / (maxTime.value - minTime.value)) * 100
+  const left = ((bar.start - minTime.value) / total) * 100
+  const width = ((bar.end - bar.start) / total) * 100
 
   return {
     left: `${left}%`,
-    width: `${Math.max(width, 2)}%`,
-    backgroundColor: b.label?.startsWith("Job") ? "#6366f1" : "#10b981"
+    width: `${Math.max(width, 3)}%`,
+    backgroundColor: bar.label.startsWith("Job")
+      ? "#6366f1"
+      : "#10b981"
   }
 }
 </script>

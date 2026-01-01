@@ -1,17 +1,31 @@
 <template>
-  <span :class="cls">{{ status }}</span>
+  <span :class="badgeClass">
+    {{ status || "Unknown" }}
+  </span>
 </template>
 
 <script setup>
 import { computed } from "vue"
 
-const props = defineProps({ status: String })
+const props = defineProps({
+  status: {
+    type: String,
+    default: ""
+  }
+})
 
-const cls = computed(() => ({
-  "px-2 py-1 rounded text-xs": true,
-  "bg-green-100 text-green-700": props.status.includes("Completed"),
-  "bg-blue-100 text-blue-700": props.status === "In Production",
-  "bg-yellow-100 text-yellow-700": props.status === "Planned",
-  "bg-red-100 text-red-700": props.status.includes("Missing")
-}))
+const badgeClass = computed(() => {
+  const base = "px-2 py-1 rounded text-xs font-medium inline-block"
+
+  switch (props.status) {
+    case "Production Completed":
+      return `${base} bg-green-100 text-green-700`
+    case "In Production":
+      return `${base} bg-blue-100 text-blue-700`
+    case "Planned":
+      return `${base} bg-yellow-100 text-yellow-700`
+    default:
+      return `${base} bg-gray-100 text-gray-600`
+  }
+})
 </script>

@@ -121,10 +121,10 @@ export const api = {
 			}
 		),
 	// -------------------- Level 8: Production Summary --------------------
-	getProductionControlDashboard(customer) {
+	getProductionControlDashboard(filters) {
 		return axios.get(
-			"/api/method/aims_customization.api.production_control_dashboard.get_production_control_dashboard",
-			{ params: { customer } }
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_production_control_dashboard",
+			{ params: { customer: filters.customer, month: filters.month, year: filters.year } }
 		);
 	},
 };

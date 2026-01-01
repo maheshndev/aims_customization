@@ -77,7 +77,7 @@
         Create Planner Mix BOM
       </button>
 
-      <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
+      <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl ">
         <thead class="bg-gray-100 uppercase">
           <tr>
             <th>Selected</th>
