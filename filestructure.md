@@ -2,7 +2,7 @@ filestructure.md
 
 
 ## The following is the file / project structure of the `aims_customization` module:
-
+<pre>
 \\wsl.localhost\Ubuntu\home\ubuntu\aims-dev\apps\aims_customization
 ├── .git/
 ├── .github/
@@ -112,3 +112,4 @@ filestructure.md
 │   └── vite.config.js
 ├── license.txt
 └── pyproject.toml
+</pre>
