@@ -28,7 +28,7 @@
           <th class="px-2 py-1 border">Month Days</th>
           <th class="px-2 py-1 border">Daily Hrs</th>
           <th class="px-2 py-1 border">Shifts</th>
-          <th class="px-2 py-1 border">Util %</th>
+          <th class="px-2 py-1 border">Utilization %</th>
           <th class="px-2 py-1 border">Capacity Hrs</th>
           <th class="px-2 py-1 border">Required Hrs</th>
           <th class="px-2 py-1 border">Balance</th>

@@ -14,7 +14,7 @@
 
 		<!-- Item Capacity -->
 		<SectionCard title="Item Loading Monthly Report">
-			<ItemsCapacityMonthly :filters="appliedFilters" :selected-machines="selected.selectedMachines" />
+			<ItemsCapacityMonthly :filters="filters" :selected-machines="selected.selectedMachines" />
 		</SectionCard>
 	</div>
 </template>

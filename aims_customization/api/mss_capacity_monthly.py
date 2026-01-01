@@ -1,7 +1,7 @@
 import calendar
-from datetime import time, timedelta
+from datetime import time, timedelta, datetime
 import frappe
-from frappe.utils import getdate, nowdate
+from frappe.utils import getdate, nowdate, get_last_day, get_first_day
 from frappe.utils.data import cint, flt
 
 
@@ -9,6 +9,56 @@ def get_month_days(month, year):
     if not month or not year:
         return 1
     return calendar.monthrange(int(year), int(month))[1]
+
+def get_date_range(month=None, year=None):
+    
+    m = None
+    y = None
+
+    if year:
+        try:
+            y = int(year)
+        except ValueError:
+            return None
+
+    if month:
+        s = str(month).strip()
+
+        for sep in ("-", "/"):
+            if sep in s:
+                p1, p2 = s.split(sep, 1)
+                if p1.isdigit() and len(p1) == 4:  
+                    y = int(p1)
+                    s = p2
+                elif p2.isdigit() and len(p2) == 4:  
+                    y = int(p2)
+                    s = p1
+                break
+
+        if s.isdigit():
+            m = int(s)
+            if not (1 <= m <= 12):
+                m = None
+        else:
+            try:
+                m = datetime.strptime(s[:3].title(), "%b").month
+            except Exception:
+                try:
+                    m = list(calendar.month_name).index(s.title())
+                except Exception:
+                    m = None             
+    if y and m:  
+        start_date = f"{y}-{m:02d}-01"
+        end_date = get_last_day(start_date)
+        return {"type": "month_year", "start": start_date, "end": end_date}
+    elif y and not m:  
+        start_date = f"{y}-01-01"
+        end_date = f"{y}-12-31"
+        return {"type": "year", "start": start_date, "end": end_date}
+    elif m and not y: 
+        return {"type": "month_only", "month": m}
+
+    return None
 
 def shift_hours_between(st, et):
     st = to_time(st)
@@ -114,7 +164,10 @@ def get_machine_capacity_monthly( month: str = None, year: str = None, customer:
 
 
 @frappe.whitelist()
-def get_item_capacity_monthly(month: str = None, year: str = None, customer: str = None, machines: list | str = None, utilization = 90):
+def get_item_capacity_monthly(month = None, year = None, customer = None, machines: list | str = None, utilization = 90):
+    
+    print("month: ", month, "year: ", year, "customer: ", customer, "machines: ", machines, "utilization", utilization )
+    
     if isinstance(machines, str):
         machines = [machines]
 
@@ -123,6 +176,7 @@ def get_item_capacity_monthly(month: str = None, year: str = None, customer: str
 
     month_days = get_month_days(month, year) if month and year else 0
     shift = get_shift_info()
+    date_filter = get_date_range(month, year)
 
     conditions = []
     filters = {"machines": tuple(machines)}

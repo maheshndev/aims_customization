@@ -27,7 +27,7 @@
 					<th class="border px-2 py-1 whitespace-nowrap">Loading Hours</th>
 					<th class="border px-2 py-1 whitespace-nowrap">Month Days</th>
 					<th class="border px-2 py-1 whitespace-nowrap">Daily Capacity Hrs</th>
-					<th class="border px-2 py-1 whitespace-nowrap">Utilization</th>
+					<th class="border px-2 py-1 whitespace-nowrap">Utilization %</th>
 				</tr>
 			</thead>
 
@@ -74,6 +74,8 @@ const loading = ref(false);
 const error = ref(null);
 
 const loadData = async () => {
+	
+	
 	if (!props.selectedMachines.length) {
 		rows.value = [];
 		return;
@@ -85,7 +87,6 @@ const loadData = async () => {
 	try {
 		const res = await api.getItemCapacityMonthly(props.filters, props.selectedMachines);
 		rows.value = res?.data?.message || [];
-		console.log(res.data.message);
 		
 	} catch (e) {
 		console.error(e);
