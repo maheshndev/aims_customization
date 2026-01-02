@@ -116,6 +116,7 @@ const lineData = computed(() => ({
 }))
 
 const lineOptions = {
+labels: props.rows.map(r => r.item_code),
   responsive: true,
   maintainAspectRatio: true,
   plugins: {
