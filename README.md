@@ -6,18 +6,13 @@ This Frappe app extends ERPNext functionalities with custom features. It include
 *   **Vue.js Frontend**: A small Vue 3 + Vite application for interactive UIs.
 *   **API Exposure**: Seamless integration between frontend and backend.
 
-**Example: Exposing a Python function to the frontend**
-
-```python
-# filepath: aims_customization/api/foo.py
-import frappe
-
-@frappe.whitelist()
-def my_endpoint(arg=None):
-    return {"ok": True, "arg": arg}
-```
-
 ### Installation
+before install this app we required apps
+1. [Frappe](https://github.com/frappe/frappe)
+2. [ERPNext](https://github.com/frappe/erpnext)
+3. [HRMS](https://github.com/frappe/hrms)
+4. [Mould Management](https://github.com/assimilate-technologies/mold_management/)
+5. [Material Weight Calculator](https://github.com/assimilate-technologies/material_weight_calculator)
 
 You can install this app using the [bench](https://github.com/frappe/bench) CLI:
 
