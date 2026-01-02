@@ -89,7 +89,6 @@ async function load() {
   try {
     const res = await api.getProductionControlDashboard(props.filters)
     rows.value = res?.data?.message.data || []
-    console.log(res.data.message.data);
     
   } finally {
     loading.value = false
