@@ -8,12 +8,12 @@
 		</SectionCard>
 
 		<!-- Machine Capacity -->
-		<SectionCard title="Machine and Item Capacity Monthly Report">
+		<SectionCard title="Available Machines">
 			<MachineCapacityMonthly :filters="filters" v-model:selected="selected.selectedMachines" />
 		</SectionCard>
 
 		<!-- Item Capacity -->
-		<SectionCard title="Item Loading Monthly Report">
+		<SectionCard title="Items Monthly Capacity Report ">
 			<ItemsCapacityMonthly :filters="filters" :selected-machines="selected.selectedMachines" />
 		</SectionCard>
 	</div>
