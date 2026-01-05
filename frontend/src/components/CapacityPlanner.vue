@@ -3,17 +3,17 @@
 		<div class="flex flex-wrap items-end justify-between gap-4">
 			<div class="flex gap-2">
 				<button class="px-3 py-1 rounded bg-blue-100 hover:bg-blue-200" @click="validateCapacity"
-					:disabled="!selectedRows.length">
+					:disabled="!selectedRows.length || hasValidationErrors">
 					Validate Capacity
 				</button>
 
 				<button class="px-3 py-1 rounded bg-indigo-100 hover:bg-indigo-200" @click="loadPreview"
-					:disabled="!selectedRows.length">
+					:disabled="!selectedRows.length || hasValidationErrors">
 					Preview Schedule
 				</button>
 
 				<button class="px-3 py-1 rounded bg-green-200 hover:bg-green-300" @click="createWorkOrders"
-					:disabled="!selectedRows.length">
+					:disabled="!selectedRows.length || hasValidationErrors">
 					Plan & Create WOs
 				</button>
 			</div>
@@ -67,7 +67,10 @@
 
 				<tbody>
 					<template v-for="(r, i) in rows" :key="r.rowKey">
-						<tr class="hover:bg-gray-50">
+						<tr class="hover:bg-gray-50" :class="{
+							'bg-red-50': r.validation_error,
+							'bg-green-50': !r.validation_error && r.required_hours,
+						}">
 							<td class="border p-2 text-center">
 								<input type="checkbox" :value="r.rowKey" v-model="selectedKeys" />
 							</td>
@@ -76,7 +79,8 @@
 								{{ r.customer }}
 							</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.sales_order }}</td>
-							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">{{ r.item_code }}
+							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">
+								{{ r.item_code }}
 								<!-- Tooltip -->
 								<div
 									class="absolute left-1/2 transform -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
@@ -85,7 +89,8 @@
 							</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.bom_no }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.machine }}</td>
-							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">{{ r.mould || "—" }}
+							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">
+								{{ r.mould || "—" }}
 								<!-- Tooltip -->
 								<div
 									class="absolute left-1/2 transform -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
@@ -202,72 +207,167 @@ const totalRequiredHours = computed(() =>
 function toggleAll() {
 	selectedKeys.value = selectAll.value ? rows.value.map((r) => r.rowKey) : [];
 }
-
-async function validateCapacity() {
-	const payload = {
-		production_utilization: utilization.value,
-		plan_start_date: planStart.value,
-		plan_end_date: planEnd.value,
-		lines: selectedRows.value.map((r) => ({
-			row_key: r.rowKey,
-			item_code: r.item_code,
-			schedule_qty: r.schedule_qty,
-			cycle_time: r.cycle_time,
-			cavity: r.cavity,
-			machine: r.machine,
-			mould: r.mould || null,
-			bom_no: r.bom_no,
-			sales_order: r.sales_order,
-		})),
-	};
-
-	const res = await api.validateCapacity(payload);
-	const result = res?.data?.message || [];
-
-	const map = Object.fromEntries(result.map((r) => [r.rowKey, r]));
-
-	rows.value = rows.value.map((r) => {
-		const v = map[r.rowKey];
-		if (!v) return r;
-
-		return {
-			...r,
-			pcs_per_hour: v.pcs_per_hour,
-			required_hours: v.required_hours,
-			available_hours: v.available_hours,
-			capacity_gap: v.capacity_gap,
-			validation_error: v.ok ? null : "Insufficient capacity",
-		};
+function showMessage({ title = "Message", message = "", indicator = "blue" }) {
+	frappe.msgprint({
+		title,
+		message: message || "—",
+		indicator, // green | red | orange | blue
 	});
 }
 
+function extractFrappeError(err) {
+	// Frappe thrown error
+	if (err?.response?.data?._server_messages) {
+		try {
+			const msgs = JSON.parse(err.response.data._server_messages);
+			return msgs.join("<br>");
+		} catch {
+			return err.response.data._server_messages;
+		}
+	}
+
+	// Validation error (custom raise)
+	if (err?.response?.data?.message) {
+		return err.response.data.message;
+	}
+
+	// Axios network error
+	if (err?.message) {
+		return err.message;
+	}
+
+	return "Unexpected server error";
+}
+const hasValidationErrors = computed(() =>
+	selectedRows.value.some(r => r.validation_error)
+);
+
+
+async function validateCapacity() {
+	try {
+		const payload = {
+			production_utilization: utilization.value,
+			plan_start_date: planStart.value,
+			plan_end_date: planEnd.value,
+			lines: selectedRows.value.map((r) => ({
+				row_key: r.rowKey,
+				item_code: r.item_code,
+				schedule_qty: r.schedule_qty,
+				cycle_time: r.cycle_time,
+				cavity: r.cavity,
+				machine: r.machine,
+				mould: r.mould || null,
+				bom_no: r.bom_no,
+				sales_order: r.sales_order,
+			})),
+		};
+
+		const res = await api.validateCapacity(payload);
+		const result = res?.data?.message || [];
+
+		if (!result.length) {
+			showMessage({
+				title: "No Data",
+				message: "No capacity data returned from server",
+				indicator: "orange",
+			});
+			return;
+		}
+
+		const map = Object.fromEntries(result.map((r) => [r.rowKey, r]));
+
+		let errorCount = 0;
+
+		rows.value = rows.value.map((r) => {
+			const v = map[r.rowKey];
+			if (!v) return r;
+
+			if (!v.ok) errorCount++;
+
+			return {
+				...r,
+				pcs_per_hour: v.pcs_per_hour,
+				required_hours: v.required_hours,
+				available_hours: v.available_hours,
+				capacity_gap: v.capacity_gap,
+				validation_error: v.ok ? null : v.error || "Insufficient capacity",
+			};
+		});
+
+		showMessage({
+			title: "Capacity Validation",
+			message:
+				errorCount > 0
+					? `${errorCount} line(s) have insufficient capacity`
+					: "All selected lines passed capacity validation",
+			indicator: errorCount > 0 ? "orange" : "green",
+		});
+	} catch (err) {
+		showMessage({
+			title: "Validation Failed",
+			message: extractFrappeError(err),
+			indicator: "red",
+		});
+	}
+}
+
 async function loadPreview() {
-	preview.value = {};
+	try {
+		preview.value = {};
 
-	const payload = {
-		production_utilization: utilization.value,
-		plan_start_date: planStart.value,
-		plan_end_date: planEnd.value,
-		lines: selectedRows.value.map((r) => ({
-			row_key: r.rowKey,
-			item_code: r.item_code,
-			schedule_qty: r.schedule_qty,
-			machine: r.machine,
-			cycle_time: r.cycle_time,
-			cavity: r.cavity,
-			mould: r.mould,
-			bom_no: r.bom_no,
-			sales_order: r.sales_order,
-		})),
-	};
+		const payload = {
+			production_utilization: utilization.value,
+			plan_start_date: planStart.value,
+			plan_end_date: planEnd.value,
+			lines: selectedRows.value.map((r) => ({
+				row_key: r.rowKey,
+				item_code: r.item_code,
+				schedule_qty: r.schedule_qty,
+				machine: r.machine,
+				cycle_time: r.cycle_time,
+				cavity: r.cavity,
+				mould: r.mould,
+				bom_no: r.bom_no,
+				sales_order: r.sales_order,
+			})),
+		};
 
-	const res = await api.previewCapacityPlan(payload);
+		const res = await api.previewCapacityPlan(payload);
+		const list = res?.data?.message || [];
 
-	const list = res?.data?.message || [];
+		if (!list.length) {
+			showMessage({
+				title: "Preview",
+				message: "No preview schedule generated",
+				indicator: "orange",
+			});
+			return;
+		}
 
-	list.forEach((p) => {
-		preview.value[p.row_key] = p.preview;
-	});
+		list.forEach((p) => {
+			preview.value[p.row_key] = p.preview || [];
+
+			if (p.error) {
+				showMessage({
+					title: "Preview Warning",
+					message: p.error,
+					indicator: "orange",
+				});
+			}
+		});
+
+		showMessage({
+			title: "Preview Generated",
+			message: "Production schedule preview generated successfully",
+			indicator: "green",
+		});
+	} catch (err) {
+		showMessage({
+			title: "Preview Failed",
+			message: extractFrappeError(err),
+			indicator: "red",
+		});
+	}
 }
 
 async function togglePreview(row) {
@@ -290,37 +390,80 @@ async function togglePreview(row) {
 		],
 	};
 
-	const res = await api.previewCapacityPlan(payload);
-	const list = res?.data.message || [];
+	try {
+		const res = await api.previewCapacityPlan(payload);
+		const list = res?.data?.message || [];
 
-	if (list.length) {
-		preview.value[row.rowKey] = list[0].preview;
+		if (list.length) {
+			preview.value[row.rowKey] = list[0].preview || [];
+		}
+	} catch (err) {
+		showMessage({
+			title: "Preview Error",
+			message: extractFrappeError(err),
+			indicator: "red",
+		});
 	}
 }
 
-
 async function createWorkOrders() {
-	const payload = {
-		production_utilization: utilization.value,
-		plan_start_date: planStart.value,
-		plan_end_date: planEnd.value,
-		lines: selectedRows.value.map((r) => ({
-			item_code: r.item_code,
-			schedule_qty: r.schedule_qty,
-			cycle_time: r.cycle_time,
-			cavity: r.cavity,
-			machine: r.machine,
-			mould: r.mould || null,
-			bom_no: r.bom_no,
-			sales_order: r.sales_order,
-		})),
-	};
+	try {
+		const payload = {
+			production_utilization: utilization.value,
+			plan_start_date: planStart.value,
+			plan_end_date: planEnd.value,
+			lines: selectedRows.value.map((r) => ({
+				item_code: r.item_code,
+				schedule_qty: r.schedule_qty,
+				cycle_time: r.cycle_time,
+				cavity: r.cavity,
+				machine: r.machine,
+				mould: r.mould || null,
+				bom_no: r.bom_no,
+				sales_order: r.sales_order,
+			})),
+		};
 
-	const res = await api.createWorkOrdersFromMSS(payload);
-	frappe.msgprint({
-		title: "Successfully Create Work Orders",
-		indicator: "green",
-		message: `<b>${res.data.message.created_work_orders.length} Work Orders created</b>`,
-	});
+		const res = await api.createWorkOrdersFromMSS(payload);
+		const msg = res?.data?.message || {};
+
+		let html = "";
+
+		if (msg.created_work_orders?.length) {
+			html += `<p class="text-green-600">
+				<b>${msg.created_work_orders.length}</b> Work Orders created
+			</p>`;
+		}
+
+		if (msg.already_exists?.length) {
+			html += `<p class="text-orange-600 mt-2">
+				<b>Already Exists:</b><br>
+				${msg.already_exists.join("<br>")}
+			</p>`;
+		}
+
+		if (msg.failed?.length) {
+			html += `<p class="text-red-600 mt-2">
+				<b>Failed:</b><br>
+				${msg.failed.join("<br>")}
+			</p>`;
+		}
+
+		showMessage({
+			title: "Work Order Creation Summary",
+			message: html || "No work orders were created",
+			indicator: msg.failed?.length
+				? "red"
+				: msg.already_exists?.length
+					? "orange"
+					: "green",
+		});
+	} catch (err) {
+		showMessage({
+			title: "Work Order Creation Failed",
+			message: extractFrappeError(err),
+			indicator: "red",
+		});
+	}
 }
 </script>

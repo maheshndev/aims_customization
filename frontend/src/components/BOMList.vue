@@ -16,10 +16,7 @@
           @click="unselectAll">
           Unselect All
         </button>
-        <button v-if="selectedLocal.length >= 2" @click="$emit('open-compare')"
-          class="px-2 py-1 bg-purple-50 text-purple-700 font-medium rounded hover:bg-purple-200 transition shadow-sm">
-          Compare BOMs ({{ selectedLocal.length }})
-        </button>
+        
       </div>
       <div class="text-xs text-gray-500 font-medium">
         {{ selectedLocal.length }} items selected

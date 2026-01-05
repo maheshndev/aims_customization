@@ -869,20 +869,35 @@ def validate_capacity(payload):
     result = []
 
     for ln in lines:
-        pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
-        required_hours = ln["schedule_qty"] / pcs_hr
-        windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
-        available = sum((w["end"] - w["start"]).total_seconds()/3600 * utilization/100 for w in windows)
+        try:
+            pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
+            required_hours = ln["schedule_qty"] / pcs_hr
 
-        result.append({
-            "rowKey": ln["row_key"],
-            "pcs_per_hour": round(pcs_hr, 2),
-            "required_hours": round(required_hours, 2),
-            "available_hours": round(available, 2),
-            "capacity_gap": round(available - required_hours, 2),
-            "ok": required_hours <= available
-        })
+            windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
+            available = sum(
+                (w["end"] - w["start"]).total_seconds() / 3600 * utilization / 100
+                for w in windows
+            )
+
+            result.append({
+                "rowKey": ln["row_key"],
+                "pcs_per_hour": round(pcs_hr, 2),
+                "required_hours": round(required_hours, 2),
+                "available_hours": round(available, 2),
+                "capacity_gap": round(available - required_hours, 2),
+                "ok": required_hours <= available,
+                "error": None
+            })
+
+        except Exception as e:
+            result.append({
+                "rowKey": ln["row_key"],
+                "ok": False,
+                "error": str(e)
+            })
+
     return result
+
 
 # -----------------------------
 # API: PREVIEW SCHEDULE
@@ -890,41 +905,66 @@ def validate_capacity(payload):
 @frappe.whitelist()
 def preview_capacity_plan(payload):
     payload = frappe.parse_json(payload)
-    utilization = flt(payload.get("production_utilization", 100))
     ln = payload["lines"][0]
 
-    pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
-    remaining = flt(ln["schedule_qty"])
-    windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
+    try:
+        utilization = flt(payload.get("production_utilization", 100))
+        pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
 
-    current_start = get_last_wo_end(ln["machine"], ln.get("mould")) or combine_datetime(getdate(payload['plan_start_date']), time(6,0))
-    preview = []
-    shift_no = 1
-
-    for w in windows:
-        st, et = w["start"], w["end"]
+        remaining = flt(ln["schedule_qty"])
         if remaining <= 0:
-            break
-        st = max(st, current_start)
-        if st >= et:
-            continue
+            return [{
+                "row_key": ln["row_key"],
+                "preview": [],
+                "error": "Schedule Qty must be greater than zero"
+            }]
 
-        allowed, actual_end = allocate_qty_in_window(remaining, st, et, pcs_hr, utilization)
-        if allowed <= 0:
-            continue
+        windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
+        current_start = (
+            get_last_wo_end(ln["machine"], ln.get("mould")) or
+            combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+        )
 
-        preview.append({
-            "shift_no": shift_no,
-            "start": st,
-            "end": actual_end,
-            "planned_hours": round(allowed/pcs_hr, 2),
-            "qty": round(allowed, 2)
-        })
-        remaining -= allowed
-        current_start = actual_end
-        shift_no += 1
+        preview = []
+        shift_no = 1
 
-    return [{"row_key": ln["row_key"], "preview": preview}]
+        for w in windows:
+            if remaining <= 0:
+                break
+
+            st, et = max(w["start"], current_start), w["end"]
+            if st >= et:
+                continue
+
+            allowed, actual_end = allocate_qty_in_window(
+                remaining, st, et, pcs_hr, utilization
+            )
+
+            if allowed <= 0:
+                continue
+
+            preview.append({
+                "shift_no": shift_no,
+                "planned_hours": round(allowed / pcs_hr, 2),
+                "qty": allowed
+            })
+
+            remaining -= allowed
+            current_start = actual_end
+            shift_no += 1
+
+        return [{
+            "row_key": ln["row_key"],
+            "preview": preview,
+            "error": None
+        }]
+
+    except Exception as e:
+        return [{
+            "row_key": ln["row_key"],
+            "preview": [],
+            "error": str(e)
+        }]
 
 # -----------------------------
 # API: CREATE WORK ORDERS
@@ -933,70 +973,81 @@ def preview_capacity_plan(payload):
 def create_work_orders_from_mss(payload):
     payload = frappe.parse_json(payload)
     utilization = flt(payload.get("production_utilization", 100))
+
     created = []
+    failed = []
+    already_exists = []
 
     for ln in payload.get("lines", []):
-        pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
-        remaining = flt(ln["schedule_qty"])
-        so = frappe.get_doc("Sales Order", ln.get("sales_order"))
-        fg, wip = resolve_warehouses(so.company, ln["item_code"])
-        windows = get_shift_windows(payload["plan_start_date"], payload.get("plan_end_date"))
+        try:
+            pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
+            remaining = flt(ln["schedule_qty"])
 
-        current_start = get_last_wo_end(ln["machine"], ln.get("mould")) or combine_datetime(getdate(payload['plan_start_date']), time(6,0))
-
-        bom_ops = frappe.get_all(
-            "BOM Operation",
-            filters={"parent": ln.get("bom_no")},
-            fields=["operation", "workstation", "description", "time_in_mins", "workstation_type"],
-            order_by="idx asc"
-        )
-
-        operations_args = []
-        for op in bom_ops:
-            operations_args.append({
-                "workstation": op.workstation,
-                "operation": op.operation,
-                "bom_no": ln.get("bom_no"),
-                "description": op.description,
-                "workstation_type": op.workstation_type,
-                "status": "Pending",
-                "time_in_mins": op.time_in_mins or 1
-            })
-
-        for w in windows:
-            st, et = w["start"], w["end"]
             if remaining <= 0:
-                break
-            st = max(st, current_start)
-            if st >= et or has_overlap(ln["machine"], ln.get("mould"), st, et):
+                failed.append(f"{ln['item_code']} – Qty must be > 0")
                 continue
 
-            used, actual_end = allocate_qty_in_window(remaining, st, et, pcs_hr, utilization)
-            if used <= 0:
-                continue
+            so = frappe.get_doc("Sales Order", ln["sales_order"])
+            fg, wip = resolve_warehouses(so.company, ln["item_code"])
 
-            doc_args = {
-                "company": so.company,
-                "production_item": ln["item_code"],
-                "bom_no": ln["bom_no"],
-                "mould": ln.get("mould"),
-                "sales_order": ln.get("sales_order"),
-                "fg_warehouse": fg,
-                "wip_warehouse": wip,
-                "qty": used,
-                "planned_start_date": st,
-                "planned_end_date": actual_end
-            }
+            windows = get_shift_windows(
+                payload["plan_start_date"],
+                payload.get("plan_end_date")
+            )
 
-            wo_name = create_work_order(doc_args, operations_args)
-            created.append(wo_name)
-            remaining -= used
-            current_start = actual_end
+            current_start = (
+                get_last_wo_end(ln["machine"], ln.get("mould")) or
+                combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+            )
 
-        if remaining > 0:
-            frappe.throw(_("Insufficient capacity for {0}").format(ln["item_code"]))
+            for w in windows:
+                if remaining <= 0:
+                    break
 
-    return {"created_work_orders": created}
+                st, et = max(w["start"], current_start), w["end"]
+                if st >= et or has_overlap(ln["machine"], ln.get("mould"), st, et):
+                    continue
+
+                used, actual_end = allocate_qty_in_window(
+                    remaining, st, et, pcs_hr, utilization
+                )
+
+                if used <= 0:
+                    continue
+
+                wo_name = create_work_order(
+                    {
+                        "company": so.company,
+                        "production_item": ln["item_code"],
+                        "bom_no": ln["bom_no"],
+                        "mould": ln.get("mould"),
+                        "sales_order": ln["sales_order"],
+                        "fg_warehouse": fg,
+                        "wip_warehouse": wip,
+                        "qty": used,
+                        "planned_start_date": st,
+                        "planned_end_date": actual_end,
+                    },
+                    operations_args=[]
+                )
+
+                created.append(wo_name)
+                remaining -= used
+                current_start = actual_end
+
+            if remaining > 0:
+                failed.append(
+                    f"{ln['item_code']} – insufficient capacity ({remaining} remaining)"
+                )
+
+        except Exception as e:
+            failed.append(f"{ln.get('item_code')} – {str(e)}")
+
+    return {
+        "created_work_orders": created,
+        "failed": failed,
+        "already_exists": already_exists
+    }
 
 ########################################################################################################################        
 ##### -------------------- Level 7: Work Orders for Blanket Orders -------------------- #####

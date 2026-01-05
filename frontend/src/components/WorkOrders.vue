@@ -14,7 +14,7 @@
 
         <div v-if="error" class="text-red-600 bg-red-100 p-2 rounded mb-2 border border-red-300">{{ error }}</div>
 
-        <div v-if="workOrders.length" class="overflow-auto rounded-b-2xl">
+        <div class="overflow-auto rounded-b-2xl">
             <div class="flex items-center gap-3 mb-3">
                 <button class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm" @click="selectAll">
                     Select All

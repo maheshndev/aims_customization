@@ -149,25 +149,54 @@ export default {
         item.customer?.toLowerCase().includes(q)
       );
     });
+const showMessage = ({ title, message, indicator = "blue" }) => {
+  frappe.msgprint({
+    title,
+    message,
+    indicator
+  });
+};
 
     const loadItems = async () => {
-      loading.value = true;
-      error.value = null;
+  loading.value = true;
+  error.value = null;
 
-      try {
-        if (props.filters.customer) {
-          const res = await api.getBlanketOrdersWithItems(props.filters);
-          items.value = res?.data?.message || [];
-        } else {
-          items.value = [];
-        }
+  try {
+    if (!props.filters.customer) {
+      items.value = [];
+      return;
+    }
 
-      } catch (e) {
-        error.value = "Failed to load items.";
-      }
+    const res = await api.getBlanketOrdersWithItems(props.filters);
+    const data = res?.data?.message;
 
-      loading.value = false;
-    };
+    if (!Array.isArray(data)) {
+      throw new Error("Invalid response from server");
+    }
+
+    if (!data.length) {
+      showMessage({
+        title: "No Data",
+        message: "No pending items found for selected filters",
+        indicator: "orange"
+      });
+    }
+
+    items.value = data;
+
+  } catch (e) {
+    error.value = e?.message || "Failed to load Blanket Order items";
+
+    showMessage({
+      title: "Load Failed",
+      message: error.value,
+      indicator: "red"
+    });
+  } finally {
+    loading.value = false;
+  }
+};
+
 
     const selectAll = () => {
       selectedItems.value = [...filteredItems.value];
@@ -178,51 +207,82 @@ export default {
     };
 
     const createSalesOrder = async () => {
-      if (!selectedItems.value.length) return;
+  if (!selectedItems.value.length) {
+    showMessage({
+      title: "No Selection",
+      message: "Please select at least one item",
+      indicator: "orange"
+    });
+    return;
+  }
 
-      const payload = selectedItems.value.map(item => ({
-        bo_name: item.bo_name,
-        item_code: item.item_code,
-        schedule_qty: Number(item.schedule_qty) || 0,
-        rate: item.rate || 0,
-        bom_no: item.bom_no || null,
-        warehouse: item.warehouse || null
-      }));
+  const payload = selectedItems.value.map(item => ({
+    bo_name: item.bo_name,
+    item_code: item.item_code,
+    schedule_qty: Number(item.schedule_qty) || 0,
+    rate: item.rate || 0,
+    bom_no: item.bom_no || null,
+    warehouse: item.warehouse || null
+  }));
 
-      try {
+  try {
+    const res = await api.createSalesOrderFromBOItems(payload);
+    const data = res?.data?.message;
 
-        const res = await api.createSalesOrderFromBOItems(payload);
-        const data = res?.data?.message || {};
+    if (!data || data.status !== "success") {
+      throw new Error("Unexpected server response");
+    }
 
-        if (!data.skipped?.length) {
-          frappe.msgprint({
-            title: "Success",
-            indicator: "green",
-            message: `
-              ${data.message}
-              <br><br>
-              <b>Created:</b> ${data.created_sales_orders?.join(", ")}
-            `
-          });
-        } else {
-          frappe.msgprint({
-            title: "Error",
-            indicator: "red",
-            message: `<b>${data.skipped[0].reason}</b>`
-          });
-        }
+    let html = "";
 
-        selectedItems.value = [];
-        emit("update:selected", []);
+    // ✅ Created
+    if (data.created_sales_orders?.length) {
+      html += `
+        <p class="text-green-600">
+          <b>Created Sales Orders:</b><br>
+          ${data.created_sales_orders.join("<br>")}
+        </p>
+      `;
+    }
 
-      } catch (err) {
-        frappe.msgprint({
-          title: "Error",
-          indicator: "red",
-          message: err?.message || "Failed to create Sales Order."
-        });
-      }
-    };
+    // ⚠️ Skipped
+    if (data.skipped?.length) {
+      html += `
+        <hr>
+        <p class="text-orange-600 mt-2">
+          <b>Skipped:</b><br>
+          ${data.skipped.map(s =>
+            `BO: ${s.blanket_order} – ${s.reason}`
+          ).join("<br>")}
+        </p>
+      `;
+    }
+
+    showMessage({
+      title: "Sales Order Creation Summary",
+      message: html,
+      indicator: data.skipped?.length ? "orange" : "green"
+    });
+
+    selectedItems.value = [];
+    emit("update:selected", []);
+
+  } catch (err) {
+
+    // 🔥 Handles frappe.throw(), permission, DB errors
+    showMessage({
+      title: "Error",
+      message:
+        err?.response?.data?._server_messages
+          ? JSON.parse(err.response.data._server_messages)
+              .map(m => JSON.parse(m).message)
+              .join("<br>")
+          : err.message || "Failed to create Sales Order",
+      indicator: "red"
+    });
+  }
+};
+
 
     watch(
       () => props.filters,
@@ -237,21 +297,23 @@ export default {
       { immediate: true, deep: true }
     );
     const validateScheduleQty = (item) => {
-      if (item.schedule_qty == null) return;
+  if (item.schedule_qty == null) return;
 
-      if (item.schedule_qty < 0) {
-        item.schedule_qty = 0;
-      }
+  if (item.schedule_qty < 0) {
+    item.schedule_qty = 0;
+  }
 
-      if (item.schedule_qty > item.remaining_bo_qty) {
-        item.schedule_qty = item.remaining_bo_qty;
+  if (item.schedule_qty > item.remaining_bo_qty) {
+    item.schedule_qty = item.remaining_bo_qty;
 
-        frappe.msgprint({
-          message: `Schedule Qty cannot exceed Pending to Produce Qty (${item.remaining_bo_qty})`,
-          indicator: "orange"
-        });
-      }
-    };
+    showMessage({
+      title: "Invalid Quantity",
+      message: `Schedule Qty cannot exceed Pending Qty (${item.remaining_bo_qty})`,
+      indicator: "orange"
+    });
+  }
+};
+
 
 
     return {
