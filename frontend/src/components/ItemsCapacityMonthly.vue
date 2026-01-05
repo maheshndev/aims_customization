@@ -76,6 +76,9 @@
         </tbody>
       </table>
     </div>
+    <div class="p-4" v-if="!rows.length">
+      <h5>No item loading data available</h5>
+    </div>
   </div>
 </template>
 
@@ -91,6 +94,36 @@ const props = defineProps({
 const rows = ref([]);
 const loading = ref(false);
 const error = ref(null);
+function extractFrappeError(err) {
+  // Frappe thrown messages
+  if (err?.response?.data?._server_messages) {
+    try {
+      const msgs = JSON.parse(err.response.data._server_messages);
+      return msgs.join("<br>");
+    } catch {
+      return err.response.data._server_messages;
+    }
+  }
+
+  // Custom backend message
+  if (err?.response?.data?.message && typeof err.response.data.message === "string") {
+    return err.response.data.message;
+  }
+
+  // Axios / JS error
+  if (err?.message) {
+    return err.message;
+  }
+
+  return "Unexpected server error";
+}
+function showMessage({ title = "Message", message = "", indicator = "blue" }) {
+  frappe.msgprint({
+    title,
+    message,
+    indicator, // green | red | orange | blue
+  });
+}
 
 const loadData = async () => {
   if (!props.selectedMachines.length) {
@@ -102,21 +135,44 @@ const loadData = async () => {
   error.value = null;
 
   try {
-    const res = await api.getItemCapacityMonthly(props.filters, props.selectedMachines);
-    rows.value = res?.data?.message || [];
-  } catch (e) {
-    console.error(e);
-    error.value = "Failed to load capacity data";
+    const res = await api.getItemCapacityMonthly(
+      props.filters,
+      props.selectedMachines
+    );
+
+    const data = res?.data?.message;
+
+    // Invalid response
+    if (!Array.isArray(data)) {
+      throw new Error("Invalid response received from server");
+    }
+
+    rows.value = data;
+
+   
+  } catch (err) {
+    const msg = extractFrappeError(err);
+
+    console.error(err);
+    error.value = msg;
     rows.value = [];
+
+    showMessage({
+      title: "Load Failed",
+      message: msg,
+      indicator: "red",
+    });
   } finally {
     loading.value = false;
   }
 };
 
+
 const refreshAll = async () => {
   rows.value = [];
   await loadData();
 };
+
 
 watch(() => [props.filters, props.selectedMachines], loadData, { deep: true, immediate: true });
 </script>

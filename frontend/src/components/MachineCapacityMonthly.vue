@@ -2,9 +2,8 @@
   <div class="p-2 overflow-x-auto rounded-lg shadow-sm bg-white">
     <div v-if="loading" class="text-gray-500 animate-pulse">Loading ...</div>
 
-    <div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4">
-      {{ error }}
-    </div>
+    <div v-if="error" v-html="error" class="bg-red-100 text-red-700 px-4 py-2 border rounded mb-4" />
+
     <div v-if="rows.length && !loading" class="flex justify-start gap-3 mb-3">
       <button class="px-3 py-1 bg-blue-100 text-black rounded" @click="selectAll">
         Select All
@@ -33,6 +32,7 @@
           <th class="px-2 py-1 border">Required Hrs</th>
           <th class="px-2 py-1 border">Balance</th>
           <th class="px-2 py-1 border">Req Shifts</th>
+          <th class="px-2 py-1 border"></th>
         </tr>
       </thead>
 
@@ -56,7 +56,7 @@
         </tr>
 
         <tr v-if="!rows.length">
-          <td colspan="10" class="text-center py-4 text-gray-500">No data available</td>
+          <td colspan="11" class="text-center py-4 text-gray-500">No data available</td>
         </tr>
       </tbody>
     </table>
@@ -82,10 +82,8 @@ const isSelectedAll = computed(
   () => rows.value.length > 0 && selectedLocal.value.length === rows.value.length
 );
 
-const toggleSelectAll = () => (isSelectedAll.value ? unselectAll() : selectAll());
-
 const selectAll = () => {
-  selectedLocal.value = rows.value.map((o) => o.machine);
+  selectedLocal.value = rows.value.map((r) => r.machine);
   emit("update:selected", [...selectedLocal.value]);
 };
 
@@ -94,32 +92,59 @@ const unselectAll = () => {
   emit("update:selected", []);
 };
 
-const processSelectedMachine = () => {
-  
-  emit("update:selected", [...selectedLocal.value]);
-};
+const toggleSelectAll = () => (isSelectedAll.value ? unselectAll() : selectAll());
 
-watch(selectedLocal, processSelectedMachine);
+watch(selectedLocal, () => {
+  emit("update:selected", [...selectedLocal.value]);
+});
 
 const loadMachineCapacity = async () => {
   loading.value = true;
   error.value = null;
+  rows.value = [];
+  selectedLocal.value = [];
 
   try {
     const res = await api.getMachineCapacityMonthly(props.filters);
-    rows.value = res?.data?.message || [];
+    const payload = res?.data?.message;
+
+    if (!payload?.success) {
+      throw new Error(payload?.message || "Invalid server response");
+    }
+
+    rows.value = payload.data || [];
+
+    // success but empty
+    if (!rows.value.length) {
+      frappe.msgprint({
+        title: "No Data",
+        message: payload.message,
+        indicator: "orange",
+      });
+    }
   } catch (err) {
-    console.error(err);
-    error.value = "Failed to load data.";
-    rows.value = [];
+    const msg = extractFrappeError(err);
+    error.value = msg;
+
+    frappe.msgprint({
+      title: "Load Failed",
+      message: msg,
+      indicator: "red",
+    });
   } finally {
     loading.value = false;
   }
 };
+
 const refreshAll = async () => {
-  selectedLocal.value = [];
-  rows.value =[];
   await loadMachineCapacity();
 };
-watch(() => props.filters, loadMachineCapacity, { immediate: true, deep: true });
+
+watch(
+  () => props.filters,
+  () => {
+    loadMachineCapacity();
+  },
+  { immediate: true, deep: true }
+);
 </script>

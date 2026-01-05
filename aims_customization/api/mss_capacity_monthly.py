@@ -1,8 +1,7 @@
 import calendar
 from datetime import time, timedelta, datetime
 import frappe
-from frappe.utils import getdate, nowdate, get_last_day, get_first_day
-from frappe.utils.data import cint, flt
+from frappe.utils import getdate, nowdate, get_last_day, get_first_day, cint, flt
 
 
 def get_month_days(month, year):
@@ -118,17 +117,20 @@ def get_customer_list(search_text: str = None, customer_id: str = None, limit: i
 
 
 @frappe.whitelist()
-def get_machine_capacity_monthly( month: str = None, year: str = None, utilization=90 ):
+def get_machine_capacity_monthly(month: str = None, year: str = None, utilization=90):
+    
     today = getdate(nowdate())
+
     try:
         month = int(month) if month not in (None, "", 0) else today.month
         year = int(year) if year not in (None, "", 0) else today.year
     except Exception:
-        frappe.throw("Invalid month or year")
-        
+        frappe.throw("Invalid month or year provided")
+
     month_days = get_month_days(month, year)
     shift = get_shift_info()
     machines = frappe.get_all("Workstation", pluck="name")
+
     data = []
 
     for machine in machines:
@@ -140,7 +142,7 @@ def get_machine_capacity_monthly( month: str = None, year: str = None, utilizati
             WHERE woo.workstation = %s
               AND MONTH(wo.planned_start_date) = %s
               AND YEAR(wo.planned_start_date) = %s
-        """,
+            """,
             (machine, month, year),
         )[0][0]
 
@@ -157,9 +159,16 @@ def get_machine_capacity_monthly( month: str = None, year: str = None, utilizati
             "required_hours": round(required_hrs, 2),
             "balance_hours": round(balance, 2),
             "required_shifts": (
-                round(required_hrs / shift["daily_hours"], 2) if shift["daily_hours"] else 0
-        ),})
-    return data
+                round(required_hrs / shift["daily_hours"], 2)
+                if shift["daily_hours"] else 0
+            ),
+        })
+
+    return {
+        "success": True,
+        "data": data,
+        "message": "Machine capacity loaded successfully" if data else "No machine data found"
+    }
 
 
 @frappe.whitelist()
