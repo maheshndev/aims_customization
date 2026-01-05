@@ -176,17 +176,26 @@ def get_item_capacity_monthly(
     month=None,
     year=None,
     customer=None,
-    machines: list | str = None,
+    machines=None,
     utilization=90,
 ):
+    import json
+
     # ------------------------------
-    # Normalize machines input
+    # Normalize machines input ✅
     # ------------------------------
     if isinstance(machines, str):
-        machines = [machines]
+        try:
+            machines = json.loads(machines)
+        except Exception:
+            frappe.throw("Invalid machines parameter")
 
     if not machines:
         return []
+
+    # Normalize month/year
+    month = int(month) if month else None
+    year = int(year) if year else None
 
     month_days = get_month_days(month, year) if month and year else 0
     shift = get_shift_info()
@@ -208,10 +217,6 @@ def get_item_capacity_monthly(
 
     where_clause = " AND ".join(conditions)
 
-    # ------------------------------
-    # SQL (DEDUPLICATED)
-    # One row per Work Order + Machine
-    # ------------------------------
     rows = frappe.db.sql(
         f"""
         SELECT
@@ -233,10 +238,9 @@ def get_item_capacity_monthly(
         JOIN `tabWork Order` wo ON wo.name = woo.parent
         JOIN `tabItem` i ON i.name = wo.production_item
         JOIN `tabSales Order` so ON so.name = wo.sales_order
-        JOIN `tabMould` mu ON wo.mould = mu.name
+        LEFT JOIN `tabMould` mu ON wo.mould = mu.name
         WHERE woo.workstation IN %(machines)s
         {f"AND {where_clause}" if where_clause else ""}
-        
         ORDER BY
             so.customer_name,
             so.transaction_date,
@@ -246,9 +250,6 @@ def get_item_capacity_monthly(
         as_dict=True,
     )
 
-    # ------------------------------
-    # Capacity Calculations
-    # ------------------------------
     result = []
 
     for r in rows:
@@ -260,33 +261,26 @@ def get_item_capacity_monthly(
             util = (loading_hrs / (month_days * shift["daily_hours"])) * 100
 
         result.append({
-            # Customer / Orders
             "customer_name": r.customer_name,
             "sales_order": r.sales_order,
             "sales_order_date": r.sales_order_date,
-
             "work_order": r.work_order,
             "wo_planned_date": r.wo_planned_date,
             "work_order_operation": r.work_order_operation,
-
-            # Item
             "item_code": r.item_code,
             "item_name": r.item_name,
             "schedule_qty": r.schedule_qty,
             "mould": r.mould,
             "mould_name": r.mould_name,
-
-            # Machine / Capacity
             "machine": r.machine,
             "cavity": r.cavity,
             "cycle_time": r.cycle_time,
             "machine_hourly_capacity": round(pcs_hr, 2),
             "loading_hours": round(loading_hrs, 2),
-
-            # Period
             "month_days": month_days,
             "daily_capacity_hrs": shift.get("daily_hours", 0),
             "utilization": round(util, 2),
         })
 
     return result
+
