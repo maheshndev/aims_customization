@@ -141,7 +141,8 @@ const loadData = async () => {
     );
 
     const data = res?.data?.message;
-
+      console.log(data);
+      
     // Invalid response
     if (!Array.isArray(data)) {
       throw new Error("Invalid response received from server");
