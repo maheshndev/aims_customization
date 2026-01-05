@@ -64,9 +64,9 @@
                 <input type="number" :min="0" :max="item.remaining_bo_qty" v-model.number="item.schedule_qty"
                   @input="validateScheduleQty(item)" class="w-full border px-2 py-1 rounded" />
               </template>
-              <template v-if="key === 'bo_name'">
+              <template v-else-if="key === 'bo_name'" >
                 <a class="cursor-pointer hover:underline hover:text-blue-600"
-                  :href="`/app/blanket-order/${item[key]}`">{{ item[key] }}</a>
+                  :href="`/app/blanket-order/${item[key]}`" target="_blank">{{ item[key] }}</a>
               </template>
               <template v-else>
                 {{ item[key] }}
