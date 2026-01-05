@@ -49,7 +49,7 @@
             <td class="border px-2 py-1 whitespace-nowrap">
               {{ r.work_order_operation }}
             </td>
-            <td class="border px-2 py-1 whitespace-nowrap">{{ r.mould_name }}</td>
+            <td class="border px-2 py-1 whitespace-nowrap">{{ r.mould_name || r.mould }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.schedule_qty }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.cavity }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.cycle_time }}</td>
