@@ -49,11 +49,11 @@
 						<th class="border p-2">#</th>
 						<th class="border p-2 whitespace-nowrap">Customer</th>
 						<th class="border p-2 whitespace-nowrap">Sales Order</th>
-						<th class="border p-2 whitespace-nowrap">Item</th>
+						<th class="border p-2 whitespace-nowrap">SO Item Code</th>
 						<th class="border p-2 whitespace-nowrap">BOM</th>
 						<th class="border p-2 whitespace-nowrap">Machine</th>
 						<th class="border p-2 whitespace-nowrap">Mould</th>
-						<th class="border p-2 whitespace-nowrap text-right">Qty</th>
+						<th class="border p-2 whitespace-nowrap text-right">Schedule Qty</th>
 						<th class="border p-2 whitespace-nowrap text-right">Cycle</th>
 						<th class="border p-2 whitespace-nowrap text-right">Cavity</th>
 						<th class="border p-2 whitespace-nowrap text-right">Pcs/Hr</th>

@@ -42,11 +42,11 @@
                             <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
                         </th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">#</th>
-                        <th class="border px-3 py-2 text-left whitespace-nowrap">WO Name</th>
-                        <th class="border px-3 py-2 text-left whitespace-nowrap">SO Name</th>
+                        <th class="border px-3 py-2 text-left whitespace-nowrap">Work Order ID</th>
+                        <th class="border px-3 py-2 text-left whitespace-nowrap">SO ID</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">Status</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">Item</th>
-                        <th class="border px-3 py-2 text-right whitespace-nowrap">Qty</th>
+                        <th class="border px-3 py-2 text-right whitespace-nowrap">Work Order Qty</th>
                         <th class="border px-3 py-2 text-right whitespace-nowrap">Produced Qty</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">Planned Start</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">Planned End</th>
@@ -71,10 +71,10 @@
                         </td>
                         <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
                         <td class="border px-3 py-2 whitespace-nowrap text-blue-600 font-medium">
-                            <a :href="`/app/work-order/${wo.wo_name}`" target="_blank">{{ wo.wo_name }}</a>
+                            <a class="cursor-pointer hover:underline hover:text-blue-600" :href="`/app/work-order/${wo.wo_name}`" target="_blank">{{ wo.wo_name }}</a>
                         </td>
                         <td class="border px-3 py-2 whitespace-nowrap text-blue-600">
-                             <a :href="`/app/sales-order/${wo.so_name}`" target="_blank">{{ wo.so_name }}</a>
+                             <a class="cursor-pointer hover:underline hover:text-blue-600" :href="`/app/sales-order/${wo.so_name}`" target="_blank">{{ wo.so_name }}</a>
                         </td>
                         <td class="border px-3 py-2 whitespace-nowrap font-medium">{{ wo.status }}</td>
                         <td class="border px-3 py-2 whitespace-nowrap">{{ wo.production_item }}</td>

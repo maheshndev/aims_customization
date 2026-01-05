@@ -16,7 +16,8 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				main: path.resolve(__dirname, "src/main.js"),
-				"mss-cp-main": path.resolve(__dirname, "src/mss-cp-main.js")
+				"mss-cp-main": path.resolve(__dirname, "src/mss-cp-main.js"),
+				"mss-rescheduler-main": path.resolve(__dirname, "src/mss-rescheduler-main.js")
 			},
 			output: {
 				entryFileNames: "[name].js",

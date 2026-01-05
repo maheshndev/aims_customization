@@ -5,7 +5,7 @@ import "./mss-cp-style.css";
 window.initCapacityMonthly = function () {
     const app = createApp(MSSCapacityMonthlyPage);
     app.mount("#monthly-capacity-vue-app");
-    console.log("Monthly Capacity app mounted successfully ✔️");
+    console.log("Monthly Capacity page mounted successfully ✔️");
 };
 
 // Backwards compatibility

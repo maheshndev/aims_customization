@@ -5,7 +5,7 @@ import "./style.css";
 window.initMSSDashboard = function () {
     const app = createApp(MSSDashboard);
     app.mount("#mss-vue-app");
-    console.log("MSS Dashboard mounted successfully ✔️");
+    console.log("MSS Dashboard page mounted successfully ✔️");
 };
 
 // Backwards compatibility

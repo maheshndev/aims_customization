@@ -47,8 +47,9 @@
             </td>
             <td class="px-2 py-2 border text-gray-500 whitespace-nowrap">{{ index + 1 }}</td>
             <td class="px-2 py-2 border font-medium whitespace-nowrap">{{ bom.sales_order }}</td>
-            <td class="px-2 py-2 border text-blue-600 font-medium whitespace-nowrap">{{ bom.bom_no || "No BOM Available"
-              }}</td>
+            <td class="px-2 py-2 border font-medium whitespace-nowrap" >
+              <span class="cursor-pointer hover:underline hover:text-blue-600" @click="openBOM(bom.bom_no)">{{ bom.bom_no || "No BOM Available"}}</span>
+            </td>
             <td class="px-2 py-2 border whitespace-nowrap relative group cursor-pointer">{{ bom.item_code }}
               <!-- Tooltip -->
               <div
@@ -128,6 +129,10 @@ const isAllSelected = computed(() => {
   return filteredBOMs.value.length > 0 && selectedLocal.value.length === filteredBOMs.value.length;
 });
 
+const openBOM = (bom_id) => {
+  const url = `/app/bom/` + bom_id;
+  window.open(url, "_blank");
+};
 
 watch(() => boms.value, (newBoms) => {
   newBoms.forEach(bom => {
