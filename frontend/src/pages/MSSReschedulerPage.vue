@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h6>Rescheduler Page</h6>
+        <h2>Rescheduler Page</h2>
         <SectionCard title="Work Order Rescheduler">
             <WorkOrderRescheduler />
         </SectionCard>
