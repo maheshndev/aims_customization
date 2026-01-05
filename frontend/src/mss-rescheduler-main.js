@@ -1,6 +1,6 @@
 import { createApp } from "vue";
 import MSSReschedulerPage from "./pages/MSSReschedulerPage.vue";
-import "./mss-rescheduler.css";
+import "./style.css";
 
 window.initMSSRescheduler = function () {
     const app = createApp(MSSReschedulerPage);

@@ -1,6 +1,6 @@
 import { createApp } from "vue";
 import MSSCapacityMonthlyPage from "./pages/MSSCapacityMonthlyPage.vue";
-import "./mss-cp-style.css";
+import "./style.css";
 
 window.initCapacityMonthly = function () {
     const app = createApp(MSSCapacityMonthlyPage);

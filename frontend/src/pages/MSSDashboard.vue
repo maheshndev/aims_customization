@@ -1,6 +1,6 @@
 <template>
   <div class="p-6 bg-gray-50 min-h-screen font-sans space-y-6">
-    <h2 class="p-2">Monthly Schedule Sheet (MSS)</h2>
+    <h2 class="p-2">Monthly Schedule Screen (MSS)</h2>
     <!-- Filters -->
     <SectionCard title="Filters">
       <Filters v-model="filters" @apply-filters="onApplyFilters" />

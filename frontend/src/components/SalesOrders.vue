@@ -7,7 +7,7 @@
       {{ error }}
     </div>
 
-    <div v-if="orders.length && !loading" class="flex justify-start gap-3 mb-3">
+    <div v-if="!loading" class="flex justify-start gap-3 mb-3">
       <button class="px-3 py-1 bg-blue-100 text-black rounded " @click="selectAll">
         Select All
       </button>

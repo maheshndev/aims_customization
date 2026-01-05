@@ -16,7 +16,7 @@ function load_vue_app() {
         const link = document.createElement("link");
         link.id = "mss-vue-css";
         link.rel = "stylesheet";
-        link.href = "/assets/aims_customization/mss-vue-app/main.css";
+        link.href = "/assets/aims_customization/mss-vue-app/style.css";
         document.head.appendChild(link);
     }
 

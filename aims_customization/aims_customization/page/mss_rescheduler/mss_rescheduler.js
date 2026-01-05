@@ -13,7 +13,7 @@ frappe.pages['mss-rescheduler'].on_page_load = function(wrapper) {
         const link = document.createElement("link");
         link.id = "mss-vue-css";
         link.rel = "stylesheet";
-        link.href = "/assets/aims_customization/mss-vue-app/mss-rescheduler.css";
+        link.href = "/assets/aims_customization/mss-vue-app/style.css";
         document.head.appendChild(link);
     }
 // Load Vue JS module

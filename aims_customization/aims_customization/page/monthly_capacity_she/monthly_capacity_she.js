@@ -13,7 +13,7 @@ frappe.pages["monthly-capacity-she"].on_page_load = function (wrapper) {
         const link = document.createElement("link");
         link.id = "mss-vue-css";
         link.rel = "stylesheet";
-        link.href = "/assets/aims_customization/mss-vue-app/mss-cp-main.css";
+        link.href = "/assets/aims_customization/mss-vue-app/style.css";
         document.head.appendChild(link);
     }
 
