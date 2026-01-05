@@ -118,7 +118,7 @@ def get_customer_list(search_text: str = None, customer_id: str = None, limit: i
 
 
 @frappe.whitelist()
-def get_machine_capacity_monthly( month: str = None, year: str = None, customer: str = None, utilization=90 ):
+def get_machine_capacity_monthly( month: str = None, year: str = None, utilization=90 ):
     today = getdate(nowdate())
     try:
         month = int(month) if month not in (None, "", 0) else today.month
@@ -140,9 +140,8 @@ def get_machine_capacity_monthly( month: str = None, year: str = None, customer:
             WHERE woo.workstation = %s
               AND MONTH(wo.planned_start_date) = %s
               AND YEAR(wo.planned_start_date) = %s
-              AND (%s IS NULL OR %s = '' )
         """,
-            (machine, month, year, customer, customer),
+            (machine, month, year),
         )[0][0]
 
         month_capacity = shift["daily_hours"] * month_days * (flt(utilization) / 100)
@@ -164,10 +163,16 @@ def get_machine_capacity_monthly( month: str = None, year: str = None, customer:
 
 
 @frappe.whitelist()
-def get_item_capacity_monthly(month = None, year = None, customer = None, machines: list | str = None, utilization = 90):
-    
-    print("month: ", month, "year: ", year, "customer: ", customer, "machines: ", machines, "utilization", utilization )
-    
+def get_item_capacity_monthly(
+    month=None,
+    year=None,
+    customer=None,
+    machines: list | str = None,
+    utilization=90,
+):
+    # ------------------------------
+    # Normalize machines input
+    # ------------------------------
     if isinstance(machines, str):
         machines = [machines]
 
@@ -176,7 +181,6 @@ def get_item_capacity_monthly(month = None, year = None, customer = None, machin
 
     month_days = get_month_days(month, year) if month and year else 0
     shift = get_shift_info()
-    date_filter = get_date_range(month, year)
 
     conditions = []
     filters = {"machines": tuple(machines)}
@@ -195,15 +199,24 @@ def get_item_capacity_monthly(month = None, year = None, customer = None, machin
 
     where_clause = " AND ".join(conditions)
 
+    # ------------------------------
+    # SQL (DEDUPLICATED)
+    # One row per Work Order + Machine
+    # ------------------------------
     rows = frappe.db.sql(
         f"""
         SELECT
             so.customer_name,
             so.name AS sales_order,
+            so.transaction_date AS sales_order_date,
+            wo.name AS work_order,
+            wo.planned_start_date AS wo_planned_date,
             wo.production_item AS item_code,
             i.item_name,
-            soi.qty AS schedule_qty,
+            wo.qty AS schedule_qty,
             wo.mould,
+            mu.mould_name,
+            woo.operation AS work_order_operation,
             i.cavity,
             i.cycle_time,
             woo.workstation AS machine
@@ -211,41 +224,60 @@ def get_item_capacity_monthly(month = None, year = None, customer = None, machin
         JOIN `tabWork Order` wo ON wo.name = woo.parent
         JOIN `tabItem` i ON i.name = wo.production_item
         JOIN `tabSales Order` so ON so.name = wo.sales_order
-        JOIN `tabSales Order Item` soi
-            ON soi.parent = so.name
-            AND soi.item_code = wo.production_item
+        JOIN `tabMould` mu ON wo.mould = mu.name
         WHERE woo.workstation IN %(machines)s
         {f"AND {where_clause}" if where_clause else ""}
-        ORDER BY so.customer_name, so.name
+        
+        ORDER BY
+            so.customer_name,
+            so.transaction_date,
+            wo.planned_start_date
         """,
         filters,
         as_dict=True,
     )
 
+    # ------------------------------
+    # Capacity Calculations
+    # ------------------------------
     result = []
 
     for r in rows:
         pcs_hr = pcs_per_hour(r.cycle_time, r.cavity)
         loading_hrs = (r.schedule_qty / pcs_hr) if pcs_hr else 0
 
+        util = 0
         if month_days and shift.get("daily_hours"):
-            utilization = (loading_hrs / (month_days * shift["daily_hours"])) * 100
+            util = (loading_hrs / (month_days * shift["daily_hours"])) * 100
 
         result.append({
+            # Customer / Orders
             "customer_name": r.customer_name,
             "sales_order": r.sales_order,
+            "sales_order_date": r.sales_order_date,
+
+            "work_order": r.work_order,
+            "wo_planned_date": r.wo_planned_date,
+            "work_order_operation": r.work_order_operation,
+
+            # Item
             "item_code": r.item_code,
             "item_name": r.item_name,
             "schedule_qty": r.schedule_qty,
             "mould": r.mould,
+            "mould_name": r.mould_name,
+
+            # Machine / Capacity
+            "machine": r.machine,
             "cavity": r.cavity,
             "cycle_time": r.cycle_time,
-            "machine": r.machine,
             "machine_hourly_capacity": round(pcs_hr, 2),
             "loading_hours": round(loading_hrs, 2),
+
+            # Period
             "month_days": month_days,
             "daily_capacity_hrs": shift.get("daily_hours", 0),
-            "utilization": round(utilization, 2),
+            "utilization": round(util, 2),
         })
 
     return result

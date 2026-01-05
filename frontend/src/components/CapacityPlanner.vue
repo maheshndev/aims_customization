@@ -76,10 +76,22 @@
 								{{ r.customer }}
 							</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.sales_order }}</td>
-							<td class="border p-2 whitespace-nowrap">{{ r.item_code }}</td>
+							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">{{ r.item_code }}
+								<!-- Tooltip -->
+								<div
+									class="absolute left-1/2 transform -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+									{{ r.item_name }}
+								</div>
+							</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.bom_no }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.machine }}</td>
-							<td class="border p-2 whitespace-nowrap">{{ r.mould || "—" }}</td>
+							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">{{ r.mould || "—" }}
+								<!-- Tooltip -->
+								<div
+									class="absolute left-1/2 transform -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+									{{ r.mould_name }}
+								</div>
+							</td>
 							<td class="border p-2 whitespace-nowrap text-right">
 								{{ r.schedule_qty }}
 							</td>

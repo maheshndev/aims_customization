@@ -565,7 +565,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
             item_code,
             [
                 "pcs_wt", "runner_wt", "shot_wt",
-                "gross_wt", "cycle_time", "cavity"
+                "gross_wt", "cycle_time", "cavity","item_name"
             ],
             as_dict=True
         ) or {}
@@ -627,6 +627,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "sales_order": so_name,
                 "customer": customer_map.get(so_name),
                 "item_code": item_code,
+                "item_name": item_data.get("item_name"),
                 "bom_no": bom_no,
                 "bom_type": bom.bom_type or "",
                 "bom_qty": flt(bom.bom_qty or 0),

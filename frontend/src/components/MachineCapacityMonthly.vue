@@ -94,6 +94,13 @@ const unselectAll = () => {
   emit("update:selected", []);
 };
 
+const processSelectedMachine = () => {
+  
+  emit("update:selected", [...selectedLocal.value]);
+};
+
+watch(selectedLocal, processSelectedMachine);
+
 const loadMachineCapacity = async () => {
   loading.value = true;
   error.value = null;
