@@ -8,13 +8,13 @@
     </div>
 
     <div v-if="!loading" class="flex justify-start gap-3 mb-3">
-      <button class="px-3 py-1 bg-blue-100 text-black rounded " @click="selectAll">
+      <button class="px-3 py-1 bg-blue-100 text-black rounded" @click="selectAll">
         Select All
       </button>
-      <button class="px-3 py-1 bg-gray-200 text-black rounded " @click="unselectAll">
+      <button class="px-3 py-1 bg-gray-200 text-black rounded" @click="unselectAll">
         Unselect All
       </button>
-      <button class="px-3 py-1 bg-green-100 text-black rounded  hover:bg-green-200" @click="refreshOrders">
+      <button class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200" @click="refreshOrders">
         🔄 Refresh
       </button>
     </div>
@@ -77,7 +77,7 @@
         Create Planner Mix BOM
       </button>
 
-      <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl ">
+      <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
         <thead class="bg-gray-100 uppercase">
           <tr>
             <th>Selected</th>
@@ -94,7 +94,7 @@
         <tbody class="divide-y divide-gray-100">
           <tr v-for="(item, index) in fgItems" :key="item.item_code" class="hover:bg-gray-50" :class="[
             'hover:bg-gray-50 transition',
-            selectedFGItems.includes(item) ? 'bg-blue-50' : ''
+            selectedFGItems.includes(item) ? 'bg-blue-50' : '',
           ]">
             <td class="border px-3 py-2">
               <input type="checkbox" :value="item" v-model="selectedFGItems" />
@@ -194,7 +194,7 @@ const createMixPlannerBOM = () => {
   } else if (item_group === "Semi Finish Good") {
     bom_type = "SFG";
   } else {
-    bom_type = ""; 
+    bom_type = "";
   }
 
   const url = `/app/bom/new-bom` + `?item=${fgItem}` + `&bom_type=${bom_type}`;

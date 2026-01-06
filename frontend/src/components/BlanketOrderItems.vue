@@ -12,9 +12,9 @@
           class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition text-sm">
           Unselect All
         </button>
-         <button class="px-3 py-1 bg-green-100 text-black rounded  hover:bg-green-200" @click="refreshOrders">
-        🔄 Refresh
-      </button>
+        <button class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200" @click="refreshOrders">
+          🔄 Refresh
+        </button>
 
         <span class="text-xs text-gray-500"> {{ selectedItems.length }} selected </span>
 
@@ -67,9 +67,9 @@
                 <input type="number" :min="0" :max="item.remaining_bo_qty" v-model.number="item.schedule_qty"
                   @input="validateScheduleQty(item)" class="w-full border px-2 py-1 rounded" />
               </template>
-              <template v-else-if="key === 'bo_name'" >
-                <a class="cursor-pointer hover:underline hover:text-blue-600"
-                  :href="`/app/blanket-order/${item[key]}`" target="_blank">{{ item[key] }}</a>
+              <template v-else-if="key === 'bo_name'">
+                <a class="cursor-pointer hover:underline hover:text-blue-600" :href="`/app/blanket-order/${item[key]}`"
+                  target="_blank">{{ item[key] }}</a>
               </template>
               <template v-else>
                 {{ item[key] }}
@@ -291,11 +291,11 @@ export default {
       }
     };
 
-    const refreshOrders = async () =>{
-      items =[];
-      selectedItems=[];
+    const refreshOrders = async () => {
+      items = [];
+      selectedItems = [];
       await loadItems();
-    }
+    };
 
     watch(
       () => props.filters,
@@ -309,7 +309,6 @@ export default {
       },
       { immediate: true, deep: true }
     );
-    
 
     return {
       items,
