@@ -11,7 +11,7 @@
 			{{ error }}
 		</div>
 
-		<div v-if="materials.length && !loading" class="flex justify-start gap-2 mb-3">
+		<div v-if="!loading" class="flex justify-start gap-2 mb-3">
 			<button
 				class="px-3 py-1 text-sm bg-blue-100 text-black rounded hover:bg-blue-200"
 				@click="selectAll"
@@ -50,8 +50,14 @@
 							Material Name
 						</th>
 						<th class="border px-3 py-2 w-20 text-center whitespace-nowrap">UOM</th>
+						<th class="border px-3 py-2 w-20 text-center whitespace-nowrap">
+							Qty Per Unit
+						</th>
 						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
 							Required Qty
+						</th>
+						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
+							Qty Percentage %
 						</th>
 						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
 							Available Stock
@@ -95,11 +101,16 @@
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
 							{{ rm.stock_uom }}
 						</td>
-
+						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
+							{{ rm.qty_per_bom_unit }}
+						</td>
 						<td
 							class="border px-3 py-2 text-right whitespace-nowrap font-semibold text-blue-800"
 						>
 							{{ rm.total_required_qty }}
+						</td>
+						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
+							{{ rm.rm_percentage }}
 						</td>
 						<td class="border px-3 py-2 text-right whitespace-nowrap">
 							{{ rm.available_qty }}
@@ -147,11 +158,11 @@
 
 <script setup>
 import { ref, watch, computed } from "vue";
-import { api } from "../services/api"; 
+import { api } from "../services/api";
 
 const props = defineProps({
 	boms: { type: Array, default: () => [] },
-	modelValue: { type: Array, default: () => [] }, 
+	modelValue: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["update:modelValue", "raw-material-loaded"]);
@@ -160,7 +171,6 @@ const materials = ref([]);
 const selectedRows = ref([]);
 const loading = ref(false);
 const error = ref(null);
-
 
 const isAllSelected = computed(
 	() => materials.value.length && selectedRows.value.length === materials.value.length
@@ -206,7 +216,6 @@ const fetchMaterials = async () => {
 	}
 };
 
-
 watch(() => props.boms, fetchMaterials, { deep: true, immediate: true });
 
 watch(
@@ -246,6 +255,7 @@ watch(
 .sticky {
 	position: sticky;
 }
+
 .left-0 {
 	left: 0;
 }

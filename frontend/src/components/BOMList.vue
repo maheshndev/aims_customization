@@ -6,7 +6,7 @@
       {{ error }}
     </div>
 
-    <div v-if="filteredBOMs.length && !loading" class="flex justify-between items-center mb-3">
+    <div v-if=" !loading" class="flex justify-between items-center mb-3">
       <div class="flex gap-2">
         <button class="px-2 py-1 bg-blue-50 text-blue-700 font-medium rounded hover:bg-blue-100 transition shadow-sm"
           @click="selectAll">
@@ -16,6 +16,9 @@
           @click="unselectAll">
           Unselect All
         </button>
+         <button class="px-3 py-1 bg-green-100 text-black rounded  hover:bg-green-200" @click="refreshBomList">
+        🔄 Refresh
+      </button>
         
       </div>
       <div class="text-xs text-gray-500 font-medium">
@@ -189,6 +192,13 @@ const fetchBOMs = async () => {
 const selectAll = () => selectedLocal.value = [...filteredBOMs.value];
 const unselectAll = () => selectedLocal.value = [];
 const toggleSelectAll = () => isAllSelected.value ? unselectAll() : selectAll();
+ 
+const refreshBomList = async () => {
+  boms.value =[];
+  selectedLocal.value =[];
+   await fetchBOMs();
+ }
+
 
 watch(() => props.salesOrders, fetchBOMs, { deep: true, immediate: true });
 </script>

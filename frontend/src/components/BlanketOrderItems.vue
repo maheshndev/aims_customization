@@ -12,6 +12,9 @@
           class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition text-sm">
           Unselect All
         </button>
+         <button class="px-3 py-1 bg-green-100 text-black rounded  hover:bg-green-200" @click="refreshOrders">
+        🔄 Refresh
+      </button>
 
         <span class="text-xs text-gray-500"> {{ selectedItems.length }} selected </span>
 
@@ -270,18 +273,6 @@ export default {
       }
     };
 
-    watch(
-      () => props.filters,
-      (newFilters) => {
-        if (newFilters && Object.keys(newFilters).length) {
-          loadItems();
-        } else {
-          items.value = [];
-          selectedItems.value = [];
-        }
-      },
-      { immediate: true, deep: true }
-    );
     const validateScheduleQty = (item) => {
       if (item.schedule_qty == null) return;
 
@@ -299,6 +290,26 @@ export default {
         });
       }
     };
+
+    const refreshOrders = async () =>{
+      items =[];
+      selectedItems=[];
+      await loadItems();
+    }
+
+    watch(
+      () => props.filters,
+      (newFilters) => {
+        if (newFilters && Object.keys(newFilters).length) {
+          loadItems();
+        } else {
+          items.value = [];
+          selectedItems.value = [];
+        }
+      },
+      { immediate: true, deep: true }
+    );
+    
 
     return {
       items,

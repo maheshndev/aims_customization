@@ -673,7 +673,7 @@ def get_raw_materials_for_boms(boms: list = None):
         bom_qty = flt(frappe.db.get_value("BOM", bom_no, "quantity") or 1.0)
 
         components = frappe.db.sql("""
-            SELECT item_code, item_name, stock_qty AS qty, uom
+            SELECT item_code, item_name, stock_qty AS qty, uom, rm_percentage
             FROM `tabBOM Item` 
             WHERE parent=%s
         """, (bom_no,), as_dict=True) or []
@@ -688,6 +688,8 @@ def get_raw_materials_for_boms(boms: list = None):
                     "rm_item_code": comp_item_code,
                     "rm_item_name": comp.get("item_name") or "",
                     "uom": comp.get("uom") or "",
+                    "qty_per_bom_unit": qty_per_bom_unit,
+                    "rm_percentage": flt(comp.get("rm_percentage")),
                     "total_required_qty": 0.0,
                 }
             
@@ -730,6 +732,8 @@ def get_raw_materials_for_boms(boms: list = None):
             "rm_item_name": v["rm_item_name"],
             "stock_uom": item_master.get("stock_uom") or v["uom"],
             "default_warehouse": item_master.get("default_warehouse") or "",
+            "qty_per_bom_unit": flt(v.get("qty_per_bom_unit")),
+            "rm_percentage": flt(v.get("rm_percentage")),
             "total_required_qty": required,
             "available_qty": available,
             "projected_qty": projected,
