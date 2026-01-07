@@ -45,11 +45,14 @@
 							Qty Percentage %
 						</th>
 						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
-							Available Stock
+							Adjustable Qty Percentage %
 						</th>
 						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
-							Projected Stock
+							Available Stock
 						</th>
+						<!-- <th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
+							Projected Stock
+						</th> -->
 						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
 							Consumed Qty
 						</th>
@@ -90,12 +93,18 @@
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
 							{{ rm.rm_percentage }}
 						</td>
+						<td class="border px-3 py-2 text-center whitespace-nowrap">
+							<input type="number" min="0" max="100" step="0.01" v-model.number="rm.rm_percentage"
+								@input="recalculateRM(rm)"
+								class="w-20 text-xs text-center border rounded px-1 py-0.5" />
+						</td>
+
 						<td class="border px-3 py-2 text-right whitespace-nowrap">
 							{{ rm.available_qty }}
 						</td>
-						<td class="border px-3 py-2 text-right whitespace-nowrap">
+						<!-- <td class="border px-3 py-2 text-right whitespace-nowrap">
 							{{ rm.projected_qty }}
-						</td>
+						</td> -->
 						<td class="border px-3 py-2 text-right whitespace-nowrap text-gray-500">
 							{{ rm.consumed_qty }}
 						</td>
@@ -107,8 +116,8 @@
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap">
 							<span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="rm.is_sufficient
-									? 'bg-green-100 text-green-800'
-									: 'bg-red-100 text-red-800'
+								? 'bg-green-100 text-green-800'
+								: 'bg-red-100 text-red-800'
 								">
 								{{ rm.is_sufficient ? "Sufficient" : "Shortage" }}
 							</span>
@@ -196,12 +205,27 @@ watch(
 	},
 	{ deep: true }
 );
+const recalculateRM = (rm) => {
+  if (!rm.adj_rm_percentage) return;
+
+  // Example logic – adjust as per your business rule
+  // total_required_qty = base_qty * (rm_percentage / 100)
+
+  const baseQty = rm.qty_per_bom_unit || 0;
+  const percent = rm.adj_rm_percentage / 100;
+
+  rm.total_required_qty = +(baseQty * percent).toFixed(6);
+
+  rm.balance_qty = +(rm.available_qty - rm.total_required_qty).toFixed(6);
+  rm.is_sufficient = rm.balance_qty >= 0;
+};
 
 const refreshRM = async () => {
 	selectedRows = [];
 	materials = [];
 	await fetchMaterials();
 };
+
 watch(
 	() => props.modelValue,
 	(newModelValue) => {
@@ -227,12 +251,4 @@ watch(
 );
 </script>
 
-<style scoped>
-.sticky {
-	position: sticky;
-}
 
-.left-0 {
-	left: 0;
-}
-</style>

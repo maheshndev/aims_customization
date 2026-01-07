@@ -72,22 +72,24 @@
 
     <div v-if="fgItems.length" class="mt-6 border-t pt-4 overflow-auto rounded-b-xl">
       <h3 class="font-bold text-lg mb-2">Sales Order Line Items</h3>
-      <button class="px-3 py-1 bg-gray-200 text-black rounded shadow hover:bg-green-300 m-1"
+      <!-- <button class="px-3 py-1 bg-gray-200 text-black rounded shadow hover:bg-green-300 m-1"
         @click="createMixPlannerBOM">
         Create Planner Mix BOM
-      </button>
+      </button> -->
 
       <table class="min-w-[800px] table-auto divide-y divide-gray-200 border rounded-xl">
         <thead class="bg-gray-100 uppercase">
           <tr>
             <th>Selected</th>
             <th class="px-3 py-2 border whitespace-nowrap">#</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Sales Order ID</th>
             <th class="px-3 py-2 border whitespace-nowrap">Item Code</th>
             <th class="px-3 py-2 border whitespace-nowrap">Item Name</th>
             <th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
             <th class="px-3 py-2 border whitespace-nowrap">Item Group</th>
             <th class="px-3 py-2 border text-right whitespace-nowrap">Rate</th>
             <th class="px-3 py-2 border whitespace-nowrap">BOM No</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Action</th>
           </tr>
         </thead>
 
@@ -100,6 +102,7 @@
               <input type="checkbox" :value="item" v-model="selectedFGItems" />
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ item.sales_order_id }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_code }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_name }}</td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">
@@ -111,8 +114,16 @@
             <td class="border px-3 py-2 text-right whitespace-nowrap">
               {{ item.rate }}
             </td>
-            <td class="border px-3 py-2 text-right whitespace-nowrap">
-              {{ item.bom_no }}
+            <td class="border px-3 py-2  whitespace-nowrap">
+              {{ item.bom_no || "No BOM Available Create It" }}
+            </td>
+            <td class="border px-3 py-2  whitespace-nowrap">
+              <span v-if="!item.bom_no">
+              <button class="px-3 py-1 bg-green-300 text-white-500 rounded shadow hover:bg-white-300 m-1"
+                @click="createMixPlannerBOM(item)">
+               + Create Planner Mix BOM
+              </button>
+              </span>
             </td>
           </tr>
         </tbody>
@@ -161,7 +172,11 @@ const processFGItems = () => {
 
   const items = [];
   selectedOrders.forEach((o) => {
-    (o.items || []).forEach((it) => items.push(it));
+    (o.items || []).forEach((it) => {
+      items.push({ ...it, sales_order_id: o.name })
+
+    });
+
   });
 
   fgItems.value = items;
@@ -172,20 +187,20 @@ const processFGItems = () => {
 
 watch(selectedLocal, processFGItems);
 
-const createMixPlannerBOM = () => {
-  if (!selectedFGItems.value.length) {
-    frappe.msgprint("Please select one Finished Good to create a Mix BOM.");
-    return;
-  }
+const createMixPlannerBOM = (item) => {
+  // if (!selectedFGItems.value.length) {
+  //   frappe.msgprint("Please select one Finished Good to create a Mix BOM.");
+  //   return;
+  // }
 
-  if (selectedFGItems.value.length > 1) {
-    frappe.msgprint("Please select only ONE FG item to create a Mix BOM.");
-    return;
-  }
+  // if (selectedFGItems.value.length > 1) {
+  //   frappe.msgprint("Please select only ONE FG item to create a Mix BOM.");
+  //   return;
+  // }
 
-  const fgItem = selectedFGItems.value[0].item_code;
-  const qty = selectedFGItems.value[0].qty || 1;
-  const item_group = selectedFGItems.value[0].item_group || "";
+  const fgItem = item.item_code;
+  const qty = item.qty || 1;
+  const item_group = item.item_group || "";
 
   let bom_type = "";
 
@@ -218,12 +233,13 @@ const fetchOrders = async () => {
   try {
     if (props.filters.customer || props.filters.month || props.filters.year) {
       const res = await api.getSalesOrders({
-        ...props.filters,
+        ...props.filters
       });
 
       orders.value = res.data.message || [];
       selectedLocal.value = [];
       fgItems.value = [];
+      console.log(res.data.message);
 
       emit("so-loaded", orders.value);
     } else {

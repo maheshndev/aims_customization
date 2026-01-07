@@ -250,6 +250,8 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
             bo.customer,
             bo.customer_name,
             bo.order_date,
+            bo.from_date,
+            bo.to_date,
             boi.item_code,
             boi.item_name,
             boi.qty AS order_qty,
@@ -463,7 +465,7 @@ def get_sales_orders(search_text: str = None, month: str = None, year: str =None
             
         elif date_filter["type"] == "month_only":
             sql += " AND MONTH(so.transaction_date) = %s"
-            params.append(date_filter["month"])
+            params.append(month)
    
     sql += " ORDER BY so.transaction_date DESC LIMIT %s"
     params.append(limit)
@@ -547,7 +549,8 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
 
         bom_filters = {"name": forced_bom} if forced_bom else {
             "item": item_code,
-            "is_active": 1
+            "is_active": 1,
+            "is_default":1
         }
 
         boms = frappe.get_all(

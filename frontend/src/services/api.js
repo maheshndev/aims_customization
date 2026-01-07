@@ -37,6 +37,8 @@ export const api = {
 			{
 				params: {
 					customer: filters.customer,
+					month: filters.month,
+					year: filters.year
 					// search_text will be null/undefined, allowing the backend to handle the search logic
 				},
 			}

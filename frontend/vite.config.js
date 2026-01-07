@@ -6,6 +6,11 @@ export default defineConfig({
 	plugins: [
 		vue()
 	],
+	resolve: {
+    alias: {
+      '@fullcalendar/daygrid': path.resolve(__dirname, 'node_modules/@fullcalendar/daygrid'),
+    }
+  },
 	base: "/assets/mss-vue-app/",
 
 	build: {

@@ -35,7 +35,7 @@
 
     <!-- Step 5: Capacity Planner -->
     <SectionCard title="Capacity Planner">
-      <CapacityPlanner :boms="selected.boms" :cap-boms="selected.bomsObjects" :filters="filters"
+      <CapacityPlanner :boms="selected.boms" :cap-boms="selected.bomsObjects" :filters="filters" :raw-materials="selected.rawMaterials"
         :available-machine-hours="machineCapacity" @capacity-updated="handleCapacityUpdate" />
     </SectionCard>
 

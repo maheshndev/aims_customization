@@ -12,7 +12,7 @@
           class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition text-sm">
           Unselect All
         </button>
-        <button class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200" @click="refreshOrders">
+        <button class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200" @click="refreshBOrders">
           🔄 Refresh
         </button>
 
@@ -153,17 +153,19 @@ export default {
         indicator,
       });
     };
-
+    const refreshBOrders = async () => {
+      items = [];
+      selectedItems = [];
+      await loadItems();
+    };
     const loadItems = async () => {
       loading.value = true;
       error.value = null;
 
       try {
-        if (!props.filters.customer) {
-          items.value = [];
-          return;
-        }
-
+        if (props.filters.customer || props.filters.month ||props.filters.year) {
+         
+        
         const res = await api.getBlanketOrdersWithItems(props.filters);
         const data = res?.data?.message;
 
@@ -171,15 +173,18 @@ export default {
           throw new Error("Invalid response from server");
         }
 
-        if (!data.length) {
-          showMessage({
-            title: "No Data",
-            message: "No pending items found for selected filters",
-            indicator: "orange",
-          });
-        }
+        // if (!data.length) {
+        //   showMessage({
+        //     title: "No Data",
+        //     message: "No pending items found for selected filters",
+        //     indicator: "orange",
+        //   });
+        // }
 
         items.value = data;
+      }else{
+         items.value = [];
+      }
       } catch (e) {
         error.value = e?.message || "Failed to load Blanket Order items";
 
@@ -291,11 +296,7 @@ export default {
       }
     };
 
-    const refreshOrders = async () => {
-      items = [];
-      selectedItems = [];
-      await loadItems();
-    };
+
 
     watch(
       () => props.filters,
@@ -322,6 +323,7 @@ export default {
       selectAll,
       unselectAll,
       createSalesOrder,
+      refreshBOrders,
       validateScheduleQty,
     };
   },

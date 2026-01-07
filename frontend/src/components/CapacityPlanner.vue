@@ -14,7 +14,7 @@
 
 				<button class="px-3 py-1 rounded bg-green-200 hover:bg-green-300" @click="createWorkOrders"
 					:disabled="!selectedRows.length || hasValidationErrors">
-					Plan & Create WOs
+					+ Plan & Create WOs
 				</button>
 			</div>
 
@@ -166,6 +166,7 @@ import { api } from "../services/api";
 
 const props = defineProps({
 	capBoms: { type: Array, default: () => [] },
+	rawMaterials: { type: Array, default: () => [] },
 });
 
 const rows = ref([]);
@@ -183,6 +184,20 @@ function today() {
 	return new Date().toISOString().slice(0, 10);
 }
 
+const rawMaterialMap = computed(() => {
+	const map = {};
+	for (const rm of props.rawMaterials || []) {
+		map[rm.rm_item_code] = {
+			item_code: rm.rm_item_code,
+			rm_percentage: rm.rm_percentage,
+			required_qty: rm.total_required_qty,
+			uom: rm.stock_uom,
+			warehouse: rm.default_warehouse,
+		};
+	}
+	return map;
+});
+
 function sync() {
 	rows.value = props.capBoms.map((b, i) => ({
 		...b,
@@ -190,6 +205,7 @@ function sync() {
 		schedule_qty: Number(b.required_for_selected_qty || 0),
 		machine: b.selected_workstation,
 		mould: b.selected_mould || null,
+		raw_materials: Object.values(rawMaterialMap.value),
 		validation_error: null,
 	}));
 	preview.value = {};
@@ -258,6 +274,7 @@ async function validateCapacity() {
 				machine: r.machine,
 				mould: r.mould || null,
 				bom_no: r.bom_no,
+				raw_materials: r.raw_materials,
 				sales_order: r.sales_order,
 			})),
 		};
@@ -328,6 +345,7 @@ async function loadPreview() {
 				cavity: r.cavity,
 				mould: r.mould,
 				bom_no: r.bom_no,
+				raw_materials: r.raw_materials,
 				sales_order: r.sales_order,
 			})),
 		};
@@ -385,6 +403,7 @@ async function togglePreview(row) {
 				machine: row.machine,
 				mould: row.mould,
 				bom_no: row.bom_no,
+				raw_materials: r.raw_materials,
 				sales_order: row.sales_order,
 			},
 		],
@@ -420,6 +439,7 @@ async function createWorkOrders() {
 				machine: r.machine,
 				mould: r.mould || null,
 				bom_no: r.bom_no,
+				raw_materials: r.raw_materials,
 				sales_order: r.sales_order,
 			})),
 		};

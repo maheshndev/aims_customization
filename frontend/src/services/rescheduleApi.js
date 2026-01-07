@@ -1,11 +1,32 @@
 import axios from "axios";
 
-export const api = {
-	getWorkOrders: (so_list) =>
-		axios.get(
-			"/api/method/aims_customization.api.mss_rescheduler.get_work_orders_for_so",
-			{
-				params: { so_list: JSON.stringify(so_list) },
+
+export const mssApi = {
+
+  load(from, to) {
+    return axios.post(
+      "/api/method/aims_customization.api.mss_rescheduler_api.get_mss_schedule_range",
+      {
+        from_date: from,
+        to_date: to
+      },
+	  {
+				headers: {
+					"X-Frappe-CSRF-Token": frappe.csrf_token,
+				},
 			}
-		),
+    );
+  },
+
+  reschedule(payload) {
+    return axios.post(
+      "/api/method/aims_customization.api.mss_rescheduler_api.mss_reschedule",
+      payload,
+	  {
+				headers: {
+					"X-Frappe-CSRF-Token": frappe.csrf_token,
+				},
+			}
+    );
+  }
 };
