@@ -1,5 +1,7 @@
 <template>
   <div class="bom-list rounded-xl shadow-sm p-2 bg-white border border-gray-100">
+    <p>BOM For calculate then capacity Using Cavity , Cycle Time, Shift, Workstation/Machine, Mould
+    select mould and workstation/machine from dropdown for calculate capacity and schedule work orders</p>
     <div v-if="loading" class="text-gray-500 animate-pulse p-4 text-center">Loading BOMs...</div>
 
     <div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4">
@@ -120,7 +122,7 @@ const error = ref(null);
 const selectedLocal = ref([]);
 const search = ref("");
 
-const headers = ["#", "Sales Order", "BOM", "FG Item", "Qty", "Type", "Customer", "Req Qty", "Cavity", "PCS wt", "Runner", "Shot", "Gross", "Cycle Time", "Machine (Workstation)", "Mould"];
+const headers = ["#", "Sales Order", "BOM", "FG Item", "Qty", "Type", "Customer", "Req Qty", "Cavity", "PCS wt", "Runner", "Shot", "Gross", "Cycle Time", "Select Machine (Workstation)", "Select Mould"];
 
 const filteredBOMs = computed(() => {
   if (!search.value.trim()) return boms.value;

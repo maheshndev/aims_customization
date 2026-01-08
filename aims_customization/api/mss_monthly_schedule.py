@@ -281,15 +281,54 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
             )
         """
         params.extend([f"%{search_text}%"] * 4)
+    # normalize empty values
+    month = month or None
+    year = year or None
 
     date_filter = get_date_range(month, year)
+
     if date_filter:
-        if date_filter["type"] in ("month_year", "year"):
-            sql += " AND bo.order_date BETWEEN %s AND %s"
-            params.extend([date_filter["start"], date_filter["end"]])
+
+         # CASE 1: Month + Year
+        if date_filter["type"] == "month_year":
+             sql += """
+                 AND bo.from_date <= %s
+                 AND bo.to_date >= %s
+             """
+             params.extend([date_filter["end"], date_filter["start"]])
+         # CASE 2: Only Year
+        elif date_filter["type"] == "year":
+             sql += """
+                 AND bo.from_date <= %s
+                 AND bo.to_date >= %s
+             """
+             params.extend([date_filter["end"], date_filter["start"]])
+                # CASE 3: Only Month (ANY YEAR, cross-year safe)
         elif date_filter["type"] == "month_only":
-            sql += " AND MONTH(bo.order_date) = %s"
-            params.append(month)
+            sql += """
+                AND (
+                    (
+                        MONTH(bo.from_date) <= MONTH(bo.to_date)
+                        AND MONTH(bo.from_date) <= %s
+                        AND MONTH(bo.to_date) >= %s
+                    )
+                    OR
+                    (
+                        MONTH(bo.from_date) > MONTH(bo.to_date)
+                        AND (
+                            %s >= MONTH(bo.from_date)
+                            OR %s <= MONTH(bo.to_date)
+                        )
+                    )
+                )
+            """
+            params.extend([
+                date_filter["month"],
+                date_filter["month"],
+                date_filter["month"],
+                date_filter["month"],
+            ])
+
 
     sql += " ORDER BY bo.order_date DESC, bo.name, boi.idx LIMIT %s"
     params.append(limit)
@@ -311,7 +350,6 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
                 SUM(soi.qty) AS consumed_qty
             FROM `tabSales Order Item` soi
             JOIN `tabSales Order` so ON so.name = soi.parent
-            WHERE so.docstatus = 1
             GROUP BY soi.blanket_order, soi.item_code
         """, as_dict=True)
 
@@ -332,6 +370,8 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
             "customer": r["customer"],
             "bo_name": r["bo_name"],
             "order_date": r["order_date"],
+            "from_date":r["from_date"],
+            "to_date": r["to_date"],
             "item_code": r["item_code"],
             "item_name": r["item_name"],
             "order_qty": flt(r["order_qty"]),
@@ -656,96 +696,71 @@ def get_raw_materials_for_boms(boms: list = None):
         return []
 
     if isinstance(boms, str):
-        try:
-            boms = json.loads(boms)
-        except Exception:
-            return []
+        boms = json.loads(boms)
 
-    rm_totals = {}
-    
+    result = []
+
     for b in boms:
         if not isinstance(b, dict):
-            continue 
-            
+            continue
+
         bom_no = b.get("bom_no")
-        req_qty = flt(b.get("required_for_selected_qty")) 
-        
+        fg_item = b.get("fg_item")
+        sales_order= b.get("name")
+        print("############", b.get("name"))
+        req_qty = flt(b.get("required_for_selected_qty"))
+
         if not bom_no or req_qty <= 0:
             continue
 
-        bom_qty = flt(frappe.db.get_value("BOM", bom_no, "quantity") or 1.0)
-
+        bom_qty = flt(
+            frappe.db.get_value("BOM", bom_no, "quantity") or 1.0
+        )
+    
         components = frappe.db.sql("""
-            SELECT item_code, item_name, stock_qty AS qty, uom, rm_percentage
-            FROM `tabBOM Item` 
+            SELECT
+                item_code,
+                item_name,
+                stock_qty AS qty,
+                uom,
+                rm_percentage
+            FROM `tabBOM Item`
             WHERE parent=%s
-        """, (bom_no,), as_dict=True) or []
+        """, bom_no, as_dict=True)
 
         for comp in components:
-            comp_item_code = comp["item_code"]
-            qty_per_bom_unit = flt(comp.get("qty"))
-            comp_required = (req_qty / bom_qty) * qty_per_bom_unit
+            qty_per_bom_unit = flt(comp.qty)
+            required_qty = (req_qty / bom_qty) * qty_per_bom_unit
 
-            if comp_item_code not in rm_totals:
-                rm_totals[comp_item_code] = {
-                    "rm_item_code": comp_item_code,
-                    "rm_item_name": comp.get("item_name") or "",
-                    "uom": comp.get("uom") or "",
-                    "qty_per_bom_unit": qty_per_bom_unit,
-                    "rm_percentage": flt(comp.get("rm_percentage")),
-                    "total_required_qty": 0.0,
-                }
-            
-            rm_totals[comp_item_code]["total_required_qty"] += comp_required
+            bin_tot = _get_bin_totals(comp.item_code)
 
-    rm_item_codes = list(rm_totals.keys())
-    
-    item_master_data = frappe.get_all(
-        "Item",
-        filters={"name": ["in", rm_item_codes]},
-        fields=["name", "stock_uom"],
-    )
-    item_data_map = {d.name: d for d in item_master_data}
+            available = flt(bin_tot.get("actual_qty", 0))
+            projected = flt(bin_tot.get("projected_qty", 0))
+            balance = available - required_qty
 
-    consumed_data = frappe.db.sql("""
-        SELECT sei.item_code, IFNULL(SUM(sei.qty),0) AS consumed_qty
-        FROM `tabStock Entry Detail` sei
-        JOIN `tabStock Entry` se ON se.name=sei.parent
-        WHERE sei.item_code IN %(item_codes)s AND se.docstatus=1
-          AND se.purpose IN ('Manufacture', 'Material Consumption for Manufacture')
-        GROUP BY sei.item_code
-    """, {"item_codes": rm_item_codes}, as_dict=True)
+            result.append({
+                # 🔹 Separation keys
+                "bom_no": bom_no,
+                "fg_item": fg_item,
+                "sales_order": sales_order,
 
-    consumed_map = {row["item_code"]: flt(row["consumed_qty"]) for row in consumed_data}
-    
-    result = []
-    
-    for rm_code, v in rm_totals.items():
-        item_master = item_data_map.get(rm_code, {})
-        bin_tot = _get_bin_totals(rm_code) 
-        required = round(v["total_required_qty"], 6)
-        available = flt(bin_tot.get("actual_qty", 0))
-        consumed = consumed_map.get(rm_code, 0)
-        projected = flt(bin_tot.get("projected_qty", 0))
-        balance_qty = available - required
-        is_sufficient = balance_qty >= 0
+                # 🔹 RM details
+                "rm_item_code": comp.item_code,
+                "rm_item_name": comp.item_name,
+                "stock_uom": comp.uom,
+                "qty_per_bom_unit": qty_per_bom_unit,
+                "rm_percentage": flt(comp.rm_percentage),
 
-        result.append({
-            "rm_item_code": rm_code,
-            "rm_item_name": v["rm_item_name"],
-            "stock_uom": item_master.get("stock_uom") or v["uom"],
-            "default_warehouse": item_master.get("default_warehouse") or "",
-            "qty_per_bom_unit": flt(v.get("qty_per_bom_unit")),
-            "rm_percentage": flt(v.get("rm_percentage")),
-            "total_required_qty": required,
-            "available_qty": available,
-            "projected_qty": projected,
-            "consumed_qty": consumed,
-            "balance_qty": round(balance_qty, 6),
-            "is_sufficient": is_sufficient
-        })
+                # 🔹 Qty details
+                "required_qty": round(required_qty, 6),
+                "available_qty": available,
+                "projected_qty": projected,
+                "balance_qty": round(balance, 6),
+                "is_sufficient": balance >= 0,
+            })
 
     return result
+
 
 
 ##### ------- Capacity Planning Helpers & Work Order Creation ------- #####

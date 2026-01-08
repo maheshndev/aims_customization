@@ -1,5 +1,6 @@
 <template>
   <div class="blanket-order-items p-2 shadow-md border border-gray-200 rounded-lg">
+    <p>Select Row and for selected row enter schedule qty in input box in row to generate scheduled <b>Sales Order</b></p>
     <div
       class="top-0 bg-white z-20 flex flex-col md:flex-row justify-between items-start md:items-center p-4 border-b border-gray-200 gap-3">
       <div class="flex flex-wrap items-center gap-2">
@@ -110,20 +111,21 @@ export default {
     const headers = [
       "Customer",
       "Blanket Order No.",
-      "Blanket Order Date",
       "Item Code",
       "Item Name",
       "Qty",
       "Pending To Produce Qty",
-      "Schedule Qty",
-      "Produced Qty",
+      "Enter Schedule Qty",
+      "SO Ordered Qty",
       "Rate",
+      "From Date",
+      "To Date",
+      "Blanket Order Date",
     ];
 
     const fieldKeys = [
       "customer",
       "bo_name",
-      "order_date",
       "item_code",
       "item_name",
       "order_qty",
@@ -131,6 +133,9 @@ export default {
       "schedule_qty",
       "consumed_qty",
       "rate",
+      "from_date",
+      "to_date",
+      "order_date"
     ];
 
     const filteredItems = computed(() => {
@@ -154,8 +159,8 @@ export default {
       });
     };
     const refreshBOrders = async () => {
-      items = [];
-      selectedItems = [];
+      items.value = [];
+      selectedItems.value = [];
       await loadItems();
     };
     const loadItems = async () => {

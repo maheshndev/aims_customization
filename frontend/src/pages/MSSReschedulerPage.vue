@@ -1,7 +1,7 @@
 <template>
-    <div>
-        <h2>Rescheduler Page</h2>
-        <SectionCard title="Work Order Re-Scheduler">
+    <div class="p-6 bg-gray-50 min-h-screen font-sans space-y-6">
+        <h2>Rescheduler Screen</h2>
+        <SectionCard title="">
             <WorkOrderRescheduler />
         </SectionCard>
     </div>

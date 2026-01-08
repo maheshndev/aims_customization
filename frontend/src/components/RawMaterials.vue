@@ -1,5 +1,6 @@
 <template>
 	<div class="raw-materials rounded-xl shadow-sm p-4 bg-white">
+		<p>If Required Adjust Raw Material Percentage</p>
 		<div v-if="loading" class="text-gray-500 animate-pulse text-center py-4">
 			Loading Raw Materials...
 		</div>
@@ -28,6 +29,12 @@
 							<input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
 						</th>
 						<th class="border px-3 py-2 w-10 text-left whitespace-nowrap">#</th>
+						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
+							Sales Order ID
+						</th>
+						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
+							BOM No
+						</th>
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							Material Code
 						</th>
@@ -78,6 +85,12 @@
 						</td>
 						<td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
 						<td class="border px-3 py-2 font-medium whitespace-nowrap">
+							{{ rm.sales_order }}
+						</td>
+						<td class="border px-3 py-2 font-medium whitespace-nowrap">
+							{{ rm.bom_no }}
+						</td>
+						<td class="border px-3 py-2 font-medium whitespace-nowrap">
 							{{ rm.rm_item_code }}
 						</td>
 						<td class="border px-3 py-2 whitespace-nowrap">{{ rm.rm_item_name }}</td>
@@ -88,7 +101,7 @@
 							{{ rm.qty_per_bom_unit }}
 						</td>
 						<td class="border px-3 py-2 text-right whitespace-nowrap font-semibold text-blue-800">
-							{{ rm.total_required_qty }}
+							{{ rm.required_qty }}
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
 							{{ rm.rm_percentage }}
@@ -175,7 +188,8 @@ const fetchMaterials = async () => {
 
 	loading.value = true;
 	error.value = null;
-
+	
+	
 	try {
 		const payload = props.boms.map((bom) => ({
 			bom_no: bom.bom_no,

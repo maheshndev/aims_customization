@@ -1,7 +1,7 @@
 <template>
-  <div class="p-4 space-y-4">
+  <div class="p-2 space-y-2">
     <!-- CONTROLS -->
-    <div class="flex items-end gap-4 bg-white p-3 rounded shadow">
+    <div class="flex items-end gap-4 bg-white p-3 rounded shadow-sm">
       <div>
         <label class="block text-xs text-gray-600">From</label>
         <input type="date" v-model="fromDate" class="border rounded px-2 py-1" />
@@ -25,7 +25,7 @@
     </div>
 
     <!-- TIMELINE -->
-    <div class="border rounded overflow-hidden bg-white shadow">
+    <div class="border rounded overflow-hidden bg-white shadow-sm p-2">
       <FullCalendar ref="calendarRef" :options="calendarOptions" />
     </div>
   </div>

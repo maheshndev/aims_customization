@@ -103,7 +103,7 @@
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ item.sales_order_id }}</td>
-            <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_code }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap" :href="`/app/item/${item.item_code}`" target="_blank">{{ item.item_code }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ item.item_name }}</td>
             <td class="border px-3 py-2 text-right whitespace-nowrap">
               {{ item.qty }}
