@@ -35,8 +35,8 @@
 			</div>
 
 			<div class="relative flex-3 min-w-[300px] max-w-[400px]">
-				<label class="block text-sm font-medium text-gray-700 mb-1">Customer <span class="text-red-700"> *
-						Important</span></label>
+				<!-- <span class="text-red-700"> * Important</span> -->
+				<label class="block text-sm font-medium text-gray-700 mb-1"> Customer </label>
 				<div class="relative">
 					<input type="text" v-model="searchCustomerText" placeholder="Search customer..."
 						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm"
