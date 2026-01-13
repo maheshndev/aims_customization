@@ -47,8 +47,18 @@ const search = ref(props.modelValue || "");
 const options = ref([]);
 const open = ref(false);
 
+// Watch for external changes (e.g. Reset button)
+import { watch } from "vue";
+watch(() => props.modelValue, (val) => {
+  search.value = val || "";
+});
+
 async function onInput() {
   open.value = true;
+  // If user clears input manually, emit empty
+  if (!search.value) {
+    emit("update:modelValue", "");
+  }
   const res = await mssApi.search(props.doctype, search.value);
   options.value = res.data.message || [];
 }

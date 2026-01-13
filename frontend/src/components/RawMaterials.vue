@@ -197,7 +197,11 @@ const fetchMaterials = async () => {
 		}));
 		const res = await api.getRawMaterialsForBOMs(payload);
 
-		materials.value = res.data.message || [];
+		materials.value = (res.data.message || []).map(m => ({
+            ...m,
+            base_required_qty: m.required_qty, // Store the original qty from backend as base
+            rm_percentage: m.rm_percentage || 100 // Default to 100 if null
+        }));
 
 		selectedRows.value = materials.value.slice();
 
@@ -220,17 +224,19 @@ watch(
 	{ deep: true }
 );
 const recalculateRM = (rm) => {
-  if (!rm.adj_rm_percentage) return;
+  if (rm.rm_percentage === null || rm.rm_percentage === undefined) return;
 
-  // Example logic – adjust as per your business rule
-  // total_required_qty = base_qty * (rm_percentage / 100)
+  // Use the stored base qty
+  const baseQty = rm.base_required_qty || 0;
+  const percent = rm.rm_percentage / 100;
 
-  const baseQty = rm.qty_per_bom_unit || 0;
-  const percent = rm.adj_rm_percentage / 100;
+  // Calculate new required qty based on percentage
+  const newQty = +(baseQty * percent).toFixed(6);
+  
+  rm.required_qty = newQty;
+  rm.total_required_qty = newQty; // Sync for CapacityPlanner
 
-  rm.total_required_qty = +(baseQty * percent).toFixed(6);
-
-  rm.balance_qty = +(rm.available_qty - rm.total_required_qty).toFixed(6);
+  rm.balance_qty = +(rm.available_qty - newQty).toFixed(6);
   rm.is_sufficient = rm.balance_qty >= 0;
 };
 

@@ -1,38 +1,64 @@
 <template>
 	<div class="p-4 bg-white rounded shadow space-y-4">
-		<div class="flex flex-wrap items-end justify-between gap-4">
+		<div class="flex flex-wrap items-center justify-between gap-4">
 			<div class="flex gap-2">
-				<button class="px-3 py-1 rounded bg-blue-100 hover:bg-blue-200" @click="validateCapacity"
+				<button class="px-3 py-1 rounded bg-blue-100 hover:bg-blue-200" @click="openModal('validate')"
 					:disabled="!selectedRows.length || hasValidationErrors">
 					Validate Capacity
 				</button>
 
-				<button class="px-3 py-1 rounded bg-indigo-100 hover:bg-indigo-200" @click="loadPreview"
+				<button class="px-3 py-1 rounded bg-indigo-100 hover:bg-indigo-200" @click="openModal('preview')"
 					:disabled="!selectedRows.length || hasValidationErrors">
 					Preview Schedule
 				</button>
 
-				<button class="px-3 py-1 rounded bg-green-200 hover:bg-green-300" @click="createWorkOrders"
+				<button class="px-3 py-1 rounded bg-green-200 hover:bg-green-300" @click="openModal('create')"
 					:disabled="!selectedRows.length || hasValidationErrors">
 					+ Plan & Create WOs
 				</button>
 			</div>
+		</div>
 
-			<div class="flex gap-3 text-sm">
+        <!-- Scheduling Modal -->
+		<div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+			<div class="bg-white rounded p-6 shadow-xl w-96 space-y-4">
+				<h3 class="font-bold text-lg border-b pb-2">
+					{{ modalTitle }}
+				</h3>
+				
 				<div>
-					<label class="block text-xs text-gray-500">Utilization %</label>
-					<input type="number" v-model.number="utilization" min="1" max="100"
-						class="border rounded px-2 py-1 w-20" />
+					<label class="block text-xs text-gray-500 mb-1">Utilization %</label>
+					<input type="number" v-model.number="utilization" min="1" max="100" class="border rounded px-2 py-1 w-full" />
 				</div>
 
 				<div>
-					<label class="block text-xs text-gray-500">Plan Start</label>
-					<input type="date" v-model="planStart" class="border rounded px-2 py-1" />
-				</div>
+					<label class="block text-xs text-gray-500 mb-1">Plan Start</label>
+					<div class="flex gap-2">
+						<input type="date" v-model="planStartWrapper" class="border rounded px-2 py-1 flex-1" />
+						<button @click="checkAvailability" title="Check Machine Availability"
+							class="px-2 py-1 bg-yellow-100 hover:bg-yellow-200 rounded text-xs whitespace-nowrap">
+							Check Avail.
+						</button>
+					</div>
+                </div>
+                
+                 <div>
+                    <label class="block text-xs text-gray-500 mb-1">Plan Time</label>
+                     <input type="time" v-model="planStartTime" class="border rounded px-2 py-1 w-full" />
+                </div>
 
 				<div>
-					<label class="block text-xs text-gray-500">Plan End</label>
-					<input type="date" v-model="planEnd" class="border rounded px-2 py-1" />
+					<label class="block text-xs text-gray-500 mb-1">Plan End</label>
+					<input type="date" v-model="planEnd" class="border rounded px-2 py-1 w-full" />
+				</div>
+
+				<div class="flex justify-end gap-2 pt-2 border-t mt-4">
+					<button @click="closeModal" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded">
+						Cancel
+					</button>
+					<button @click="confirmAction" class="px-3 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded">
+						Proceed
+					</button>
 				</div>
 			</div>
 		</div>
@@ -174,11 +200,82 @@ const preview = ref({});
 const selectedKeys = ref([]);
 const selectAll = ref(false);
 const utilization = ref(90);
+// planStart: Date string YYYY-MM-DD
 const planStart = ref(today());
+// planStartTime: Time string HH:mm
+const planStartTime = ref("06:00");
 const planEnd = ref(null);
+
+const showModal = ref(false);
+const modalAction = ref(null);
+
+const planStartWrapper = computed({
+	get: () => planStart.value,
+	set: (val) => { planStart.value = val; }
+});
+
+const modalTitle = computed(() => {
+	if (modalAction.value === 'validate') return 'Validate Capacity';
+	if (modalAction.value === 'preview') return 'Preview Schedule';
+	if (modalAction.value === 'create') return 'Plan & Create Work Orders';
+	return 'Capacity Planning';
+});
+
+function openModal(action) {
+	modalAction.value = action;
+	showModal.value = true;
+}
+
+function closeModal() {
+	showModal.value = false;
+	modalAction.value = null;
+}
+
+function confirmAction() {
+	if (modalAction.value === 'validate') validateCapacity();
+	else if (modalAction.value === 'preview') loadPreview();
+	else if (modalAction.value === 'create') createWorkOrders();
+	closeModal();
+}
+
+async function checkAvailability() {
+    if (!selectedRows.value.length) return;
+    try {
+        const payload = selectedRows.value.map(r => ({
+             machine: r.machine,
+             mould: r.mould
+        }));
+        
+        const res = await api.checkMachineAvailability(JSON.stringify(payload));
+        const dt = res?.data?.message; // Returns datetime string or date string
+        
+        if (dt) {
+            const dateObj = new Date(dt);
+             // Format YYYY-MM-DD for date input
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            planStart.value = `${yyyy}-${mm}-${dd}`;
+            
+            // Format HH:mm for time input
+            const hh = String(dateObj.getHours()).padStart(2, '0');
+            const min = String(dateObj.getMinutes()).padStart(2, '0');
+            planStartTime.value = `${hh}:${min}`;
+            
+            showMessage({
+                title: "Availability Checked",
+                message: `Plan Start updated to optimum availability: ${dt}`,
+                indicator: "green"
+            });
+        }
+    } catch (err) {
+        showMessage({ title: "Error", message: extractFrappeError(err), indicator: "red" });
+    }
+}
 
 onMounted(sync);
 watch(() => props.capBoms, sync, { deep: true });
+watch(() => props.rawMaterials, sync, { deep: true });
 
 function today() {
 	return new Date().toISOString().slice(0, 10);
@@ -199,14 +296,21 @@ const rawMaterialMap = computed(() => {
 });
 
 function sync() {
-	rows.value = props.capBoms.map((b, i) => ({
-		...b,
-		rowKey: `${b.bom_no}_${b.sales_order}_${i}`,
-		schedule_qty: Number(b.required_for_selected_qty || 0),
-		machine: b.selected_workstation,
-		mould: b.selected_mould || null,
-		raw_materials: Object.values(rawMaterialMap.value),
-		validation_error: null,
+    // 1. Map raw materials for easy lookup
+	const rmMap = rawMaterialMap.value;
+
+	rows.value = props.capBoms
+        // 2. Filter out items that already have Work Orders
+        .filter(b => !b.has_work_order)
+        .map((b, i) => ({
+            ...b,
+            rowKey: `${b.bom_no}_${b.sales_order}_${i}`,
+            schedule_qty: Number(b.required_for_selected_qty || 0),
+            machine: b.selected_workstation,
+            mould: b.selected_mould || null,
+            // 3. Inject updated Raw Materials (percentages/qtys)
+            raw_materials: Object.values(rmMap), 
+            validation_error: null,
 	}));
 	preview.value = {};
 	selectedKeys.value = [];
@@ -264,6 +368,7 @@ async function validateCapacity() {
 		const payload = {
 			production_utilization: utilization.value,
 			plan_start_date: planStart.value,
+            plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
 			lines: selectedRows.value.map((r) => ({
 				row_key: r.rowKey,
@@ -335,6 +440,7 @@ async function loadPreview() {
 		const payload = {
 			production_utilization: utilization.value,
 			plan_start_date: planStart.value,
+            plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
 			lines: selectedRows.value.map((r) => ({
 				row_key: r.rowKey,
@@ -392,6 +498,7 @@ async function togglePreview(row) {
 	const payload = {
 		production_utilization: utilization.value,
 		plan_start_date: planStart.value,
+        plan_start_time: planStartTime.value,
 		plan_end_date: planEnd.value,
 		lines: [
 			{
@@ -430,6 +537,7 @@ async function createWorkOrders() {
 		const payload = {
 			production_utilization: utilization.value,
 			plan_start_date: planStart.value,
+            plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
 			lines: selectedRows.value.map((r) => ({
 				item_code: r.item_code,

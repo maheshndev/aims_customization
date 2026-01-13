@@ -38,7 +38,7 @@ export const api = {
 				params: {
 					customer: filters.customer,
 					month: filters.month,
-					year: filters.year
+					year: filters.year,
 					// search_text will be null/undefined, allowing the backend to handle the search logic
 				},
 			}
@@ -105,6 +105,13 @@ export const api = {
 			"/api/method/aims_customization.api.mss_monthly_schedule.preview_capacity_plan",
 			{ payload: JSON.stringify(payload) },
 			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
+		),
+	checkMachineAvailability: (lines) =>
+		axios.get(
+			"/api/method/aims_customization.api.mss_monthly_schedule.check_machine_availability",
+			{
+				params: { lines: lines },
+			}
 		),
 	// -------------------- Level 6 --------------------
 	getWorkOrders: (so_list) =>

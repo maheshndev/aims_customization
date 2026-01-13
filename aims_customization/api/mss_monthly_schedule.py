@@ -12,6 +12,26 @@ from frappe.model.document import Document
 def safe(val):
     return val if val not in (None, "") else ""
 
+@frappe.whitelist()
+def check_machine_availability(lines):
+    lines = frappe.parse_json(lines)
+    max_end = None
+    
+    for ln in lines:
+        end_dt = get_last_wo_end(ln.get("machine"), ln.get("mould"))
+        if end_dt:
+            if not max_end or end_dt > max_end:
+                max_end = end_dt
+    
+    now = frappe.utils.now_datetime()
+    
+    # If the last WO ended in the past, scheduling should start from NOW (or shift start)
+    # If the last WO ends in the future, start from then.
+    if max_end and max_end > now:
+        return max_end
+        
+    return now
+
 def _month_str_from_date(dt):
     if not dt:
         return ""
@@ -666,6 +686,13 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 order_by="idx"
             )
 
+            # Check if Work Order exists for this SO + Item
+            existing_wo = frappe.db.exists("Work Order", {
+                "sales_order": so_name,
+                "production_item": item_code,
+                "docstatus": ["!=", 2]
+            })
+
             result.append({
                 "sales_order": so_name,
                 "customer": customer_map.get(so_name),
@@ -684,6 +711,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "bom_operations": bom_operations,
                 "moulds": moulds,
                 "required_for_selected_qty": required_qty,
+                "has_work_order": bool(existing_wo)
             })
 
     return result
@@ -705,9 +733,15 @@ def get_raw_materials_for_boms(boms: list = None):
             continue
 
         bom_no = b.get("bom_no")
-        fg_item = b.get("fg_item")
-        sales_order= b.get("name")
-        print("############", b.get("name"))
+        fg_item = b.get("item_code") # Changed from fg_item to item_code just to be safe, assuming frontend passes it? Wait, let's keep fg_item if that's what was there, but looking at previous tool output...
+        # In line 708 it was: fg_item = b.get("fg_item")
+        # In line 709: sales_order= b.get("name")
+        
+        # Let's check what keys are in get_boms_for_sales_orders result:
+        # "sales_order", "item_code" (which acts as fg_item)
+        
+        sales_order = b.get("sales_order") or b.get("name") # Fallback to name just in case
+
         req_qty = flt(b.get("required_for_selected_qty"))
 
         if not bom_no or req_qty <= 0:
@@ -896,10 +930,21 @@ def validate_capacity(payload):
             required_hours = ln["schedule_qty"] / pcs_hr
 
             windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
-            available = sum(
-                (w["end"] - w["start"]).total_seconds() / 3600 * utilization / 100
-                for w in windows
-            )
+            
+            custom_start_time = payload.get("plan_start_time")
+            start_dt_override = None
+            if custom_start_time:
+                 t_parts = [int(x) for x in str(custom_start_time).split(":")]
+                 start_dt_override = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
+
+            available = 0.0
+            for w in windows:
+                st, et = w["start"], w["end"]
+                if start_dt_override:
+                     st = max(st, start_dt_override)
+                
+                if st < et:
+                     available += (et - st).total_seconds() / 3600 * utilization / 100
 
             result.append({
                 "rowKey": ln["row_key"],
@@ -942,9 +987,17 @@ def preview_capacity_plan(payload):
             }]
 
         windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
+        custom_start_time = payload.get("plan_start_time")
+        default_start = combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+        
+        if custom_start_time:
+             # If formatted as HH:mm:ss or HH:mm
+             t_parts = [int(x) for x in str(custom_start_time).split(":")]
+             default_start = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
+
         current_start = (
             get_last_wo_end(ln["machine"], ln.get("mould")) or
-            combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+            default_start
         )
 
         preview = []
@@ -1017,9 +1070,16 @@ def create_work_orders_from_mss(payload):
                 payload.get("plan_end_date")
             )
 
+            custom_start_time = payload.get("plan_start_time")
+            default_start = combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+            
+            if custom_start_time:
+                 t_parts = [int(x) for x in str(custom_start_time).split(":")]
+                 default_start = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
+
             current_start = (
                 get_last_wo_end(ln["machine"], ln.get("mould")) or
-                combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+                default_start
             )
 
             for w in windows:
