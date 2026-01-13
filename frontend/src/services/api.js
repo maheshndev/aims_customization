@@ -57,7 +57,7 @@ export const api = {
 				customer: filters.customer,
 				month: filters.month,
 				year: filters.year,
-				bo_list: bo_list,
+				blanket_items: bo_list ? JSON.stringify(bo_list) : null,
 			},
 		}),
 	// -------------------- Level 4 --------------------
@@ -106,11 +106,11 @@ export const api = {
 			{ payload: JSON.stringify(payload) },
 			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
 		),
-	checkMachineAvailability: (lines) =>
+	getSmartSchedulePreview: (lines, planStart) =>
 		axios.get(
-			"/api/method/aims_customization.api.mss_monthly_schedule.check_machine_availability",
+			"/api/method/aims_customization.api.mss_monthly_schedule.get_smart_schedule_preview",
 			{
-				params: { lines: lines },
+				params: { lines: lines, plan_start_date: planStart },
 			}
 		),
 	// -------------------- Level 6 --------------------

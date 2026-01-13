@@ -148,7 +148,11 @@ export default {
           item.item_code?.toLowerCase().includes(q) ||
           item.item_name?.toLowerCase().includes(q) ||
           item.bo_name?.toLowerCase().includes(q) ||
-          item.customer?.toLowerCase().includes(q)
+          item.customer?.toLowerCase().includes(q) ||
+          String(item.schedule_qty || "").includes(q) ||
+          String(item.remaining_bo_qty || "").includes(q) ||
+          String(item.order_qty || "").includes(q) ||
+          String(item.rate || "").includes(q)
       );
     });
     const showMessage = ({ title, message, indicator = "blue" }) => {
@@ -315,6 +319,16 @@ export default {
       },
       { immediate: true, deep: true }
     );
+
+    watch(selectedItems, (newVal) => {
+      emit("update:selected", newVal);
+    }, { deep: true });
+
+    watch(() => props.selected, (newVal) => {
+        if (newVal && newVal.length !== selectedItems.value.length) {
+             selectedItems.value = newVal;
+        }
+    }, { immediate: true });
 
     return {
       items,

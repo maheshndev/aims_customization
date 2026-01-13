@@ -34,6 +34,7 @@
             <th class="px-3 py-2 border whitespace-nowrap">Transaction</th>
             <th class="px-3 py-2 border whitespace-nowrap">Delivery</th>
             <th class="px-3 py-2 border whitespace-nowrap">Status</th>
+            <th class="px-3 py-2 border whitespace-nowrap">Blanket Order ID</th>
           </tr>
         </thead>
 
@@ -61,6 +62,7 @@
             </td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.delivery_date }}</td>
             <td class="border px-3 py-2 whitespace-nowrap">{{ so.status }}</td>
+            <td class="border px-3 py-2 whitespace-nowrap">{{ so.blanket_order || "" }}</td>
           </tr>
         </tbody>
       </table>
@@ -234,7 +236,7 @@ const fetchOrders = async () => {
     if (props.filters.customer || props.filters.month || props.filters.year) {
       const res = await api.getSalesOrders({
         ...props.filters
-      });
+      }, props.boItems);
 
       orders.value = res.data.message || [];
       selectedLocal.value = [];
@@ -260,5 +262,5 @@ const refreshOrders = async () => {
   await fetchOrders();
 };
 
-watch(() => [props.filters], fetchOrders, { immediate: true, deep: true });
+watch(() => [props.filters, props.boItems], fetchOrders, { immediate: true, deep: true });
 </script>

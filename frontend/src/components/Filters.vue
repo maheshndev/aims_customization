@@ -8,10 +8,17 @@
 				<label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
 				<div class="relative">
 					<select v-model="localFilters.year"
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm">
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white">
 						<option value="">Select Year (Optional)</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
+                    <!-- Custom Arrow for Year -->
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
+                        v-if="!localFilters.year">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                    </div>
 					<span v-if="localFilters.year" @click="clearYear"
 						class="absolute px-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
 						<b>✕</b>
@@ -22,7 +29,7 @@
 				<label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
 				<div class="relative">
 					<select v-model="localFilters.month"
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm">
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white">
 						<option value="">Select Month (Optional)</option>
 						<option v-for="m in monthOptions" :key="m.value" :value="m.value">
 							{{ m.label }}
@@ -40,7 +47,7 @@
 				<label class="block text-sm font-medium text-gray-700 mb-1">Customer </label>
 				<div class="relative">
 					<input type="text" v-model="searchCustomerText" placeholder="Search customer..."
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm"
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 pl-2 text-sm"
 						@focus="handleCustomerFocus" @input="handleCustomerInput" @keydown.down.prevent="highlightNext"
 						@keydown.up.prevent="highlightPrev" @keydown.enter.prevent="selectHighlighted"
 						@keydown.esc.prevent="dropdownOpen = false" />
@@ -165,7 +172,9 @@ export default {
 		localFilters: {
 			deep: true,
 			handler(val) {
-				this.$emit("update:modelValue", val);
+                // Decoupled: Do not emit on every change. 
+                // Only emit when Apply is clicked or explicitly handled.
+				// this.$emit("update:modelValue", val);
 			},
 		},
 		searchCustomerText(newVal) {
@@ -274,9 +283,27 @@ export default {
 		},
 
 		onApplyFilters() {
+            // Validation
+            if (!this.localFilters.year && !this.localFilters.month && !this.localFilters.customer) {
+                frappe.msgprint({ title: 'Validation Error', message: 'Please select at least one filter (Year, Month, or Customer) to apply.', indicator: 'orange' });
+                return;
+            }
+            // Strict Validation requested by user: "Select Year only - Apply Validation for missing Customer"
+            // If Year/Month selected but no Customer? The logic depends on business requirement.
+            // User bug report says: "Select Year only - Apply Validation for missing Customer - Not showing".
+            // Implementation: Require Customer if Year or Month is selected?
+            
+            if ((this.localFilters.year || this.localFilters.month) && !this.localFilters.customer) {
+                 frappe.msgprint({ title: 'Validation Error', message: 'Please select a Customer.', indicator: 'red' });
+                 return;
+            }
+
 			this.dropdownOpen = false;
 			const filtersToApply = { ...this.localFilters };
 			this.$emit("apply-filters", filtersToApply);
+            
+            // Also need to emit update:modelValue to sync v-model in parent
+            this.$emit("update:modelValue", filtersToApply);
 		},
 
 		outsideClick(e) {

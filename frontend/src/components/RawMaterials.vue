@@ -194,6 +194,8 @@ const fetchMaterials = async () => {
 		const payload = props.boms.map((bom) => ({
 			bom_no: bom.bom_no,
 			required_for_selected_qty: bom.required_for_selected_qty,
+			sales_order: bom.sales_order,
+			item_code: bom.item_code,
 		}));
 		const res = await api.getRawMaterialsForBOMs(payload);
 
@@ -203,7 +205,8 @@ const fetchMaterials = async () => {
             rm_percentage: m.rm_percentage || 100 // Default to 100 if null
         }));
 
-		selectedRows.value = materials.value.slice();
+		// selectedRows.value = materials.value.slice(); // User requested to NOT select all by default
+        selectedRows.value = [];
 
 		emit("raw-material-loaded", materials.value);
 	} catch (err) {
@@ -241,8 +244,8 @@ const recalculateRM = (rm) => {
 };
 
 const refreshRM = async () => {
-	selectedRows = [];
-	materials = [];
+	selectedRows.value = [];
+	materials.value = [];
 	await fetchMaterials();
 };
 

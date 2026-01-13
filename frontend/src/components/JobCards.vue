@@ -156,8 +156,8 @@ async function fetchJobCards() {
   }
 }
 const refreshJobCards = async () => {
-  jobCards = [];
-  selectedIds = [];
+  jobCards.value = [];
+  selectedIds.value = [];
   await fetchJobCards();
 };
 watch(() => props.workOrders, fetchJobCards, { immediate: true });

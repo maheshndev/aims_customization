@@ -35,10 +35,42 @@
 					<label class="block text-xs text-gray-500 mb-1">Plan Start</label>
 					<div class="flex gap-2">
 						<input type="date" v-model="planStartWrapper" class="border rounded px-2 py-1 flex-1" />
-						<button @click="checkAvailability" title="Check Machine Availability"
-							class="px-2 py-1 bg-yellow-100 hover:bg-yellow-200 rounded text-xs whitespace-nowrap">
-							Check Avail.
+						<button class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+							@click="checkAvailability">
+							Check Availability
 						</button>
+                        <!-- Refresh Button -->
+                        <button class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                            @click="refreshData">
+                            Refresh
+                        </button>
+					</div>
+					
+					<!-- Schedule Preview Table -->
+					<div v-if="schedulePreview.length" class="mt-4 border rounded overflow-hidden max-h-60 overflow-y-auto">
+						<table class="min-w-full text-xs text-left">
+							<thead class="bg-gray-50 font-medium text-gray-700">
+								<tr>
+									<th class="px-3 py-2">Item</th>
+									<th class="px-3 py-2">Machine</th>
+									<th class="px-3 py-2">Mould</th>
+									<th class="px-3 py-2">Available From</th>
+									<th class="px-3 py-2">Status</th>
+								</tr>
+							</thead>
+							<tbody class="divide-y divide-gray-100">
+								<tr v-for="row in schedulePreview" :key="row.row_key">
+									<td class="px-3 py-2">{{ row.item_code }}</td>
+									<td class="px-3 py-2">{{ row.machine }}</td>
+									<td class="px-3 py-2">{{ row.mould || '-' }}</td>
+									<td class="px-3 py-2 font-mono text-blue-600">
+										{{ row.available_start && row.available_start.split(' ')[0] }} 
+										<span class="text-gray-500">{{ row.available_start && row.available_start.split(' ')[1] }}</span>
+									</td>
+									<td class="px-3 py-2 text-gray-500">{{ row.reason }}</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
                 </div>
                 
@@ -52,7 +84,7 @@
 					<input type="date" v-model="planEnd" class="border rounded px-2 py-1 w-full" />
 				</div>
 
-				<div class="flex justify-end gap-2 pt-2 border-t mt-4">
+				<div class="flex justify-end gap-2 pt-2 border-t mt-6">
 					<button @click="closeModal" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded">
 						Cancel
 					</button>
@@ -208,6 +240,7 @@ const planEnd = ref(null);
 
 const showModal = ref(false);
 const modalAction = ref(null);
+const schedulePreview = ref([]);
 
 const planStartWrapper = computed({
 	get: () => planStart.value,
@@ -224,53 +257,121 @@ const modalTitle = computed(() => {
 function openModal(action) {
 	modalAction.value = action;
 	showModal.value = true;
+	schedulePreview.value = []; // Reset on open
 }
 
 function closeModal() {
 	showModal.value = false;
 	modalAction.value = null;
+	schedulePreview.value = []; // Reset on close
+}
+
+function refreshData() {
+    // Clear previous results
+    schedulePreview.value = [];
+    rows.value.forEach(r => {
+        r.validation_error = null;
+        r.capacity_gap = null;
+        r.available_hours = null;
+        r.required_hours = null;
+        r.pcs_per_hour = null;
+    });
+    preview.value = {};
+    
+    // Re-trigger validation or check availability if inputs are valid
+    if (validateInputs()) {
+        if (modalAction.value === 'validate') {
+             validateCapacity();
+        } else {
+             checkAvailability();
+        }
+        showMessage({ title: "Refreshed", message: "Data refreshed based on new inputs.", indicator: "green" });
+    }
 }
 
 function confirmAction() {
+    if (!validateInputs()) return;
+    
 	if (modalAction.value === 'validate') validateCapacity();
 	else if (modalAction.value === 'preview') loadPreview();
 	else if (modalAction.value === 'create') createWorkOrders();
 	closeModal();
 }
 
+function validateInputs() {
+    if (utilization.value <= 0 || utilization.value > 100) {
+        showMessage({ title: "Validation Error", message: "Utilization must be between 1 and 100%", indicator: "red" });
+        return false;
+    }
+    if (!planEnd.value) {
+        showMessage({ title: "Validation Error", message: "Plan End Date is required", indicator: "red" });
+        return false;
+    }
+    if (new Date(planEnd.value) < new Date(planStart.value)) {
+        showMessage({ title: "Validation Error", message: "Plan End Date cannot be before Plan Start Date", indicator: "red" });
+        return false;
+    }
+    return true;
+}
+
 async function checkAvailability() {
-    if (!selectedRows.value.length) return;
-    try {
-        const payload = selectedRows.value.map(r => ({
-             machine: r.machine,
-             mould: r.mould
+	if (!selectedRows.value.length) {
+        showMessage({ title: "Validation Error", message: "Please select at least one order", indicator: "orange" });
+        return;
+    }
+    if (!planStart.value) {
+        showMessage({ title: "Validation Error", message: "Plan Start Date is required", indicator: "orange" });
+        return;
+    }
+	try {
+        const lines = selectedRows.value.map(r => ({
+           rowKey: r.rowKey,
+           item_code: r.item_code,
+           machine: r.machine,
+           mould: r.mould
         }));
         
-        const res = await api.checkMachineAvailability(JSON.stringify(payload));
-        const dt = res?.data?.message; // Returns datetime string or date string
+		const res = await api.getSmartSchedulePreview(JSON.stringify(lines), planStart.value);
+		schedulePreview.value = res.data.message || [];
         
-        if (dt) {
-            const dateObj = new Date(dt);
-             // Format YYYY-MM-DD for date input
-            const yyyy = dateObj.getFullYear();
-            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const dd = String(dateObj.getDate()).padStart(2, '0');
-            planStart.value = `${yyyy}-${mm}-${dd}`;
+        // Auto-set Plan Start to the LATEST available start time found
+        let maxDt = null;
+        let maxTime = null;
+        
+        schedulePreview.value.forEach(p => {
+            if (p.available_start) {
+                const dt = new Date(p.available_start);
+                if (!maxDt || dt > maxDt) {
+                    maxDt = dt;
+                    // Format time HH:mm
+                    const hrs = String(dt.getHours()).padStart(2, '0');
+                    const mins = String(dt.getMinutes()).padStart(2, '0');
+                    maxTime = `${hrs}:${mins}`;
+                }
+            }
+        });
+        
+        if (maxDt) {
+            // YYYY-MM-DD
+            const yyyy = maxDt.getFullYear();
+            const mm = String(maxDt.getMonth() + 1).padStart(2, '0');
+            const dd = String(maxDt.getDate()).padStart(2, '0');
             
-            // Format HH:mm for time input
-            const hh = String(dateObj.getHours()).padStart(2, '0');
-            const min = String(dateObj.getMinutes()).padStart(2, '0');
-            planStartTime.value = `${hh}:${min}`;
+            planStart.value = `${yyyy}-${mm}-${dd}`;
+            planStartTime.value = maxTime || "06:00";
             
             showMessage({
                 title: "Availability Checked",
-                message: `Plan Start updated to optimum availability: ${dt}`,
+                message: `Plan Start updated to optimum availability: ${planStart.value} ${planStartTime.value}`,
                 indicator: "green"
             });
         }
-    } catch (err) {
-        showMessage({ title: "Error", message: extractFrappeError(err), indicator: "red" });
-    }
+	} catch (e) {
+		console.error(e);
+        // Error handling fallback
+        const msg = e.message || "Failed to check availability";
+		showMessage({ title: "Error", message: msg, indicator: "red" });
+	}
 }
 
 onMounted(sync);
