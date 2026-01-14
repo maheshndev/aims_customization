@@ -58,6 +58,7 @@
                         <th class="border px-3 py-2 text-left whitespace-nowrap">FG Warehouse</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">Scrap Warehouse</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">WIP Warehouse</th>
+                        <th class="border px-3 py-2 text-left whitespace-nowrap">Mould No.</th>
                         <th class="border px-3 py-2 text-left whitespace-nowrap">Company</th>
                     </tr>
                 </thead>
@@ -90,6 +91,7 @@
                         <td class="border px-3 py-2 whitespace-nowrap">{{ wo.fg_warehouse }}</td>
                         <td class="border px-3 py-2 whitespace-nowrap">{{ wo.scrap_warehouse }}</td>
                         <td class="border px-3 py-2 whitespace-nowrap">{{ wo.wip_warehouse }}</td>
+                        <td class="border px-3 py-2 whitespace-nowrap">{{ wo.mould }}</td>
                         <td class="border px-3 py-2 whitespace-nowrap">{{ wo.company }}</td>
                     </tr>
                 </tbody>

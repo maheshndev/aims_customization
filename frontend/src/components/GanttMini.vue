@@ -1,19 +1,21 @@
 <template>
-  <div v-if="hasBars" class="relative h-10 bg-gray-100 rounded overflow-hidden">
+  <div v-if="hasBars" class="relative h-10 bg-gray-50/50 border border-gray-100/50 rounded-lg overflow-hidden group/gantt">
     <div
       v-for="(bar, index) in normalizedBars"
       :key="index"
-      class="absolute h-6 top-2 rounded text-[10px] text-white px-1 flex items-center whitespace-nowrap"
+      class="absolute h-6 top-2 rounded-md text-[9px] font-bold text-white px-2 flex items-center whitespace-nowrap shadow-sm transition-all hover:h-7 hover:top-1.5 hover:shadow-md cursor-help z-10"
       :style="getBarStyle(bar)"
+      :title="`${bar.label}: ${bar.startStr} to ${bar.endStr}`"
     >
       {{ bar.label }}
     </div>
   </div>
 
-  <div v-else class="text-xs text-gray-400 italic">
-    No timeline
+  <div v-else class="text-[10px] text-gray-400 italic font-medium uppercase tracking-tight">
+    Timeline unavailable
   </div>
 </template>
+
 
 <script setup>
 import { computed } from "vue"
@@ -31,13 +33,20 @@ const props = defineProps({
 const normalizedBars = computed(() =>
   props.bars
     .filter(b => b?.start && b?.end)
-    .map(b => ({
-      label: b.label || "",
-      start: new Date(b.start).getTime(),
-      end: new Date(b.end).getTime()
-    }))
+    .map(b => {
+      const s = new Date(b.start)
+      const e = new Date(b.end)
+      return {
+        label: b.label || "",
+        start: s.getTime(),
+        end: e.getTime(),
+        startStr: s.toLocaleDateString(),
+        endStr: e.toLocaleDateString()
+      }
+    })
     .filter(b => !isNaN(b.start) && !isNaN(b.end) && b.end > b.start)
 )
+
 
 const hasBars = computed(() => normalizedBars.value.length > 0)
 
@@ -63,8 +72,9 @@ function getBarStyle(bar) {
     left: `${left}%`,
     width: `${Math.max(width, 3)}%`,
     backgroundColor: bar.label.startsWith("Job")
-      ? "#6366f1"
-      : "#10b981"
+      ? "#6366f1" // Indigo 500
+      : "#10b981" // Emerald 500
+
   }
 }
 </script>

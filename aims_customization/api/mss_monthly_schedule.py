@@ -621,7 +621,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
     so_items = frappe.get_all(
         "Sales Order Item",
         filters={"parent": ["in", list(valid_so_names)]},
-        fields=["parent", "item_code", "qty", "bom_no"]
+        fields=["parent", "item_code", "qty", "bom_no", "blanket_order"]
     )
 
     for so_item in so_items:
@@ -718,6 +718,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
 
             result.append({
                 "sales_order": so_name,
+                "blanket_order": so_item.blanket_order or "",
                 "customer": customer_map.get(so_name),
                 "item_code": item_code,
                 "item_name": item_data.get("item_name"),
@@ -756,15 +757,9 @@ def get_raw_materials_for_boms(boms: list = None):
             continue
 
         bom_no = b.get("bom_no")
-        fg_item = b.get("item_code") # Changed from fg_item to item_code just to be safe, assuming frontend passes it? Wait, let's keep fg_item if that's what was there, but looking at previous tool output...
-        # In line 708 it was: fg_item = b.get("fg_item")
-        # In line 709: sales_order= b.get("name")
-        
-        # Let's check what keys are in get_boms_for_sales_orders result:
-        # "sales_order", "item_code" (which acts as fg_item)
-        
-        sales_order = b.get("sales_order") or b.get("name") # Fallback to name just in case
-
+        fg_item = b.get("item_code")
+        sales_order = b.get("sales_order") or b.get("name") 
+        blanket_order = b.get("blanket_order") or ""
         req_qty = flt(b.get("required_for_selected_qty"))
 
         if not bom_no or req_qty <= 0:
@@ -800,6 +795,7 @@ def get_raw_materials_for_boms(boms: list = None):
                 "bom_no": bom_no,
                 "fg_item": fg_item,
                 "sales_order": sales_order,
+                "blanket_order": blanket_order,
 
                 # 🔹 RM details
                 "rm_item_code": comp.item_code,
@@ -870,7 +866,7 @@ def get_shift_windows(start_date, end_date):
     return windows
 
 def has_overlap(machine, mould, start, end):
-    filters = {"status": ["!=", "Cancelled"], "workstation": machine}
+    filters = {"status": ["not in", ["Cancelled", "Completed"]], "workstation": machine}
     if mould:
         filters["mould"] = mould
 
@@ -908,12 +904,17 @@ def resolve_warehouses(company, item_code):
     return fg, wip
 
 def get_last_wo_end(machine, mould=None):
+    """
+    Get the last work order end time for machine and/or mould.
+    Excludes Cancelled and Completed work orders.
+    Returns: dict with machine_end, mould_end, and latest_end
+    """
     # 1. Check Machine Availability
     machine_end = None
     if machine:
         wo_m = frappe.get_all(
             "Work Order",
-            filters={"status": ["!=", "Cancelled"], "workstation": machine},
+            filters={"status": ["not in", ["Cancelled", "Completed"]], "workstation": machine},
             fields=["actual_end_date", "planned_end_date"],
             order_by="COALESCE(actual_end_date, planned_end_date) desc",
             limit=1
@@ -926,7 +927,7 @@ def get_last_wo_end(machine, mould=None):
     if mould:
         wo_mod = frappe.get_all(
             "Work Order",
-            filters={"status": ["!=", "Cancelled"], "mould": mould},
+            filters={"status": ["not in", ["Cancelled", "Completed"]], "mould": mould},
             fields=["actual_end_date", "planned_end_date"],
             order_by="COALESCE(actual_end_date, planned_end_date) desc",
             limit=1
@@ -934,56 +935,102 @@ def get_last_wo_end(machine, mould=None):
         if wo_mod:
             mould_end = wo_mod[0].actual_end_date or wo_mod[0].planned_end_date
 
-    # Return the latest of the two
+    # Return detailed availability info
+    latest_end = None
     if machine_end and mould_end:
-        return max(machine_end, mould_end)
-    return machine_end or mould_end
+        latest_end = max(machine_end, mould_end)
+    else:
+        latest_end = machine_end or mould_end
+    
+    return {
+        "machine_end": machine_end,
+        "mould_end": mould_end,
+        "latest_end": latest_end
+    }
 
 @frappe.whitelist()
-def get_smart_schedule_preview(lines, plan_start_date=None):
+def get_smart_schedule_preview(lines, plan_start_date=None, plan_end_date=None):
+    """
+    Check availability of machines and moulds for scheduling.
+    Excludes Cancelled and Completed work orders.
+    Defaults to today if plan_start_date is not provided.
+    If plan_end_date is provided, checks for overlaps within the period.
+    """
     lines = frappe.parse_json(lines)
     result = []
     
-    # Defaults
+    # Defaults - use today if not provided
     now = frappe.utils.now_datetime()
     plan_start = getdate(plan_start_date) if plan_start_date else now.date()
+    plan_start_dt = datetime.combine(plan_start, time(6, 0))  # Default to 6 AM
     
+    plan_end_dt = None
+    if plan_end_date:
+        plan_end = getdate(plan_end_date)
+        plan_end_dt = datetime.combine(plan_end, time(22, 0)) # Default to 10 PM for end
+
     for ln in lines:
         machine = ln.get("machine")
         mould = ln.get("mould")
+        item_code = ln.get("item_code")
+        row_key = ln.get("rowKey")
         
-        # Determine Earliest Start based on availability
-        last_end = get_last_wo_end(machine, mould)
+        # Get availability info for machine and mould (historical/last end)
+        availability = get_last_wo_end(machine, mould)
+        machine_end = availability.get("machine_end")
+        mould_end = availability.get("mould_end")
+        latest_end = availability.get("latest_end")
         
-        # If last_end is in the past, we can start NOW (or at plan_start if future).
-        # Actually, user wants to know when it CAN start.
-        # If machine is free since yesterday, we start NOW.
-        # If machine is busy until tomorrow, we start tomorrow.
+        # Determine earliest available start time
+        available_start = max(now, plan_start_dt)
+        if latest_end and latest_end > available_start:
+            available_start = latest_end
         
-        start_time = now
-        if last_end and last_end > now:
-            start_time = last_end
+        # Build detailed reason
+        reason_parts = []
+        is_available = True
+        
+        # If plan_end_dt is provided, we check for ANY overlap in the period [plan_start_dt, plan_end_dt]
+        if plan_end_dt:
+            # Check machine overlap specifically
+            if has_overlap(machine, None, plan_start_dt, plan_end_dt):
+                reason_parts.append(f"Machine busy in this period")
+                is_available = False
             
-        # Also respect the User's "Plan Start Date" if it's in the future compared to availability?
-        # Typically "Plan Start" input is the *earliest* desired start.
-        # So effective start = max(avail_start, user_plan_start)
-        # For this API, let's just return the Availability-based start, and let Frontend decide/display.
-        # But wait, user wants to see "work orders that will scheduling with all details".
-        # So we should probably calculate the END time too? To do that we need qty and shift hours.
-        # But `allocate_qty_in_window` needs shift details.
+            # Check mould overlap specifically
+            if mould and has_overlap(None, mould, plan_start_dt, plan_end_dt):
+                reason_parts.append(f"Mould busy in this period")
+                is_available = False
+        else:
+            # Fallback to existing logic comparing against available_start
+            if machine_end and machine_end > available_start:
+                reason_parts.append(f"Machine busy until {machine_end.strftime('%Y-%m-%d %H:%M')}")
+                is_available = False
+            
+            if mould and mould_end and mould_end > available_start:
+                reason_parts.append(f"Mould busy until {mould_end.strftime('%Y-%m-%d %H:%M')}")
+                is_available = False
         
-        # Simplified: Just return the Available Start Time for now. 
-        # Calculating full schedule end requires resolving shifts which might be overkill for just checking availability, 
-        # BUT user said "show... details and capacity details".
-        # Let's try to calculate estimated end if possible, or just Start.
+        if not reason_parts:
+            # Also check if available_start is past plan_end_dt if provided
+            if plan_end_dt and available_start > plan_end_dt:
+                reason = "Not available in requested period"
+                is_available = False
+            else:
+                reason = "Available Now"
+        else:
+            reason = "; ".join(reason_parts)
         
         result.append({
-             "row_key": ln.get("rowKey"), # Frontend should pass this
-             "item_code": ln.get("item_code"),
-             "machine": machine,
-             "mould": mould,
-             "available_start": start_time,
-             "reason": "Machine/Mould Busy until " + str(last_end) if (last_end and last_end > now) else "Available Now"
+            "row_key": row_key,
+            "item_code": item_code,
+            "machine": machine,
+            "mould": mould,
+            "available_start": available_start.strftime('%Y-%m-%d %H:%M:%S') if available_start else None,
+            "mould_available_from": mould_end.strftime('%Y-%m-%d %H:%M:%S') if mould_end else None,
+            "machine_available_from": machine_end.strftime('%Y-%m-%d %H:%M:%S') if machine_end else None,
+            "reason": reason,
+            "is_available": is_available
         })
 
     return result
@@ -1083,10 +1130,10 @@ def preview_capacity_plan(payload):
              t_parts = [int(x) for x in str(custom_start_time).split(":")]
              default_start = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
 
-        current_start = (
-            get_last_wo_end(ln["machine"], ln.get("mould")) or
-            default_start
-        )
+        availability = get_last_wo_end(ln["machine"], ln.get("mould"))
+        now = frappe.utils.now_datetime()
+        current_start = availability.get("latest_end") or default_start
+        current_start = max(now, current_start)
 
         preview = []
         shift_no = 1
@@ -1165,10 +1212,10 @@ def create_work_orders_from_mss(payload):
                  t_parts = [int(x) for x in str(custom_start_time).split(":")]
                  default_start = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
 
-            current_start = (
-                get_last_wo_end(ln["machine"], ln.get("mould")) or
-                default_start
-            )
+            availability = get_last_wo_end(ln["machine"], ln.get("mould"))
+            now = frappe.utils.now_datetime()
+            current_start = availability.get("latest_end") or default_start
+            current_start = max(now, current_start)
 
             for w in windows:
                 if remaining <= 0:
@@ -1256,7 +1303,8 @@ def get_work_orders_for_so(so_list: str | list = None):
             planned_start_date, 
             planned_end_date,
             expected_delivery_date,
-            stock_uom 
+            stock_uom, 
+            mould
         FROM `tabWork Order`
         WHERE sales_order IN ({placeholders}) 
         ORDER BY planned_start_date DESC
@@ -1290,6 +1338,7 @@ def get_work_orders_for_so(so_list: str | list = None):
             "planned_end_date": format_dt(wo.planned_end_date),
             "expected_delivery_date": format_dt(wo.expected_delivery_date),
             "stock_uom": wo.stock_uom, 
+            "mould": wo.mould
         })
         
     return result
@@ -1460,9 +1509,10 @@ def _build_timeline(sales_order, item_code, date_range):
         if wo.planned_start_date and wo.planned_end_date:
             timeline.append({
                 "label": "Work Order",
-                "start": wo.planned_start_date,
-                "end": wo.planned_end_date
+                "start": str(wo.planned_start_date),
+                "end": str(wo.planned_end_date)
             })
+
 
         # Job Card time logs
         job_logs = frappe.db.sql("""
@@ -1482,8 +1532,9 @@ def _build_timeline(sales_order, item_code, date_range):
         for log in job_logs:
             timeline.append({
                 "label": f"Job {log.job_card}",
-                "start": log.from_time,
-                "end": log.to_time
+                "start": str(log.from_time),
+                "end": str(log.to_time)
             })
+
 
     return timeline

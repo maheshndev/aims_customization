@@ -1,175 +1,107 @@
-import calendar
-from datetime import time, timedelta, datetime
+# aims_customization/api/mss_capacity_monthly.py
 import frappe
-from frappe.utils import getdate, nowdate, get_last_day, get_first_day, cint, flt
-
-
-def get_month_days(month, year):
-    if not month or not year:
-        return 1
-    return calendar.monthrange(int(year), int(month))[1]
-
-def get_date_range(month=None, year=None):
-    
-    m = None
-    y = None
-
-    if year:
-        try:
-            y = int(year)
-        except ValueError:
-            return None
-
-    if month:
-        s = str(month).strip()
-
-        for sep in ("-", "/"):
-            if sep in s:
-                p1, p2 = s.split(sep, 1)
-                if p1.isdigit() and len(p1) == 4:  
-                    y = int(p1)
-                    s = p2
-                elif p2.isdigit() and len(p2) == 4:  
-                    y = int(p2)
-                    s = p1
-                break
-
-        if s.isdigit():
-            m = int(s)
-            if not (1 <= m <= 12):
-                m = None
-        else:
-            try:
-                m = datetime.strptime(s[:3].title(), "%b").month
-            except Exception:
-                try:
-                    m = list(calendar.month_name).index(s.title())
-                except Exception:
-                    m = None             
-    if y and m:  
-        start_date = f"{y}-{m:02d}-01"
-        end_date = get_last_day(start_date)
-        return {"type": "month_year", "start": start_date, "end": end_date}
-    elif y and not m:  
-        start_date = f"{y}-01-01"
-        end_date = f"{y}-12-31"
-        return {"type": "year", "start": start_date, "end": end_date}
-    elif m and not y: 
-        return {"type": "month_only", "month": m}
-
-    return None
-
-def shift_hours_between(st, et):
-    st = to_time(st)
-    et = to_time(et)
-
-    if not st or not et:
-        return 0
-    
-    start = st.hour + st.minute / 60
-    end = et.hour + et.minute / 60
-    # Handle night shifts
-    if end < start:
-        end += 24
-
-    return end - start
-
-def get_shift_info():
-    shifts = frappe.get_all("Shift Type", fields=["start_time", "end_time"])
-
-    daily_hours = 0
-    for s in shifts:
-        daily_hours += shift_hours_between(s.start_time, s.end_time)
-    return {"shift_count": len(shifts), "daily_hours": round(daily_hours, 2)}
-
-def pcs_per_hour(cycle_time, cavity):
-
-    return (3600 / max(1, flt(cycle_time))) * max(1, cint(cavity))
-
-def to_time(val):
-    """Convert Frappe Time (time or timedelta) to datetime.time"""
-    if isinstance(val, time):
-        return val
-    if isinstance(val, timedelta):
-        seconds = int(val.total_seconds())
-        return time((seconds // 3600) % 24, (seconds % 3600) // 60, seconds % 60)
-    return None
+from frappe.utils import flt, cint, getdate, nowdate, get_last_day, get_first_day, add_days
+import json
+from datetime import datetime, timedelta, time
+import calendar
 
 @frappe.whitelist()
-
 def get_customer_list(search_text: str = None, customer_id: str = None, limit: int = 20):
-    sql = "SELECT name, customer_name FROM `tabCustomer` WHERE disabled=0"
-    params = []
-    if customer_id:
-        sql += " AND name = %s"
-        params.append(customer_id)
-    elif search_text:
-        sql += " AND (name LIKE %s OR customer_name LIKE %s)"
-        params.extend([f"%{search_text}%", f"%{search_text}%"])
-        sql += " ORDER BY customer_name ASC LIMIT %s"
-        params.append(limit)
-    else:
-        sql += " ORDER BY customer_name ASC LIMIT %s"
-        params.append(limit)
-    rows = frappe.db.sql(sql, tuple(params), as_dict=True) or []
+    try:
+        filters = {}
+        if customer_id:
+            filters["name"] = customer_id
+        elif search_text:
+            filters["customer_name"] = ["like", f"%{search_text}%"]
+        
+        rows = frappe.get_all(
+            "Customer",
+            filters=filters,
+            fields=["name", "customer_name"],
+            limit=limit
+        )
 
-    return [{"name": r["name"], "customer_name": r["customer_name"]} for r in rows]
-
+        data = [{"name": r["name"], "customer_name": r["customer_name"]} for r in rows]
+        return {"success": True, "data": data}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_customer_list")
+        return {"success": False, "message": "Failed to load customers"}
 
 @frappe.whitelist()
-def get_machine_capacity_monthly(month: str = None, year: str = None, utilization=90):
-    
-    today = getdate(nowdate())
-
+def get_machine_list(search_text: str = None, workstation_id: str = None, limit: int = 20):
     try:
-        month = int(month) if month not in (None, "", 0) else today.month
-        year = int(year) if year not in (None, "", 0) else today.year
-    except Exception:
-        frappe.throw("Invalid month or year provided")
+        filters = {"is_group": 0, "disabled": 0}
+        if workstation_id:
+            filters["name"] = workstation_id
+        elif search_text:
+            filters["name"] = ["like", f"%{search_text}%"]
+        
+        rows = frappe.get_all(
+            "Workstation",
+            filters=filters,
+            fields=["name", "workstation_name"],
+            limit=limit
+        )
 
-    month_days = get_month_days(month, year)
-    shift = get_shift_info()
-    machines = frappe.get_all("Workstation", pluck="name")
+        data = [{"name": r["name"], "workstation_name": r["workstation_name"]} for r in rows]
+        return {"success": True, "data": data}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_machine_list")
+        return {"success": False, "message": "Failed to load machines"}
 
-    data = []
+@frappe.whitelist()
+def get_machine_capacity_monthly(
+    month=None,
+    year=None,
+    machines=None,
+    utilization=100,
+):
+    try:
+        if isinstance(machines, str):
+            machines = json.loads(machines)
+        
+        if not machines:
+            return {"success": True, "data": []}
 
-    for machine in machines:
-        required_hrs = frappe.db.sql(
-            """
-            SELECT COALESCE(SUM(woo.time_in_mins), 0) / 60
-            FROM `tabWork Order Operation` woo
-            JOIN `tabWork Order` wo ON wo.name = woo.parent
-            WHERE woo.workstation = %s
-              AND MONTH(wo.planned_start_date) = %s
-              AND YEAR(wo.planned_start_date) = %s
-            """,
-            (machine, month, year),
-        )[0][0]
+        month = cint(month) or getdate(nowdate()).month
+        year = cint(year) or getdate(nowdate()).year
+        
+        first_day = get_first_day(f"{year}-{month:02d}-01")
+        last_day = get_last_day(first_day)
+        days_in_month = (getdate(last_day) - getdate(first_day)).days + 1
 
-        month_capacity = shift["daily_hours"] * month_days * (flt(utilization) / 100)
-        balance = month_capacity - required_hrs
+        # Example logic: Total hours = 24 * days * utilization%
+        # In a real app, you'd subtract holidays and shift non-working hours
+        base_capacity = 24.0 * days_in_month * (flt(utilization) / 100.0)
 
-        data.append({
-            "machine": machine,
-            "month_days": month_days,
-            "daily_capacity_hrs": shift["daily_hours"],
-            "shifts": shift["shift_count"],
-            "utilization": utilization,
-            "month_capacity": round(month_capacity, 2),
-            "required_hours": round(required_hrs, 2),
-            "balance_hours": round(balance, 2),
-            "required_shifts": (
-                round(required_hrs / shift["daily_hours"], 2)
-                if shift["daily_hours"] else 0
-            ),
-        })
+        result = []
+        for m in machines:
+            usage = _get_machine_usage_hours(m, first_day, last_day)
+            result.append({
+                "machine": m,
+                "total_capacity": base_capacity,
+                "used_capacity": usage,
+                "available_capacity": base_capacity - usage,
+                "utilization_pct": round((usage / base_capacity * 100), 2) if base_capacity > 0 else 0
+            })
+        
+        return {"success": True, "data": result}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_machine_capacity_monthly")
+        return {"success": False, "message": "Failed to load machine capacity"}
 
-    return {
-        "success": True,
-        "data": data,
-        "message": "Machine capacity loaded successfully" if data else "No machine data found"
-    }
-
+def _get_machine_usage_hours(machine, start, end):
+    # Sum up planned/actual hours from Work Order operations in this period
+    # Filter by workstation and date range
+    sql = """
+        SELECT SUM(time_required) 
+        FROM `tabWork Order Operation` 
+        WHERE workstation = %s 
+          AND (planned_start_date BETWEEN %s AND %s)
+          AND docstatus = 1
+    """
+    res = frappe.db.sql(sql, (machine, start, end))
+    return flt(res[0][0]) / 60.0 if res and res[0][0] else 0.0
 
 @frappe.whitelist()
 def get_item_capacity_monthly(
@@ -179,108 +111,93 @@ def get_item_capacity_monthly(
     machines=None,
     utilization=90,
 ):
-    import json
-
-    # ------------------------------
-    # Normalize machines input ✅
-    # ------------------------------
-    if isinstance(machines, str):
-        try:
+    try:
+        if isinstance(machines, str):
             machines = json.loads(machines)
-        except Exception:
-            frappe.throw("Invalid machines parameter")
 
-    if not machines:
-        return []
+        month = cint(month) or getdate(nowdate()).month
+        year = cint(year) or getdate(nowdate()).year
+        first_day = get_first_day(f"{year}-{month:02d}-01")
+        last_day = get_last_day(first_day)
 
-    # Normalize month/year
-    month = int(month) if month else None
-    year = int(year) if year else None
+        cond = ""
+        params = {"start": first_day, "end": last_day}
+        
+        if customer:
+            cond += " AND so.customer = %(customer)s"
+            params["customer"] = customer
+        
+        if machines:
+            cond += " AND wo.workstation IN %(machines)s"
+            params["machines"] = tuple(machines)
 
-    month_days = get_month_days(month, year) if month and year else 0
-    shift = get_shift_info()
+        sql = f"""
+            SELECT 
+                wo.production_item as item_code,
+                item.item_name,
+                so.customer,
+                so.name as sales_order,
+                (SELECT GROUP_CONCAT(DISTINCT sub_soi.blanket_order SEPARATOR ', ') FROM `tabSales Order Item` sub_soi WHERE sub_soi.parent = so.name AND sub_soi.blanket_order IS NOT NULL AND sub_soi.blanket_order != '') as blanket_order,
+                SUM(wo.qty) as planned_qty,
+                SUM(wo.produced_qty) as actual_qty,
+                SUM(DATEDIFF(wo.planned_end_date, wo.planned_start_date) * 24) as req_hours
+            FROM `tabWork Order` wo
+            JOIN `tabSales Order` so ON so.name = wo.sales_order
+            JOIN `tabItem` item ON item.name = wo.production_item
+            WHERE wo.planned_start_date BETWEEN %(start)s AND %(end)s
+              AND wo.docstatus = 1
+              {cond}
+            GROUP BY wo.production_item, so.customer, so.name
+        """
+        
+        rows = frappe.db.sql(sql, params, as_dict=True)
+        
+        result = []
+        for r in rows:
+            result.append({
+                "item_code": r.item_code,
+                "item_name": r.item_name,
+                "customer": r.customer,
+                "sales_order": r.sales_order,
+                "blanket_order": r.blanket_order or "",
+                "planned_qty": flt(r.planned_qty),
+                "actual_qty": flt(r.actual_qty),
+                "required_hours": flt(r.req_hours),
+                "progress": round((flt(r.actual_qty) / flt(r.planned_qty) * 100), 2) if flt(r.planned_qty) > 0 else 0
+            })
+            
+        return {"success": True, "data": result}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_item_capacity_monthly")
+        return {"success": False, "message": "Failed to load item capacity"}
 
-    conditions = []
-    filters = {"machines": tuple(machines)}
+@frappe.whitelist()
+def get_machine_workload_details(machine, start_date, end_date):
+    try:
+        # Returns list of Work Orders for a machine in a period
+        sql = """
+            SELECT 
+                wo.name as work_order,
+                wo.production_item as item_code,
+                wo.qty,
+                wo.planned_start_date,
+                wo.planned_end_date,
+                wo.status
+            FROM `tabWork Order` wo
+            WHERE wo.workstation = %s
+              AND (wo.planned_start_date BETWEEN %s AND %s)
+              AND wo.docstatus = 1
+            ORDER BY wo.planned_start_date
+        """
+        rows = frappe.db.sql(sql, (machine, start_date, end_date), as_dict=True)
+        return {"success": True, "data": rows}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_machine_workload_details")
+        return {"success": False, "message": "Failed to load workload details"}
 
-    if month:
-        conditions.append("MONTH(wo.planned_start_date) = %(month)s")
-        filters["month"] = month
-
-    if year:
-        conditions.append("YEAR(wo.planned_start_date) = %(year)s")
-        filters["year"] = year
-
-    if customer:
-        conditions.append("so.customer = %(customer)s")
-        filters["customer"] = customer
-
-    where_clause = " AND ".join(conditions)
-
-    rows = frappe.db.sql(
-        f"""
-        SELECT
-            so.customer_name,
-            so.name AS sales_order,
-            so.transaction_date AS sales_order_date,
-            wo.name AS work_order,
-            wo.planned_start_date AS wo_planned_date,
-            wo.production_item AS item_code,
-            i.item_name,
-            wo.qty AS schedule_qty,
-            wo.mould,
-            mu.mould_name,
-            woo.operation AS work_order_operation,
-            i.cavity,
-            i.cycle_time,
-            woo.workstation AS machine
-        FROM `tabWork Order Operation` woo
-        JOIN `tabWork Order` wo ON wo.name = woo.parent
-        JOIN `tabItem` i ON i.name = wo.production_item
-        JOIN `tabSales Order` so ON so.name = wo.sales_order
-        LEFT JOIN `tabMould` mu ON wo.mould = mu.name
-        WHERE woo.workstation IN %(machines)s
-        {f"AND {where_clause}" if where_clause else ""}
-        ORDER BY
-            so.customer_name,
-            so.transaction_date,
-            wo.planned_start_date
-        """,
-        filters,
-        as_dict=True,
-    )
-
-    result = []
-
-    for r in rows:
-        pcs_hr = pcs_per_hour(r.cycle_time, r.cavity)
-        loading_hrs = (r.schedule_qty / pcs_hr) if pcs_hr else 0
-
-        util = 0
-        if month_days and shift.get("daily_hours"):
-            util = (loading_hrs / (month_days * shift["daily_hours"])) * 100
-
-        result.append({
-            "customer_name": r.customer_name,
-            "sales_order": r.sales_order,
-            "sales_order_date": r.sales_order_date,
-            "work_order": r.work_order,
-            "wo_planned_date": r.wo_planned_date,
-            "work_order_operation": r.work_order_operation,
-            "item_code": r.item_code,
-            "item_name": r.item_name,
-            "schedule_qty": r.schedule_qty,
-            "mould": r.mould,
-            "mould_name": r.mould_name,
-            "machine": r.machine,
-            "cavity": r.cavity,
-            "cycle_time": r.cycle_time,
-            "machine_hourly_capacity": round(pcs_hr, 2),
-            "loading_hours": round(loading_hrs, 2),
-            "month_days": month_days,
-            "daily_capacity_hrs": shift.get("daily_hours", 0),
-            "utilization": round(util, 2),
-        })
-
-    return result
-
+def get_shift_details(workstation):
+    # placeholder for actual shift logic from HR / Manufacturing
+    return [
+        {"name": "Day Shift", "start": "08:00:00", "end": "16:00:00"},
+        {"name": "Evening Shift", "start": "16:00:00", "end": "00:00:00"}
+    ]

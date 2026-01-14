@@ -117,6 +117,7 @@ function toLocalString(date) {
   const h = String(date.getHours()).padStart(2, '0');
   const min = String(date.getMinutes()).padStart(2, '0');
   const s = String(date.getSeconds()).padStart(2, '0');
+  // Return YYYY-MM-DD HH:mm:ss (no microseconds)
   return `${y}-${m}-${d} ${h}:${min}:${s}`;
 }
 
@@ -132,11 +133,33 @@ async function handleEventChange(info) {
     }
     const safeEnd = newEnd || new Date(start.getTime() + 60 * 60 * 1000); // Fallback 1h
 
-    await mssApi.reschedule({
+    const res = await mssApi.reschedule({
       wo_name: info.event.id,
       planned_start_date: toLocalString(start),
       planned_end_date: toLocalString(safeEnd)
     });
+
+    const responseData = res.data.message;
+    
+    if (responseData.success) {
+        if (window.frappe) {
+            frappe.show_alert({
+                message: responseData.message || 'Rescheduled successfully',
+                indicator: 'green'
+            });
+        }
+    } else {
+        info.revert();
+        if (window.frappe) {
+            frappe.msgprint({
+                title: 'Reschedule Prevented',
+                message: responseData.message || 'Validation failed',
+                indicator: 'orange'
+            });
+        } else {
+            alert(responseData.message || "Reschedule failed");
+        }
+    }
     
     // Refresh to get any server-side adjustments (holidays, etc.)
     await loadSchedule();
@@ -144,29 +167,15 @@ async function handleEventChange(info) {
     info.revert();
     console.error("Reschedule failed", e);
     
-    // Parse Frappe Error Message
-    let msg = "Failed to reschedule.";
-    if (e.response && e.response.data) {
-        const d = e.response.data;
-        if (d._server_messages) {
-             try {
-                 const messages = JSON.parse(d._server_messages);
-                 msg = messages.map(m => JSON.parse(m).message).join("<br>");
-             } catch (err) { /* ignore parse error */ }
-        } else if (d.exception) {
-            msg = d.exception;
-        }
-    }
-    
     // Show Alert to User
     if (window.frappe) {
         frappe.msgprint({
-            title: 'Reschedule Failed',
-            message: msg,
+            title: 'System Error',
+            message: extractFrappeError(e),
             indicator: 'red'
         });
     } else {
-        alert(msg.replace(/<br>/g, "\n"));
+        alert("Unexpected error: " + e.message);
     }
   }
 }
@@ -239,8 +248,6 @@ watch(schedule, () => {
 /* ---------------- API ---------------- */
 async function loadSchedule() {
   if (!visibleRange.from || !visibleRange.to) return;
-  // Optimize: Check if we are already loading or if request is identical? 
-  // For now, relies on simple debouncing or just letting it fly, but removing onMounted helps.
   
   try {
       const [res, holRes] = await Promise.all([
@@ -248,11 +255,34 @@ async function loadSchedule() {
           mssApi.getHolidays(visibleRange.from, visibleRange.to)
       ]);
       
-      schedule.value = res.data.message || [];
-      holidays.value = holRes.data.message || [];
+      const scheduleResponse = res.data.message;
+      const holidayResponse = holRes.data.message;
+
+      if (scheduleResponse.success) {
+          schedule.value = scheduleResponse.data || [];
+      } else {
+          console.error("Failed to load schedule:", scheduleResponse.message);
+      }
+
+      if (holidayResponse.success) {
+          holidays.value = holidayResponse.data || [];
+      }
   } catch (e) {
       console.error("Failed to load schedule", e);
   }
+}
+
+function extractFrappeError(err) {
+  if (err?.response?.data?._server_messages) {
+    try {
+      const msgs = JSON.parse(err.response.data._server_messages);
+      return msgs.join("<br>");
+    } catch {
+      return err.response.data._server_messages;
+    }
+  }
+  if (err?.response?.data?.message) return err.response.data.message;
+  return err.message || "Unexpected server error";
 }
 
 /* ---------------- RESET ---------------- */

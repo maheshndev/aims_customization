@@ -11,13 +11,7 @@
 						<option value="">Select Year</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
-                    <!-- Custom Arrow for Year -->
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-                        v-if="!localFilters.year">
-                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                        </svg>
-                    </div>
+                    
 					<span v-if="localFilters.year" @click="clearYear"
 						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
 						✕
@@ -205,10 +199,15 @@ export default {
 			this.customerSearchLoading = true;
 			try {
 				const res = await api.getCustomerList(searchText);
-				this.customers = res.data.message.map((c) => ({
-					value: c.name,
-					label: c.customer_name || c.name,
-				}));
+				const responseData = res.data.message;
+				if (responseData.success) {
+					this.customers = responseData.data.map((c) => ({
+						value: c.name,
+						label: c.customer_name || c.name,
+					}));
+				} else {
+					this.customers = [];
+				}
 			} catch (error) {
 				console.error("Failed to fetch customers:", error);
 				this.customers = [];
@@ -235,8 +234,9 @@ export default {
 
 			try {
 				const res = await api.getCustomerList(null, customerId);
-				if (res.data.message && res.data.message.length > 0) {
-					const customer = res.data.message[0];
+				const responseData = res.data.message;
+				if (responseData.success && responseData.data && responseData.data.length > 0) {
+					const customer = responseData.data[0];
 					this.searchCustomerText = customer.customer_name || customer.name;
 				}
 			} catch (error) {
@@ -293,7 +293,7 @@ export default {
 		onApplyFilters() {
             // Validation
             if (!this.localFilters.year && !this.localFilters.month && !this.localFilters.customer) {
-                frappe.msgprint({ title: 'Validation Error', message: 'Please select at least one filter (Year, Month, or Customer) to apply.', indicator: 'orange' });
+                this.$emit("apply-filters", { ...this.localFilters });
                 return;
             }
             if ((this.localFilters.year || this.localFilters.month) && !this.localFilters.customer) {

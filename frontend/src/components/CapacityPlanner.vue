@@ -7,10 +7,7 @@
 					Validate Capacity
 				</button>
 
-				<button class="px-3 py-1 rounded bg-indigo-100 hover:bg-indigo-200" @click="openModal('preview')"
-					:disabled="!selectedRows.length || hasValidationErrors">
-					Preview Schedule
-				</button>
+
 
 				<button class="px-3 py-1 rounded bg-green-200 hover:bg-green-300" @click="openModal('create')"
 					:disabled="!selectedRows.length || hasValidationErrors">
@@ -21,67 +18,86 @@
 
         <!-- Scheduling Modal -->
 		<div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-			<div class="bg-white rounded p-6 shadow-xl w-96 space-y-4">
+			<div class="bg-white rounded p-6 shadow-xl max-w-5xl w-full mx-4 space-y-4">
 				<h3 class="font-bold text-lg border-b pb-2">
 					{{ modalTitle }}
 				</h3>
 				
-				<div>
-					<label class="block text-xs text-gray-500 mb-1">Utilization %</label>
-					<input type="number" v-model.number="utilization" min="1" max="100" class="border rounded px-2 py-1 w-full" />
-				</div>
+				<!-- Input Fields in 3 Columns -->
+				<div class="grid grid-cols-3 gap-4">
+					<!-- Column 1 -->
+					<div>
+						<label class="block text-xs text-gray-500 mb-1">Utilization %</label>
+						<input type="number" v-model.number="utilization" min="1" max="100" class="border rounded px-2 py-1 w-full" />
+					</div>
 
-				<div>
-					<label class="block text-xs text-gray-500 mb-1">Plan Start</label>
-					<div class="flex gap-2">
-						<input type="date" v-model="planStartWrapper" class="border rounded px-2 py-1 flex-1" />
-						<button class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+					<!-- Column 2 -->
+					<div>
+						<label class="block text-xs text-gray-500 mb-1">Plan Start Date</label>
+						<input type="date" v-model="planStartWrapper" class="border rounded px-2 py-1 w-full" />
+					</div>
+
+					<!-- Column 3 -->
+					<div>
+						<label class="block text-xs text-gray-500 mb-1">Plan Start Time</label>
+						<input type="time" v-model="planStartTime" class="border rounded px-2 py-1 w-full" />
+					</div>
+
+					<!-- Column 1 (Row 2) -->
+					<div>
+						<label class="block text-xs text-gray-500 mb-1">Plan End Date</label>
+						<input type="date" v-model="planEnd" class="border rounded px-2 py-1 w-full" />
+					</div>
+
+					<!-- Column 2 (Row 2) - Action Buttons -->
+					<div class="flex gap-2 items-end">
+						<button class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex-1"
 							@click="checkAvailability">
 							Check Availability
 						</button>
-                        <!-- Refresh Button -->
-                        <button class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                            @click="refreshData">
-                            Refresh
-                        </button>
 					</div>
-					
-					<!-- Schedule Preview Table -->
-					<div v-if="schedulePreview.length" class="mt-4 border rounded overflow-hidden max-h-60 overflow-y-auto">
-						<table class="min-w-full text-xs text-left">
-							<thead class="bg-gray-50 font-medium text-gray-700">
-								<tr>
-									<th class="px-3 py-2">Item</th>
-									<th class="px-3 py-2">Machine</th>
-									<th class="px-3 py-2">Mould</th>
-									<th class="px-3 py-2">Available From</th>
-									<th class="px-3 py-2">Status</th>
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-gray-100">
-								<tr v-for="row in schedulePreview" :key="row.row_key">
-									<td class="px-3 py-2">{{ row.item_code }}</td>
-									<td class="px-3 py-2">{{ row.machine }}</td>
-									<td class="px-3 py-2">{{ row.mould || '-' }}</td>
-									<td class="px-3 py-2 font-mono text-blue-600">
-										{{ row.available_start && row.available_start.split(' ')[0] }} 
-										<span class="text-gray-500">{{ row.available_start && row.available_start.split(' ')[1] }}</span>
-									</td>
-									<td class="px-3 py-2 text-gray-500">{{ row.reason }}</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-                </div>
-                
-                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">Plan Time</label>
-                     <input type="time" v-model="planStartTime" class="border rounded px-2 py-1 w-full" />
-                </div>
 
-				<div>
-					<label class="block text-xs text-gray-500 mb-1">Plan End</label>
-					<input type="date" v-model="planEnd" class="border rounded px-2 py-1 w-full" />
+					<!-- Column 3 (Row 2) - Refresh Button -->
+					<div class="flex items-end">
+						<button class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 w-full"
+							@click="refreshData">
+							Refresh
+						</button>
+					</div>
+				</div>
+				
+				<!-- Availability Table -->
+				<div v-if="schedulePreview.length" class="mt-4 border rounded overflow-hidden max-h-80 overflow-y-auto">
+					<table class="min-w-full text-xs text-left">
+						<thead class="bg-gray-50 font-medium text-gray-700 sticky top-0">
+							<tr>
+								<th class="px-3 py-2">Item</th>
+								<th class="px-3 py-2">Machine</th>
+								<th class="px-3 py-2">Mould</th>
+								<th class="px-3 py-2">Available From</th>
+								<th class="px-3 py-2">Status</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-100">
+							<tr v-for="row in schedulePreview" :key="row.row_key"
+								:class="{
+									'bg-green-50': row.is_available,
+									'bg-yellow-50': !row.is_available
+								}">
+								<td class="px-3 py-2">{{ row.item_code }}</td>
+								<td class="px-3 py-2">{{ row.machine }}</td>
+								<td class="px-3 py-2">{{ row.mould || '-' }}</td>
+								<td class="px-3 py-2 font-mono text-blue-600">
+									{{ row.available_start && row.available_start.split(' ')[0] }} 
+									<span class="text-gray-500">{{ row.available_start && row.available_start.split(' ')[1] }}</span>
+								</td>
+								<td class="px-3 py-2" :class="{
+									'text-green-600 font-medium': row.is_available,
+									'text-orange-600': !row.is_available
+								}">{{ row.reason }}</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 
 				<div class="flex justify-end gap-2 pt-2 border-t mt-6">
@@ -94,6 +110,7 @@
 				</div>
 			</div>
 		</div>
+
 
 		<div v-if="!rows.length" class="text-gray-400 text-sm">No items selected</div>
 
@@ -227,6 +244,8 @@ const props = defineProps({
 	rawMaterials: { type: Array, default: () => [] },
 });
 
+const emit = defineEmits(['refresh', 'message']);
+
 const rows = ref([]);
 const preview = ref({});
 const selectedKeys = ref([]);
@@ -249,7 +268,6 @@ const planStartWrapper = computed({
 
 const modalTitle = computed(() => {
 	if (modalAction.value === 'validate') return 'Validate Capacity';
-	if (modalAction.value === 'preview') return 'Preview Schedule';
 	if (modalAction.value === 'create') return 'Plan & Create Work Orders';
 	return 'Capacity Planning';
 });
@@ -293,7 +311,6 @@ function confirmAction() {
     if (!validateInputs()) return;
     
 	if (modalAction.value === 'validate') validateCapacity();
-	else if (modalAction.value === 'preview') loadPreview();
 	else if (modalAction.value === 'create') createWorkOrders();
 	closeModal();
 }
@@ -331,7 +348,7 @@ async function checkAvailability() {
            mould: r.mould
         }));
         
-		const res = await api.getSmartSchedulePreview(JSON.stringify(lines), planStart.value);
+		const res = await api.getSmartSchedulePreview(JSON.stringify(lines), planStart.value, planEnd.value);
 		schedulePreview.value = res.data.message || [];
         
         // Auto-set Plan Start to the LATEST available start time found
@@ -464,14 +481,27 @@ const hasValidationErrors = computed(() =>
 );
 
 
-async function validateCapacity() {
+async function validateCapacity(customLines = null) {
 	try {
+		const targetLines = customLines || selectedRows.value;
+
+		if (!targetLines.length) {
+			if (!customLines) {
+				showMessage({
+					title: "Selection Needed",
+					message: "Please select lines to validate capacity",
+					indicator: "orange",
+				});
+			}
+			return;
+		}
+
 		const payload = {
 			production_utilization: utilization.value,
 			plan_start_date: planStart.value,
-            plan_start_time: planStartTime.value,
+			plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
-			lines: selectedRows.value.map((r) => ({
+			lines: targetLines.map((r) => ({
 				row_key: r.rowKey,
 				item_code: r.item_code,
 				schedule_qty: r.schedule_qty,
@@ -596,10 +626,15 @@ async function loadPreview() {
 }
 
 async function togglePreview(row) {
+	if (preview.value[row.rowKey]) {
+		preview.value[row.rowKey] = null;
+		return;
+	}
+
 	const payload = {
 		production_utilization: utilization.value,
 		plan_start_date: planStart.value,
-        plan_start_time: planStartTime.value,
+		plan_start_time: planStartTime.value,
 		plan_end_date: planEnd.value,
 		lines: [
 			{
@@ -611,7 +646,7 @@ async function togglePreview(row) {
 				machine: row.machine,
 				mould: row.mould,
 				bom_no: row.bom_no,
-				raw_materials: r.raw_materials,
+				raw_materials: row.raw_materials,
 				sales_order: row.sales_order,
 			},
 		],

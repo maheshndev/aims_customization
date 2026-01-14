@@ -1,19 +1,20 @@
 <template>
   <div class="w-full">
-    <div class="flex justify-between text-[11px] mb-1 text-gray-600">
-      <span>{{ produced }} / {{ total }}</span>
-      <span>{{ progress }}%</span>
+    <div class="flex justify-between text-[10px] font-bold uppercase tracking-tight mb-1 items-center">
+      <span class="text-gray-500 tabular-nums">{{ produced }} / {{ total }}</span>
+      <span :class="progress >= 100 ? 'text-emerald-500' : 'text-indigo-500'">{{ progress }}%</span>
     </div>
 
-    <div class="h-2 bg-gray-200 rounded overflow-hidden">
+    <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
       <div
-        class="h-2 rounded transition-all"
-        :class="progress >= 100 ? 'bg-green-500' : 'bg-blue-500'"
+        class="h-full rounded-full transition-all duration-700 ease-in-out shadow-sm"
+        :class="progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'"
         :style="{ width: progress + '%' }"
       />
     </div>
   </div>
 </template>
+
 
 <script setup>
 defineProps({

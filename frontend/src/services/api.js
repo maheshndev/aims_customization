@@ -106,11 +106,15 @@ export const api = {
 			{ payload: JSON.stringify(payload) },
 			{ headers: { "X-Frappe-CSRF-Token": frappe.csrf_token } }
 		),
-	getSmartSchedulePreview: (lines, planStart) =>
+	getSmartSchedulePreview: (lines, planStart, planEndDate) =>
 		axios.get(
 			"/api/method/aims_customization.api.mss_monthly_schedule.get_smart_schedule_preview",
 			{
-				params: { lines: lines, plan_start_date: planStart },
+				params: {
+					lines: lines,
+					plan_start_date: planStart,
+					plan_end_date: planEndDate,
+				},
 			}
 		),
 	// -------------------- Level 6 --------------------

@@ -38,10 +38,11 @@ export default {
 	},
 
 	setup() {
+		const today = new Date();
 		const filters = reactive({
 			customer: "",
-			month: "",
-			year: "",
+			month: String(today.getMonth() + 1).padStart(2, "0"),
+			year: String(today.getFullYear()),
 		});
 
 		const selected = reactive({

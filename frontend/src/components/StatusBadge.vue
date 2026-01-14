@@ -15,17 +15,18 @@ const props = defineProps({
 })
 
 const badgeClass = computed(() => {
-  const base = "px-2 py-1 rounded text-xs font-medium inline-block"
+  const base = "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block shadow-sm"
 
   switch (props.status) {
     case "Production Completed":
-      return `${base} bg-green-100 text-green-700`
+      return `${base} bg-emerald-100 text-emerald-700 border border-emerald-200`
     case "In Production":
-      return `${base} bg-blue-100 text-blue-700`
+      return `${base} bg-indigo-100 text-indigo-700 border border-indigo-200`
     case "Planned":
-      return `${base} bg-yellow-100 text-yellow-700`
+      return `${base} bg-amber-100 text-amber-700 border border-amber-200`
     default:
-      return `${base} bg-gray-100 text-gray-600`
+      return `${base} bg-slate-100 text-slate-600 border border-slate-200`
   }
 })
 </script>
+

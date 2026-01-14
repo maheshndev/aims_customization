@@ -32,6 +32,7 @@
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							Sales Order ID
 						</th>
+						
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							BOM No
 						</th>
@@ -87,6 +88,7 @@
 						<td class="border px-3 py-2 font-medium whitespace-nowrap">
 							{{ rm.sales_order }}
 						</td>
+						
 						<td class="border px-3 py-2 font-medium whitespace-nowrap">
 							{{ rm.bom_no }}
 						</td>

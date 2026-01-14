@@ -59,8 +59,19 @@ async function onInput() {
   if (!search.value) {
     emit("update:modelValue", "");
   }
-  const res = await mssApi.search(props.doctype, search.value);
-  options.value = res.data.message || [];
+  try {
+    const res = await mssApi.search(props.doctype, search.value);
+    const responseData = res.data.message;
+    if (responseData.success) {
+      options.value = responseData.data || [];
+    } else {
+      console.error("Search failed:", responseData.message);
+      options.value = [];
+    }
+  } catch (e) {
+    console.error("Search API Error", e);
+    options.value = [];
+  }
 }
 
 function openDropdown() {

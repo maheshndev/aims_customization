@@ -19,6 +19,7 @@
             <th class="border px-2 py-1 whitespace-nowrap">#</th>
             <th class="border px-2 py-1 whitespace-nowrap">Customer</th>
             <th class="border px-2 py-1 whitespace-nowrap">Sales Order</th>
+            <th class="border px-2 py-1 whitespace-nowrap">Blanket Order</th>
             <th class="border px-2 py-1 whitespace-nowrap">Item Name</th>
             <th class="border px-2 py-1 whitespace-nowrap">Work Order</th>
             <th class="border px-2 py-1 whitespace-nowrap">Machine</th>
@@ -43,6 +44,7 @@
             <td class="border px-2 py-1 whitespace-nowrap">{{ index + 1 }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.customer_name }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.sales_order }}</td>
+            <td class="border px-2 py-1 whitespace-nowrap">{{ r.blanket_order }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.item_name }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.work_order }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.machine }}</td>
@@ -62,9 +64,9 @@
               {{ r.daily_capacity_hrs }}
             </td>
             <td class="border px-2 py-1 whitespace-nowrap">{{ r.utilization }}</td>
-            <td class="border px-2 py-1 whitespace-nowrap">{{ r.wo_planned_date }}</td>
+            <td class="border px-2 py-1 whitespace-nowrap">{{ fmtDt(r.wo_planned_date) }}</td>
             <td class="border px-2 py-1 whitespace-nowrap">
-              {{ r.sales_order_date }}
+              {{ fmtDt(r.sales_order_date) }}
             </td>
           </tr>
 
@@ -94,6 +96,11 @@ const props = defineProps({
 const rows = ref([]);
 const loading = ref(false);
 const error = ref(null);
+function fmtDt(dt) {
+  if (!dt) return "";
+  return String(dt).split('.')[0];
+}
+
 function extractFrappeError(err) {
   // Frappe thrown messages
   if (err?.response?.data?._server_messages) {
@@ -140,15 +147,14 @@ const loadData = async () => {
       props.selectedMachines
     );
 
-    const data = res?.data?.message;
-      console.log(data);
+    const responseData = res?.data?.message;
       
-    // Invalid response
-    if (!Array.isArray(data)) {
-      throw new Error("Invalid response received from server");
+    if (responseData && responseData.success) {
+      rows.value = responseData.data || [];
+    } else {
+      error.value = responseData?.message || "Failed to load item capacity";
+      rows.value = [];
     }
-
-    rows.value = data;
 
    
   } catch (err) {

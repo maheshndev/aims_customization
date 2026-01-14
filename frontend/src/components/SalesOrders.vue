@@ -241,8 +241,7 @@ const fetchOrders = async () => {
       orders.value = res.data.message || [];
       selectedLocal.value = [];
       fgItems.value = [];
-      console.log(res.data.message);
-
+      
       emit("so-loaded", orders.value);
     } else {
       orders.value = [];
