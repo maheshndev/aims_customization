@@ -77,7 +77,7 @@
 				</thead>
 
 				<tbody class="divide-y divide-gray-100 text-sm">
-					<tr v-for="(rm, index) in materials" :key="rm.rm_item_code" class="transition" :class="{
+					<tr v-for="(rm, index) in materials" :key="`${rm.sales_order}_${rm.bom_no}_${rm.rm_item_code}`" class="transition" :class="{
 						'hover:bg-gray-50': true,
 						'bg-blue-50': selectedRows.includes(rm),
 					}">
@@ -106,10 +106,10 @@
 							{{ rm.required_qty }}
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
-							{{ rm.rm_percentage }}
+							{{ rm.base_rm_percentage }}%
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap">
-							<input type="number" min="0" max="100" step="0.01" v-model.number="rm.rm_percentage"
+							<input type="number" min="0" max="100" step="0.01" v-model.number="rm.adjustable_rm_percentage"
 								@input="recalculateRM(rm)"
 								class="w-20 text-xs text-center border rounded px-1 py-0.5" />
 						</td>
@@ -201,11 +201,16 @@ const fetchMaterials = async () => {
 		}));
 		const res = await api.getRawMaterialsForBOMs(payload);
 
-		materials.value = (res.data.message || []).map(m => ({
-            ...m,
-            base_required_qty: m.required_qty, // Store the original qty from backend as base
-            rm_percentage: m.rm_percentage || 100 // Default to 100 if null
-        }));
+		materials.value = (res.data.message || []).map(m => {
+            const base_rm_percentage = m.rm_percentage || 100;
+            return {
+                ...m,
+                base_required_qty: m.required_qty, // Original qty from BOM
+                base_rm_percentage: base_rm_percentage,
+                adjustable_rm_percentage: base_rm_percentage,
+                total_required_qty: m.required_qty // Sync for CapacityPlanner
+            };
+        });
 
 		// selectedRows.value = materials.value.slice(); // User requested to NOT select all by default
         selectedRows.value = [];
@@ -229,17 +234,17 @@ watch(
 	{ deep: true }
 );
 const recalculateRM = (rm) => {
-  if (rm.rm_percentage === null || rm.rm_percentage === undefined) return;
+  if (rm.adjustable_rm_percentage === null || rm.adjustable_rm_percentage === undefined) return;
 
-  // Use the stored base qty
   const baseQty = rm.base_required_qty || 0;
-  const percent = rm.rm_percentage / 100;
+  const basePercent = rm.base_rm_percentage || 100;
+  const adjPercent = rm.adjustable_rm_percentage;
 
-  // Calculate new required qty based on percentage
-  const newQty = +(baseQty * percent).toFixed(6);
+  // Formula: newQty = (baseQty * adjPercent) / basePercent
+  const newQty = +((baseQty * adjPercent) / basePercent).toFixed(6);
   
   rm.required_qty = newQty;
-  rm.total_required_qty = newQty; // Sync for CapacityPlanner
+  rm.total_required_qty = newQty; // Ensure CapacityPlanner gets the adjusted qty
 
   rm.balance_qty = +(rm.available_qty - newQty).toFixed(6);
   rm.is_sufficient = rm.balance_qty >= 0;

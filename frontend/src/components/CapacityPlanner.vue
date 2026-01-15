@@ -399,37 +399,33 @@ function today() {
 	return new Date().toISOString().slice(0, 10);
 }
 
-const rawMaterialMap = computed(() => {
-	const map = {};
-	for (const rm of props.rawMaterials || []) {
-		map[rm.rm_item_code] = {
-			item_code: rm.rm_item_code,
-			rm_percentage: rm.rm_percentage,
-			required_qty: rm.total_required_qty,
-			uom: rm.stock_uom,
-			warehouse: rm.default_warehouse,
-		};
-	}
-	return map;
-});
-
 function sync() {
-    // 1. Map raw materials for easy lookup
-	const rmMap = rawMaterialMap.value;
+	const rms = props.rawMaterials || [];
 
 	rows.value = props.capBoms
         // 2. Filter out items that already have Work Orders
         .filter(b => !b.has_work_order)
-        .map((b, i) => ({
-            ...b,
-            rowKey: `${b.bom_no}_${b.sales_order}_${i}`,
-            schedule_qty: Number(b.required_for_selected_qty || 0),
-            machine: b.selected_workstation,
-            mould: b.selected_mould || null,
-            // 3. Inject updated Raw Materials (percentages/qtys)
-            raw_materials: Object.values(rmMap), 
-            validation_error: null,
-	}));
+        .map((b, i) => {
+            // 3. Inject updated Raw Materials (percentages/qtys) filtered for this specific SO + BOM
+            const lineRMs = rms.filter(r => r.sales_order === b.sales_order && r.bom_no === b.bom_no)
+                               .map(r => ({
+                                   item_code: r.rm_item_code,
+                                   base_rm_percentage: r.base_rm_percentage,
+                                   adjustable_rm_percentage: r.adjustable_rm_percentage,
+                                   total_adjusted_qty: r.required_qty,
+                                   total_base_qty: r.base_required_qty,
+                               }));
+
+            return {
+                ...b,
+                rowKey: `${b.bom_no}_${b.sales_order}_${i}`,
+                schedule_qty: Number(b.required_for_selected_qty || 0),
+                machine: b.selected_workstation,
+                mould: b.selected_mould || null,
+                raw_materials: lineRMs,
+                validation_error: null,
+            };
+        });
 	preview.value = {};
 	selectedKeys.value = [];
 }

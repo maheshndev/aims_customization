@@ -1248,6 +1248,39 @@ def create_work_orders_from_mss(payload):
                     operations_args=[]
                 )
 
+                # Apply Raw Material Adjustments if provided
+                if ln.get("raw_materials"):
+                    # Use a small delay/reload to ensure WO is fully saved and items are populated
+                    wo_doc = frappe.get_doc("Work Order", wo_name)
+                    rm_adjustments = {rm['item_code']: rm for rm in ln['raw_materials']}
+                    
+                    adjusted = False
+                    for row in wo_doc.required_items:
+                        adj = rm_adjustments.get(row.item_code)
+                        if adj:
+                            base_pct = flt(adj.get('base_rm_percentage')) or 100.0
+                            adj_pct = flt(adj.get('adjustable_rm_percentage')) or base_pct
+                            
+                            if adj_pct != base_pct and base_pct > 0:
+                                ratio = adj_pct / base_pct
+                                new_qty = flt(row.required_qty * ratio)
+                                
+                                # Log for debugging
+                                # frappe.logger().info(f"MSS: Adjusting {row.item_code} in {wo_name}: {row.required_qty} -> {new_qty} (ratio {ratio})")
+                                
+                                # Use db_set to bypass any high-level recalculation during wo_doc.save()
+                                frappe.db.set_value("Work Order Item", row.name, "required_qty", new_qty)
+                                
+                                # If the custom field exists on WO Item, update it too
+                                if frappe.get_meta("Work Order Item").has_field("adjustable_rm_percentage"):
+                                     frappe.db.set_value("Work Order Item", row.name, "adjustable_rm_percentage", adj_pct)
+                                
+                                adjusted = True
+                    
+                    if adjusted:
+                        # Re-calculate totals if needed, or just commit
+                        frappe.db.commit()
+
                 created.append(wo_name)
                 remaining -= used
                 current_start = actual_end

@@ -12,13 +12,7 @@
 						<option value="">Select Year (Optional)</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
-                    <!-- Custom Arrow for Year -->
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-                        v-if="!localFilters.year">
-                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                        </svg>
-                    </div>
+                   
 					<span v-if="localFilters.year" @click="clearYear"
 						class="absolute px-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
 						<b>✕</b>
@@ -51,6 +45,13 @@
 						@focus="handleCustomerFocus" @input="handleCustomerInput" @keydown.down.prevent="highlightNext"
 						@keydown.up.prevent="highlightPrev" @keydown.enter.prevent="selectHighlighted"
 						@keydown.esc.prevent="dropdownOpen = false" />
+						 <!-- Custom Arrow for Year -->
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
+                        v-if="!localFilters.year">
+                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                        </svg>
+                    </div>
 					<span v-if="localFilters.customer || searchCustomerText" @click="clearCustomer"
 						class="absolute px-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
 						<b>✕</b>
