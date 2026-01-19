@@ -1,6 +1,6 @@
 # aims_customization/api/mss_capacity_monthly.py
 import frappe
-from frappe.utils import flt, cint, getdate, nowdate, get_last_day, get_first_day, add_days
+from frappe.utils import flt, cint, getdate, nowdate, get_last_day, get_first_day, add_days, time_diff_in_hours
 import json
 from datetime import datetime, timedelta, time
 import calendar
@@ -30,7 +30,7 @@ def get_customer_list(search_text: str = None, customer_id: str = None, limit: i
 @frappe.whitelist()
 def get_machine_list(search_text: str = None, workstation_id: str = None, limit: int = 20):
     try:
-        filters = {"is_group": 0, "disabled": 0}
+        filters = {}
         if workstation_id:
             filters["name"] = workstation_id
         elif search_text:
@@ -60,48 +60,80 @@ def get_machine_capacity_monthly(
         if isinstance(machines, str):
             machines = json.loads(machines)
         
-        if not machines:
-            return {"success": True, "data": []}
-
         month = cint(month) or getdate(nowdate()).month
         year = cint(year) or getdate(nowdate()).year
         
         first_day = get_first_day(f"{year}-{month:02d}-01")
         last_day = get_last_day(first_day)
-        days_in_month = (getdate(last_day) - getdate(first_day)).days + 1
+        days_in_month = calendar.monthrange(year, month)[1]
 
-        # Example logic: Total hours = 24 * days * utilization%
-        # In a real app, you'd subtract holidays and shift non-working hours
-        base_capacity = 24.0 * days_in_month * (flt(utilization) / 100.0)
+        # User requirement: 2 shifts, each is 12 hours, total 24 hours daily.
+        shifts = 2
+        daily_capacity_hrs = 24.0
+        utilization_val = flt(utilization)
+        
+        # Month Capacity = days * 24 * util%
+        month_capacity = days_in_month * daily_capacity_hrs * (utilization_val / 100.0)
+
+        # If machines is empty, fetch all non-group workstations
+        if not machines:
+            machines = frappe.get_all("Workstation", filters={}, pluck="name")
 
         result = []
         for m in machines:
-            usage = _get_machine_usage_hours(m, first_day, last_day)
+            required_hours = _get_machine_usage_hours(m, first_day, last_day)
+            balance_hours = month_capacity - required_hours
+            
+            # Required Shifts = required_hours / 12 (since each shift is 12 hours)
+            required_shifts = round(required_hours / 12.0, 2)
+
             result.append({
                 "machine": m,
-                "total_capacity": base_capacity,
-                "used_capacity": usage,
-                "available_capacity": base_capacity - usage,
-                "utilization_pct": round((usage / base_capacity * 100), 2) if base_capacity > 0 else 0
+                "month_days": days_in_month,
+                "daily_capacity_hrs": daily_capacity_hrs,
+                "shifts": shifts,
+                "utilization": utilization_val,
+                "month_capacity": round(month_capacity, 2),
+                "required_hours": round(required_hours, 2),
+                "balance_hours": round(balance_hours, 2),
+                "required_shifts": required_shifts
             })
         
         return {"success": True, "data": result}
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_machine_capacity_monthly")
-        return {"success": False, "message": "Failed to load machine capacity"}
+        return {"success": False, "message": f"Failed to load machine capacity: {str(e)}" }
 
 def _get_machine_usage_hours(machine, start, end):
-    # Sum up planned/actual hours from Work Order operations in this period
-    # Filter by workstation and date range
+    # Calculate usage based on WO Start/End dates (Actual preferred over Planned)
     sql = """
-        SELECT SUM(time_required) 
-        FROM `tabWork Order Operation` 
-        WHERE workstation = %s 
-          AND (planned_start_date BETWEEN %s AND %s)
-          AND docstatus = 1
+        SELECT 
+            wo.name,
+            wo.planned_start_date,
+            wo.planned_end_date,
+            wo.actual_start_date,
+            wo.actual_end_date
+        FROM `tabWork Order` wo
+        JOIN `tabWork Order Operation` wop ON wop.parent = wo.name
+        WHERE wop.workstation = %s 
+          AND (wo.planned_start_date BETWEEN %s AND %s)
+          AND wo.docstatus != 2
+        GROUP BY wo.name
     """
-    res = frappe.db.sql(sql, (machine, start, end))
-    return flt(res[0][0]) / 60.0 if res and res[0][0] else 0.0
+    rows = frappe.db.sql(sql, (machine, start, end), as_dict=True)
+    
+    total_hours = 0.0
+    for r in rows:
+        # Use Actual dates if available, else Planned
+        s = r.actual_start_date if r.actual_start_date else r.planned_start_date
+        e = r.actual_end_date if r.actual_end_date else r.planned_end_date
+        
+        if s and e:
+            diff = time_diff_in_hours(e, s)
+            if diff > 0:
+                total_hours += diff
+
+    return total_hours
 
 @frappe.whitelist()
 def get_item_capacity_monthly(
@@ -119,6 +151,7 @@ def get_item_capacity_monthly(
         year = cint(year) or getdate(nowdate()).year
         first_day = get_first_day(f"{year}-{month:02d}-01")
         last_day = get_last_day(first_day)
+        days_in_month = calendar.monthrange(year, month)[1]
 
         cond = ""
         params = {"start": first_day, "end": last_day}
@@ -128,48 +161,81 @@ def get_item_capacity_monthly(
             params["customer"] = customer
         
         if machines:
-            cond += " AND wo.workstation IN %(machines)s"
+            cond += " AND wop.workstation IN %(machines)s"
             params["machines"] = tuple(machines)
 
         sql = f"""
             SELECT 
-                wo.production_item as item_code,
-                item.item_name,
-                so.customer,
+                so.customer_name,
                 so.name as sales_order,
                 (SELECT GROUP_CONCAT(DISTINCT sub_soi.blanket_order SEPARATOR ', ') FROM `tabSales Order Item` sub_soi WHERE sub_soi.parent = so.name AND sub_soi.blanket_order IS NOT NULL AND sub_soi.blanket_order != '') as blanket_order,
-                SUM(wo.qty) as planned_qty,
-                SUM(wo.produced_qty) as actual_qty,
-                SUM(DATEDIFF(wo.planned_end_date, wo.planned_start_date) * 24) as req_hours
+                item.name as item_code,
+                item.item_name,
+                wo.name as work_order,
+                wop.workstation as machine,
+                wop.operation as work_order_operation,
+                wo.mould,
+                (SELECT mould_name FROM `tabMould` WHERE name = wo.mould) as mould_name,
+                wo.qty as schedule_qty,
+                item.cavity,
+                item.cycle_time,
+                COALESCE(wo.actual_start_date, wo.planned_start_date) as wo_start_date,
+                COALESCE(wo.actual_end_date, wo.planned_end_date) as wo_end_date,
+                so.transaction_date as sales_order_date,
+                wo.status
             FROM `tabWork Order` wo
+            JOIN `tabWork Order Operation` wop ON wop.parent = wo.name
             JOIN `tabSales Order` so ON so.name = wo.sales_order
             JOIN `tabItem` item ON item.name = wo.production_item
-            WHERE wo.planned_start_date BETWEEN %(start)s AND %(end)s
-              AND wo.docstatus = 1
+            WHERE (COALESCE(wo.actual_start_date, wo.planned_start_date) <= %(end)s 
+                   AND COALESCE(wo.actual_end_date, wo.planned_end_date) >= %(start)s)
+              AND wo.docstatus != 2
               {cond}
-            GROUP BY wo.production_item, so.customer, so.name
+            ORDER BY COALESCE(wo.actual_start_date, wo.planned_start_date) ASC
         """
         
         rows = frappe.db.sql(sql, params, as_dict=True)
         
+        daily_capacity_hrs = 24.0
+        
         result = []
         for r in rows:
+            # machine_hourly_capacity = (3600 / cycle_time) * cavity if cycle_time else 0
+            cycle_time = flt(r.cycle_time)
+            cavity = flt(r.cavity) or 1.0
+            
+            machine_hourly_capacity = (3600.0 / cycle_time) * cavity if cycle_time > 0 else 0.0
+            
+            # loading_hours = schedule_qty / machine_hourly_capacity
+            loading_hours = flt(r.schedule_qty) / machine_hourly_capacity if machine_hourly_capacity > 0 else 0.0
+
             result.append({
-                "item_code": r.item_code,
-                "item_name": r.item_name,
-                "customer": r.customer,
+                "customer_name": r.customer_name,
                 "sales_order": r.sales_order,
                 "blanket_order": r.blanket_order or "",
-                "planned_qty": flt(r.planned_qty),
-                "actual_qty": flt(r.actual_qty),
-                "required_hours": flt(r.req_hours),
-                "progress": round((flt(r.actual_qty) / flt(r.planned_qty) * 100), 2) if flt(r.planned_qty) > 0 else 0
+                "item_code": r.item_code,
+                "item_name": r.item_name,
+                "work_order": r.work_order,
+                "machine": r.machine,
+                "work_order_operation": r.work_order_operation,
+                "mould": r.mould,
+                "mould_name": r.mould_name,
+                "schedule_qty": flt(r.schedule_qty),
+                "cavity": cavity,
+                "cycle_time": cycle_time,
+                "machine_hourly_capacity": round(machine_hourly_capacity, 2),
+                "loading_hours": round(loading_hours, 2),
+                "month_days": days_in_month,
+                "daily_capacity_hrs": daily_capacity_hrs,
+                "utilization": flt(utilization),
+                "wo_planned_date": r.wo_start_date, # Template uses wo_planned_date
+                "sales_order_date": r.sales_order_date
             })
             
         return {"success": True, "data": result}
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "MSS Capacity API: get_item_capacity_monthly")
-        return {"success": False, "message": "Failed to load item capacity"}
+        return {"success": False, "message": f"Failed to load item capacity: {str(e)}" }
 
 @frappe.whitelist()
 def get_machine_workload_details(machine, start_date, end_date):
@@ -186,7 +252,7 @@ def get_machine_workload_details(machine, start_date, end_date):
             FROM `tabWork Order` wo
             WHERE wo.workstation = %s
               AND (wo.planned_start_date BETWEEN %s AND %s)
-              AND wo.docstatus = 1
+              AND wo.docstatus != 2
             ORDER BY wo.planned_start_date
         """
         rows = frappe.db.sql(sql, (machine, start_date, end_date), as_dict=True)

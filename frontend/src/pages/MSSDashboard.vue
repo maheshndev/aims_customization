@@ -40,8 +40,8 @@
     </SectionCard>
 
     <!-- BOM Comparison Modal -->
-    <BOMComparisonModal :open-compare="state.showCompareModal" :boms="selected.bomsObjects" :raw-materials="selected.rawMaterials"
-      @close="state.showCompareModal = false" />
+    <!-- <BOMComparisonModal :open-compare="state.showCompareModal" :boms="selected.bomsObjects" :raw-materials="selected.rawMaterials"
+      @close="state.showCompareModal = false" /> -->
 
     <!--Step 6: Work Orders -->
     <SectionCard title="Work Orders">

@@ -1,10 +1,9 @@
 import frappe
 from frappe.utils import add_to_date, get_datetime, time_diff_in_hours
 
-def _naive(dt):
-    return dt.replace(tzinfo=None) if dt.tzinfo else dt
-
 def _make_naive(dt):
+    if not dt:
+        return None
     return dt.replace(tzinfo=None) if dt.tzinfo else dt
 
 def is_holiday(dt, holiday_list):
@@ -80,8 +79,8 @@ def mss_reschedule(wo_name, planned_start_date, planned_end_date):
         if wo.status != "Draft":
             return {"success": False, "message": "Only Draft Work Orders can be rescheduled"}
 
-        start = _naive(get_datetime(planned_start_date))
-        end = _naive(get_datetime(planned_end_date))
+        start = _make_naive(get_datetime(planned_start_date))
+        end = _make_naive(get_datetime(planned_end_date))
 
         if end <= start:
             return {"success": False, "message": "Invalid time range"}

@@ -12,6 +12,7 @@ export const api = {
 			"/api/method/aims_customization.api.mss_capacity_monthly.get_machine_capacity_monthly",
 			{
 				params: {
+					customer: filters.customer || null,
 					month: filters.month,
 					year: filters.year,
 					utilization: 90,

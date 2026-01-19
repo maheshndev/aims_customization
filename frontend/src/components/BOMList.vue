@@ -30,14 +30,14 @@
 
     <div v-if="filteredBOMs.length && !loading" class="overflow-auto rounded-xl border border-gray-200 shadow-sm">
       <table class="min-w-full table-auto divide-y divide-gray-200 text-sm">
-        <thead class="bg-gray-50 uppercase">
+        <thead class="bg-gray-50 uppercase sticky top-0 z-10 shadow-sm">
           <tr>
-            <th class="px-2 py-2 border text-left w-10 whitespace-nowrap">
+            <th class="px-2 py-2 border text-left w-10 whitespace-nowrap bg-gray-50">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll"
                 class="rounded border-gray-300" />
             </th>
             <th v-for="h in headers" :key="h"
-              class="px-2 py-2 border border text-left font-semibold text-gray-600 whitespace-nowrap">
+              class="px-2 py-2 border border text-left font-semibold text-gray-600 whitespace-nowrap bg-gray-50">
               {{ h }}
             </th>
           </tr>

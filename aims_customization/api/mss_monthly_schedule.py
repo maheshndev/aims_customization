@@ -448,9 +448,7 @@ def create_sales_order(items: str | list):
             warehouse = (
                 it.get("warehouse") or frappe.get_value("Item Default", {"parent": it.get("item_code")}, "default_warehouse") or ""
             )
-            bom_no = (
-                it.get("bom_no") or frappe.get_value("BOM", {"item": it.get("item_code"), "is_default": 1}, "name")
-            )
+            
             rate = it.get("rate") or item_doc.standard_rate or 0
 
             so.append("items", {
@@ -459,7 +457,6 @@ def create_sales_order(items: str | list):
                 "qty": it.get("schedule_qty"),
                 "rate": rate,
                 "delivery_date": nowdate(),
-                "bom_no": bom_no,
                 "warehouse": warehouse,
                 "blanket_order": bo_name,
                 "blanket_order_rate": rate,
@@ -792,24 +789,24 @@ def get_raw_materials_for_boms(boms: list = None):
 
             result.append({
                 # 🔹 Separation keys
-                "bom_no": bom_no,
-                "fg_item": fg_item,
-                "sales_order": sales_order,
-                "blanket_order": blanket_order,
+                "bom_no": bom_no or "",
+                "fg_item": fg_item or "",
+                "sales_order": sales_order or "",
+                "blanket_order": blanket_order or "",
 
                 # 🔹 RM details
-                "rm_item_code": comp.item_code,
-                "rm_item_name": comp.item_name,
-                "stock_uom": comp.uom,
-                "qty_per_bom_unit": qty_per_bom_unit,
-                "rm_percentage": flt(comp.rm_percentage),
+                "rm_item_code": comp.item_code or "",
+                "rm_item_name": comp.item_name or "",
+                "stock_uom": comp.uom or "",
+                "qty_per_bom_unit": qty_per_bom_unit or 0,
+                "rm_percentage": flt(comp.rm_percentage) or 0,
 
                 # 🔹 Qty details
-                "required_qty": round(required_qty, 6),
-                "available_qty": available,
-                "projected_qty": projected,
-                "balance_qty": round(balance, 6),
-                "is_sufficient": balance >= 0,
+                "required_qty": round(required_qty, 6) or 0,
+                "available_qty": available or 0,
+                "projected_qty": projected or 0,
+                "balance_qty": round(balance, 6) or 0,
+                "is_sufficient": balance >= 0 ,
             })
 
     return result

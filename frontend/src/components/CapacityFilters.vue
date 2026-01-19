@@ -6,14 +6,19 @@
 			<div class="relative flex-1 min-w-[150px] max-w-[200px]">
 				<label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
 				<div class="relative">
-					<select v-model="localFilters.year"
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white">
+					<select
+						v-model="localFilters.year"
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white"
+					>
 						<option value="">Select Year</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
-                    
-					<span v-if="localFilters.year" @click="clearYear"
-						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
+
+					<span
+						v-if="localFilters.year"
+						@click="clearYear"
+						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
+					>
 						✕
 					</span>
 				</div>
@@ -21,15 +26,20 @@
 			<div class="relative flex-1 min-w-[150px] max-w-[200px]">
 				<label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
 				<div class="relative">
-					<select v-model="localFilters.month"
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white">
+					<select
+						v-model="localFilters.month"
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white"
+					>
 						<option value="">Select Month</option>
 						<option v-for="m in monthOptions" :key="m.value" :value="m.value">
 							{{ m.label }}
 						</option>
 					</select>
-					<span v-if="localFilters.month" @click="clearMonth"
-						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
+					<span
+						v-if="localFilters.month"
+						@click="clearMonth"
+						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
+					>
 						✕
 					</span>
 				</div>
@@ -39,51 +49,96 @@
 				<!-- <span class="text-red-700"> * Important</span> -->
 				<label class="block text-sm font-medium text-gray-700 mb-1"> Customer </label>
 				<div class="relative">
-					<input type="text" v-model="searchCustomerText" placeholder="Search customer..."
+					<input
+						type="text"
+						v-model="searchCustomerText"
+						placeholder="Search customer..."
 						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 pl-2 text-sm"
-						@focus="handleCustomerFocus" @input="handleCustomerInput" @keydown.down.prevent="highlightNext"
-						@keydown.up.prevent="highlightPrev" @keydown.enter.prevent="selectHighlighted"
-						@keydown.esc.prevent="dropdownOpen = false" />
-                    
-                    <!-- Dropdown Arrow -->
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
-                         v-if="!localFilters.customer && !searchCustomerText">
-                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                        </svg>
-                    </div>
+						@focus="handleCustomerFocus"
+						@input="handleCustomerInput"
+						@keydown.down.prevent="highlightNext"
+						@keydown.up.prevent="highlightPrev"
+						@keydown.enter.prevent="selectHighlighted"
+						@keydown.esc.prevent="dropdownOpen = false"
+					/>
 
-					<span v-if="localFilters.customer || searchCustomerText" @click="clearCustomer"
-						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none">
+					<!-- Dropdown Arrow -->
+					<div
+						class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
+						v-if="!localFilters.customer && !searchCustomerText"
+					>
+						<svg
+							class="fill-current h-4 w-4"
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 20 20"
+						>
+							<path
+								d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
+							/>
+						</svg>
+					</div>
+
+					<span
+						v-if="localFilters.customer || searchCustomerText"
+						@click="clearCustomer"
+						class="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
+					>
 						✕
 					</span>
 				</div>
 
-				<ul v-if="dropdownOpen"
-					class="absolute left-0 w-full border border-gray-300 rounded-md shadow-lg mt-1 z-10 max-h-60 overflow-y-auto bg-white">
-					<li v-if="customerSearchLoading" class="px-3 py-2 text-sm text-gray-500 flex items-center">
-						<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg"
-							fill="none" viewBox="0 0 24 24">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-							</circle>
-							<path class="opacity-75" fill="currentColor"
-								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-							</path>
+				<ul
+					v-if="dropdownOpen"
+					class="absolute left-0 w-full border border-gray-300 rounded-md shadow-lg mt-1 z-10 max-h-60 overflow-y-auto bg-white"
+				>
+					<li
+						v-if="customerSearchLoading"
+						class="px-3 py-2 text-sm text-gray-500 flex items-center"
+					>
+						<svg
+							class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500"
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							></path>
 						</svg>
 						Searching...
 					</li>
 
-					<li v-for="(c, index) in customers" :key="c.value" @click="selectCustomer(c)"
-						@mouseenter="highlightedIndex = index" :class="[
+					<li
+						v-for="(c, index) in customers"
+						:key="c.value"
+						@click="selectCustomer(c)"
+						@mouseenter="highlightedIndex = index"
+						:class="[
 							'px-3 py-2 text-sm cursor-pointer transition border-b last:border-b-0',
 							highlightedIndex === index
 								? 'bg-blue-100 text-blue-700'
 								: 'hover:bg-gray-50',
-						]">
+						]"
+					>
 						{{ c.label }}
-						<span v-if="c.value !== c.label" class="text-xs text-gray-400 ml-2">({{ c.value }})</span>
+						<span v-if="c.value !== c.label" class="text-xs text-gray-400 ml-2"
+							>({{ c.value }})</span
+						>
 					</li>
-					<li v-if="!customerSearchLoading && customers.length === 0" class="px-3 py-2 text-sm text-gray-500">
+					<li
+						v-if="!customerSearchLoading && customers.length === 0"
+						class="px-3 py-2 text-sm text-gray-500"
+					>
 						No customers found matching "{{ searchCustomerText }}"
 					</li>
 				</ul>
@@ -93,22 +148,42 @@
 		<div class="flex justify-start gap-3 mt-3 pt-2">
 			<button
 				class="flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-700 font-semibold py-1.5 px-4 rounded shadow-sm transition duration-150"
-				@click="resetFilters">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
-					stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round"
-						d="M4 4v5h.582m15.356 2A8.001 8.001 0 004 12a7.961 7.961 0 00-1.565 3.59M18 20v-5h.582m-15.356-2A8.001 8.001 0 0120 12a7.961 7.961 0 011.565-3.59" />
+				@click="resetFilters"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 mr-1"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M4 4v5h.582m15.356 2A8.001 8.001 0 004 12a7.961 7.961 0 00-1.565 3.59M18 20v-5h.582m-15.356-2A8.001 8.001 0 0120 12a7.961 7.961 0 011.565-3.59"
+					/>
 				</svg>
 				Reset All
 			</button>
 
 			<button
 				class="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded shadow-md transition duration-150"
-				@click="onApplyFilters">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
-					stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round"
-						d="M9 12l2 2 4-4m5.618-4.111a.75.75 0 01-.197 1.055l-4.522 3.86a.75.75 0 01-.894 0l-4.522-3.86a.75.75 0 01-.197-1.055l3.86-4.522a.75.75 0 011.055-.197l4.522 3.86a.75.75 0 01.197 1.055z" />
+				@click="onApplyFilters"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4 mr-1"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M9 12l2 2 4-4m5.618-4.111a.75.75 0 01-.197 1.055l-4.522 3.86a.75.75 0 01-.894 0l-4.522-3.86a.75.75 0 01-.197-1.055l3.86-4.522a.75.75 0 011.055-.197l4.522 3.86a.75.75 0 01.197 1.055z"
+					/>
 				</svg>
 				Apply Filters
 			</button>
@@ -286,25 +361,25 @@ export default {
 			this.clearCustomer();
 			this.clearMonth();
 			this.clearYear();
-            this.$emit("update:modelValue", { customer: "", month: "", year: "" });
-            this.$emit("apply-filters", { customer: "", month: "", year: "" });
+			this.$emit("update:modelValue", { customer: "", month: "", year: "" });
+			this.$emit("apply-filters", { customer: "", month: "", year: "" });
 		},
 
 		onApplyFilters() {
-            // Validation
-            if (!this.localFilters.year && !this.localFilters.month && !this.localFilters.customer) {
-                this.$emit("apply-filters", { ...this.localFilters });
-                return;
-            }
-            if ((this.localFilters.year || this.localFilters.month) && !this.localFilters.customer) {
-                 frappe.msgprint({ title: 'Validation Error', message: 'Please select a Customer.', indicator: 'red' });
-                 return;
-            }
+			// Validation
+			if (
+				!this.localFilters.year &&
+				!this.localFilters.month &&
+				!this.localFilters.customer
+			) {
+				this.$emit("apply-filters", { ...this.localFilters });
+				return;
+			}
 
 			this.dropdownOpen = false;
 			const filtersToApply = { ...this.localFilters };
 			this.$emit("apply-filters", filtersToApply);
-            this.$emit("update:modelValue", filtersToApply);
+			this.$emit("update:modelValue", filtersToApply);
 		},
 
 		outsideClick(e) {
