@@ -78,7 +78,7 @@
 				@mouseleave="hideTooltip"
 			>
 				<div class="font-bold text-base mb-1 text-black">
-					<a :href="'/app/work-order/' + hoveredEvent.wo_name">{{
+					<a :href="'/app/work-order/' + hoveredEvent.wo_name" target="_blank">{{
 						hoveredEvent.wo_name
 					}}</a>
 				</div>
@@ -325,7 +325,7 @@ const calendarOptions = {
 	initialView: "timeGridWeek",
 	// timeZone: "UTC", // REMOVED: Using Local view to match user's perspective
 	slotDuration: "00:30:00",
-	snapDuration: "00:15:00",
+	snapDuration: "00:01:00",
 	height: "auto",
 	editable: true,
 	eventResizableFromStart: true,
@@ -359,8 +359,6 @@ const calendarOptions = {
 	},
 
 	eventDrop: handleEventChange,
-	eventResize: handleEventChange,
-	eventClick: handleEventClick,
 	eventMouseEnter: handleEventMouseEnter,
 	eventMouseLeave: handleEventMouseLeave,
 
@@ -431,21 +429,25 @@ function resetFilters() {
 /* ---------------- UI ---------------- */
 function renderWOCard(wo) {
 	return `
-    <div class="text-black p-1 rounded border-l-4 ${statusClass(wo.status)}
-      bg-gradient-to-br from-blue-50 text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-between" style="color: black !important;">
-      <div>
-        <div class="font-bold truncate text-black" title="${wo.wo_name}" style="color: black;">${
+    <div class="group text-black p-1 rounded border-l-4 ${statusClass(wo.status)}
+      bg-gradient-to-br from-blue-50 text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-start
+      transform transition-all duration-200 hover:scale-105 hover:z-50 hover:shadow-xl hover:overflow-visible hover:h-auto hover:min-h-min origin-top-left" 
+      style="color: black !important; min-height: 22px;">
+      
+      <div class="flex-shrink-0 mb-0.5"> 
+        <div class="font-bold text-black pb-0.5 break-words whitespace-normal leading-3" title="${
 			wo.wo_name
-		}</div>
-        <div class="truncate font-semibold text-black" title="${wo.production_item}" style="color: black;">${
+		}" style="color: black;">${wo.wo_name || "-"}</div>
+        <div class="font-semibold text-black break-words whitespace-normal leading-3" title="${
 			wo.production_item
-		}</div>
+		}" style="color: black;">${wo.production_item || "-"}</div>
+      
         <div class="truncate text-black" style="color: black;">Mould: ${wo.mould || "-"}</div>
         <div class="truncate text-black" style="color: black;">WS: ${wo.workstation || "-"}</div>
         <div class="truncate text-black" style="color: black;">SO: ${wo.sales_order || "-"}</div>
-      </div>
-      <div class="mt-1 font-mono text-xs text-black" style="color: black;">
-        ${fmt(wo.planned_start_date)} - ${fmt(wo.planned_end_date)}
+        <div class="mt-1 font-mono text-xs text-black" style="color: black;">
+            ${fmt(wo.planned_start_date)} - ${fmt(wo.planned_end_date)}
+        </div>
       </div>
     </div>
   `;
@@ -480,5 +482,20 @@ function statusClass(status) {
 }
 div {
 	color: black;
+}
+
+:deep(.fc-daygrid-event),
+:deep(.fc-timegrid-event) {
+	overflow: visible !important;
+	z-index: 1;
+}
+
+:deep(.fc-daygrid-event:hover),
+:deep(.fc-timegrid-event:hover) {
+	z-index: 50 !important;
+}
+
+:deep(.fc-event-main) {
+	overflow: visible !important;
 }
 </style>
