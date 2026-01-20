@@ -1,41 +1,60 @@
 <template>
 	<div class="raw-materials rounded-xl shadow-sm p-4 bg-white">
-		<p>If Required Adjust Raw Material Percentage</p>
+		<p class="text-xs text-gray-500">If Required Adjust Raw Material Percentage</p>
 		<div v-if="loading" class="text-gray-500 animate-pulse text-center py-4">
 			Loading Raw Materials...
 		</div>
 
-		<div v-if="error" class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4">
+		<div
+			v-if="error"
+			class="bg-red-100 text-red-700 px-4 py-2 border border-red-200 rounded mb-4"
+		>
 			{{ error }}
 		</div>
 
 		<div v-if="!loading" class="flex justify-start gap-2 mb-3">
-			<button class="px-3 py-1 text-sm bg-blue-100 text-black rounded hover:bg-blue-200" @click="selectAll">
+			<button
+				class="px-3 py-1 text-sm bg-blue-100 text-black rounded hover:bg-blue-200"
+				@click="selectAll"
+			>
 				Select All
 			</button>
-			<button class="px-3 py-1 text-sm bg-gray-100 text-black rounded hover:bg-gray-200" @click="unselectAll">
+			<button
+				class="px-3 py-1 text-sm bg-gray-100 text-black rounded hover:bg-gray-200"
+				@click="unselectAll"
+			>
 				Unselect All
 			</button>
-			<button class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200" @click="refreshRM">
+			<button
+				class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200"
+				@click="refreshRM"
+			>
 				🔄 Refresh
 			</button>
 		</div>
 
-		<div v-if="materials.length && !loading" class="overflow-auto rounded-lg border border-gray-200 max-h-96">
+		<div
+			v-if="materials.length && !loading"
+			class="overflow-auto rounded-lg border border-gray-200 max-h-96"
+		>
 			<table class="min-w-full table-auto divide-y divide-gray-200">
 				<thead class="bg-gray-50 sticky top-0 text-xs text-gray-700 uppercase">
 					<tr>
-						<th class="border px-3 py-2 w-10 text-center sticky left-0 bg-gray-50 z-10">
-							<input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+						<th
+							class="border px-3 py-2 w-10 text-center sticky left-0 bg-gray-50 z-10"
+						>
+							<input
+								type="checkbox"
+								:checked="isAllSelected"
+								@change="toggleSelectAll"
+							/>
 						</th>
 						<th class="border px-3 py-2 w-10 text-left whitespace-nowrap">#</th>
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							Sales Order ID
 						</th>
-						
-						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
-							BOM No
-						</th>
+
+						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">BOM No</th>
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							Material Code
 						</th>
@@ -77,10 +96,15 @@
 				</thead>
 
 				<tbody class="divide-y divide-gray-100 text-sm">
-					<tr v-for="(rm, index) in materials" :key="`${rm.sales_order}_${rm.bom_no}_${rm.rm_item_code}`" class="transition" :class="{
-						'hover:bg-gray-50': true,
-						'bg-blue-50': selectedRows.includes(rm),
-					}">
+					<tr
+						v-for="(rm, index) in materials"
+						:key="`${rm.sales_order}_${rm.bom_no}_${rm.rm_item_code}`"
+						class="transition"
+						:class="{
+							'hover:bg-gray-50': true,
+							'bg-blue-50': selectedRows.includes(rm),
+						}"
+					>
 						<td class="border px-3 py-2 text-center sticky left-0 bg-white z-10">
 							<input type="checkbox" v-model="selectedRows" :value="rm" />
 						</td>
@@ -88,7 +112,7 @@
 						<td class="border px-3 py-2 font-medium whitespace-nowrap">
 							{{ rm.sales_order }}
 						</td>
-						
+
 						<td class="border px-3 py-2 font-medium whitespace-nowrap">
 							{{ rm.bom_no }}
 						</td>
@@ -102,16 +126,24 @@
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
 							{{ rm.qty_per_bom_unit }}
 						</td>
-						<td class="border px-3 py-2 text-right whitespace-nowrap font-semibold text-blue-800">
+						<td
+							class="border px-3 py-2 text-right whitespace-nowrap font-semibold text-blue-800"
+						>
 							{{ rm.required_qty }}
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
 							{{ rm.base_rm_percentage }}%
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap">
-							<input type="number" min="0" max="100" step="0.01" v-model.number="rm.adjustable_rm_percentage"
+							<input
+								type="number"
+								min="0"
+								max="100"
+								step="0.01"
+								v-model.number="rm.adjustable_rm_percentage"
 								@input="recalculateRM(rm)"
-								class="w-20 text-xs text-center border rounded px-1 py-0.5" />
+								class="w-20 text-xs text-center border rounded px-1 py-0.5"
+							/>
 						</td>
 
 						<td class="border px-3 py-2 text-right whitespace-nowrap">
@@ -123,17 +155,24 @@
 						<td class="border px-3 py-2 text-right whitespace-nowrap text-gray-500">
 							{{ rm.consumed_qty }}
 						</td>
-						<td class="border px-3 py-2 text-right whitespace-nowrap font-semibold" :class="{
-							'text-red-600': rm.balance_qty < 0,
-							'text-green-600': rm.balance_qty >= 0,
-						}">
+						<td
+							class="border px-3 py-2 text-right whitespace-nowrap font-semibold"
+							:class="{
+								'text-red-600': rm.balance_qty < 0,
+								'text-green-600': rm.balance_qty >= 0,
+							}"
+						>
 							{{ rm.balance_qty }}
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap">
-							<span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="rm.is_sufficient
-								? 'bg-green-100 text-green-800'
-								: 'bg-red-100 text-red-800'
-								">
+							<span
+								class="px-2 py-0.5 rounded-full text-xs font-medium"
+								:class="
+									rm.is_sufficient
+										? 'bg-green-100 text-green-800'
+										: 'bg-red-100 text-red-800'
+								"
+							>
 								{{ rm.is_sufficient ? "Sufficient" : "Shortage" }}
 							</span>
 						</td>
@@ -168,7 +207,7 @@ const loading = ref(false);
 const error = ref(null);
 
 const isAllSelected = computed(
-	() => materials.value.length && selectedRows.value.length === materials.value.length
+	() => materials.value.length && selectedRows.value.length === materials.value.length,
 );
 
 const selectAll = () => {
@@ -190,8 +229,7 @@ const fetchMaterials = async () => {
 
 	loading.value = true;
 	error.value = null;
-	
-	
+
 	try {
 		const payload = props.boms.map((bom) => ({
 			bom_no: bom.bom_no,
@@ -201,19 +239,19 @@ const fetchMaterials = async () => {
 		}));
 		const res = await api.getRawMaterialsForBOMs(payload);
 
-		materials.value = (res.data.message || []).map(m => {
-            const base_rm_percentage = m.rm_percentage || 100;
-            return {
-                ...m,
-                base_required_qty: m.required_qty, // Original qty from BOM
-                base_rm_percentage: base_rm_percentage,
-                adjustable_rm_percentage: base_rm_percentage,
-                total_required_qty: m.required_qty // Sync for CapacityPlanner
-            };
-        });
+		materials.value = (res.data.message || []).map((m) => {
+			const base_rm_percentage = m.rm_percentage || 100;
+			return {
+				...m,
+				base_required_qty: m.required_qty, // Original qty from BOM
+				base_rm_percentage: base_rm_percentage,
+				adjustable_rm_percentage: base_rm_percentage,
+				total_required_qty: m.required_qty, // Sync for CapacityPlanner
+			};
+		});
 
 		// selectedRows.value = materials.value.slice(); // User requested to NOT select all by default
-        selectedRows.value = [];
+		selectedRows.value = [];
 
 		emit("raw-material-loaded", materials.value);
 	} catch (err) {
@@ -231,23 +269,23 @@ watch(
 	(newSelection) => {
 		emit("update:modelValue", newSelection);
 	},
-	{ deep: true }
+	{ deep: true },
 );
 const recalculateRM = (rm) => {
-  if (rm.adjustable_rm_percentage === null || rm.adjustable_rm_percentage === undefined) return;
+	if (rm.adjustable_rm_percentage === null || rm.adjustable_rm_percentage === undefined) return;
 
-  const baseQty = rm.base_required_qty || 0;
-  const basePercent = rm.base_rm_percentage || 100;
-  const adjPercent = rm.adjustable_rm_percentage;
+	const baseQty = rm.base_required_qty || 0;
+	const basePercent = rm.base_rm_percentage || 100;
+	const adjPercent = rm.adjustable_rm_percentage;
 
-  // Formula: newQty = (baseQty * adjPercent) / basePercent
-  const newQty = +((baseQty * adjPercent) / basePercent).toFixed(6);
-  
-  rm.required_qty = newQty;
-  rm.total_required_qty = newQty; // Ensure CapacityPlanner gets the adjusted qty
+	// Formula: newQty = (baseQty * adjPercent) / basePercent
+	const newQty = +((baseQty * adjPercent) / basePercent).toFixed(6);
 
-  rm.balance_qty = +(rm.available_qty - newQty).toFixed(6);
-  rm.is_sufficient = rm.balance_qty >= 0;
+	rm.required_qty = newQty;
+	rm.total_required_qty = newQty; // Ensure CapacityPlanner gets the adjusted qty
+
+	rm.balance_qty = +(rm.available_qty - newQty).toFixed(6);
+	rm.is_sufficient = rm.balance_qty >= 0;
 };
 
 const refreshRM = async () => {
@@ -272,13 +310,11 @@ watch(
 
 		if (currentCodes !== newCodes) {
 			const existingMaterials = newModelValue.filter((item) =>
-				materials.value.some((m) => m.rm_item_code === item.rm_item_code)
+				materials.value.some((m) => m.rm_item_code === item.rm_item_code),
 			);
 			selectedRows.value = existingMaterials.slice();
 		}
 	},
-	{ deep: true, immediate: true }
+	{ deep: true, immediate: true },
 );
 </script>
-
-

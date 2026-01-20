@@ -1,5 +1,8 @@
 <template>
 	<div class="p-4 bg-white rounded shadow space-y-4">
+		<p class="text-xs text-gray-500">
+			Capacity Planner for calculate machine capacity and plan work orders
+		</p>
 		<div class="flex flex-wrap items-center justify-between gap-4">
 			<div class="flex gap-2">
 				<button
@@ -448,7 +451,7 @@ async function checkAvailability() {
 		const res = await api.getSmartSchedulePreview(
 			JSON.stringify(lines),
 			planStart.value,
-			planEnd.value
+			planEnd.value,
 		);
 		schedulePreview.value = res.data.message || [];
 
@@ -533,16 +536,20 @@ function sync() {
 }
 
 const selectedRows = computed(() =>
-	rows.value.filter((r) => selectedKeys.value.includes(r.rowKey))
+	rows.value.filter((r) => selectedKeys.value.includes(r.rowKey)),
 );
 
 const totalRequiredHours = computed(() =>
-	selectedRows.value.reduce((a, b) => a + Number(b.required_hours || 0), 0).toFixed(2)
+	selectedRows.value.reduce((a, b) => a + Number(b.required_hours || 0), 0).toFixed(2),
 );
 
 function toggleAll() {
 	selectedKeys.value = selectAll.value ? rows.value.map((r) => r.rowKey) : [];
 }
+
+watch(selectedKeys, (val) => {
+	selectAll.value = rows.value.length > 0 && val.length === rows.value.length;
+});
 const hasValidationErrors = computed(() => selectedRows.value.some((r) => r.validation_error));
 
 async function validateCapacity(customLines = null) {
@@ -783,8 +790,8 @@ async function createWorkOrders() {
 			indicator: msg.failed?.length
 				? "red"
 				: msg.already_exists?.length
-				? "orange"
-				: "green",
+					? "orange"
+					: "green",
 		});
 	} catch (err) {
 		showMessage({

@@ -56,6 +56,7 @@ def get_mss_schedule_range(
                 wo.planned_start_date,
                 wo.planned_end_date,
                 so.customer,
+                wo.qty,
                 (SELECT workstation FROM `tabWork Order Operation` WHERE parent = wo.name ORDER BY idx ASC LIMIT 1) as workstation
             FROM `tabWork Order` wo
             LEFT JOIN `tabSales Order` so ON so.name = wo.sales_order

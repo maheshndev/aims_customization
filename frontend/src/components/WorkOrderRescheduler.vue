@@ -77,46 +77,52 @@
 				@mouseenter="keepTooltipOpen"
 				@mouseleave="hideTooltip"
 			>
-				<div class="font-bold text-base mb-1">
-					<a :href="'/apps/work-order/' + hoveredEvent.wo_name">{{
+				<div class="font-bold text-base mb-1 text-black">
+					<a :href="'/app/work-order/' + hoveredEvent.wo_name">{{
 						hoveredEvent.wo_name
 					}}</a>
 				</div>
 				<div class="space-y-1">
-					<div class="grid grid-cols-3 gap-1">
+					<div class="grid grid-cols-3 gap-1 text-black">
 						<span class="text-gray-500 col-span-1">Item:</span>
 						<span class="col-span-2 font-medium">{{
 							hoveredEvent.production_item
 						}}</span>
 					</div>
-					<div class="grid grid-cols-3 gap-1">
+					<div class="grid grid-cols-3 gap-1 text-black">
 						<span class="text-gray-500 col-span-1">Qty:</span>
-						<span class="col-span-2 font-medium">{{ hoveredEvent.qty }}</span>
+						<span class="col-span-2 font-medium">{{ hoveredEvent.qty || "-" }}</span>
 					</div>
-					<div class="grid grid-cols-3 gap-1" v-if="hoveredEvent.sales_order">
+					<div class="grid grid-cols-3 gap-1 text-black" v-if="hoveredEvent.sales_order">
 						<span class="text-gray-500 col-span-1">SO:</span>
-						<span class="col-span-2 font-medium">{{ hoveredEvent.sales_order }}</span>
+						<span class="col-span-2 font-medium">{{
+							hoveredEvent.sales_order || "-"
+						}}</span>
 					</div>
-					<div class="grid grid-cols-3 gap-1">
+					<div class="grid grid-cols-3 gap-1 text-black">
 						<span class="text-gray-500 col-span-1">Mould:</span>
 						<span class="col-span-2 font-medium">{{ hoveredEvent.mould || "-" }}</span>
 					</div>
-					<div class="grid grid-cols-3 gap-1">
+					<div class="grid grid-cols-3 gap-1 text-black">
 						<span class="text-gray-500 col-span-1">Machine:</span>
 						<span class="col-span-2 font-medium">{{
 							hoveredEvent.workstation || "-"
 						}}</span>
 					</div>
-					<div class="grid grid-cols-3 gap-1">
+					<div class="grid grid-cols-3 gap-1 text-black">
 						<span class="text-gray-500 col-span-1">Status:</span>
-						<span class="col-span-2 font-medium">{{ hoveredEvent.status }}</span>
+						<span class="col-span-2 font-medium">{{
+							hoveredEvent.status || "-"
+						}}</span>
 					</div>
-					<div class="border-t pt-1 mt-1 text-xs text-gray-400">
+					<div class="border-t pt-1 mt-1 text-xs text-gray-400 text-black">
 						<div>
-							Start: {{ new Date(hoveredEvent.planned_start_date).toLocaleString() }}
+							Start:
+							{{ new Date(hoveredEvent.planned_start_date).toLocaleString() || "-" }}
 						</div>
 						<div>
-							End: {{ new Date(hoveredEvent.planned_end_date).toLocaleString() }}
+							End:
+							{{ new Date(hoveredEvent.planned_end_date).toLocaleString() || "-" }}
 						</div>
 					</div>
 				</div>
@@ -358,9 +364,12 @@ const calendarOptions = {
 	eventMouseEnter: handleEventMouseEnter,
 	eventMouseLeave: handleEventMouseLeave,
 
-	eventContent: (arg) => ({
-		html: renderWOCard(arg.event.extendedProps),
-	}),
+	eventContent: (arg) => {
+		if (arg.event.display === "background" || !arg.event.extendedProps.wo_name) {
+			return null;
+		}
+		return { html: renderWOCard(arg.event.extendedProps) };
+	},
 };
 
 /* ---------------- WATCHERS ---------------- */
@@ -422,18 +431,20 @@ function resetFilters() {
 /* ---------------- UI ---------------- */
 function renderWOCard(wo) {
 	return `
-    <div class="p-1 rounded border-l-4 ${statusClass(wo.status)}
-      bg-gradient-to-br from-blue-50  text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-between text-black">
+    <div class="text-black p-1 rounded border-l-4 ${statusClass(wo.status)}
+      bg-gradient-to-br from-blue-50 text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-between" style="color: black !important;">
       <div>
-        <div class="font-bold truncate text-black" title="${wo.wo_name}">${wo.wo_name}</div>
-        <div class="truncate font-semibold text-black" title="${wo.production_item}">${
+        <div class="font-bold truncate text-black" title="${wo.wo_name}" style="color: black;">${
+			wo.wo_name
+		}</div>
+        <div class="truncate font-semibold text-black" title="${wo.production_item}" style="color: black;">${
 			wo.production_item
 		}</div>
-        <div class="truncate text-black">Mould: ${wo.mould || "-"}</div>
-        <div class="truncate text-black">WS: ${wo.workstation || "-"}</div>
-        <div class="truncate text-black">SO: ${wo.sales_order || "-"}</div>
+        <div class="truncate text-black" style="color: black;">Mould: ${wo.mould || "-"}</div>
+        <div class="truncate text-black" style="color: black;">WS: ${wo.workstation || "-"}</div>
+        <div class="truncate text-black" style="color: black;">SO: ${wo.sales_order || "-"}</div>
       </div>
-      <div class="mt-1 font-mono text-xs">
+      <div class="mt-1 font-mono text-xs text-black" style="color: black;">
         ${fmt(wo.planned_start_date)} - ${fmt(wo.planned_end_date)}
       </div>
     </div>
@@ -466,5 +477,8 @@ function statusClass(status) {
 .event-tooltip {
 	z-index: 9999;
 	/* pointer-events: none; REMOVED to allow hovering over tooltip */
+}
+div {
+	color: black;
 }
 </style>
