@@ -66,8 +66,61 @@
 		</div>
 
 		<!-- CALENDAR -->
-		<div class="border rounded bg-white shadow-sm p-2">
-			<FullCalendar ref="calendarRef" :options="calendarOptions" />
+		<div class="border rounded bg-white shadow-sm p-1 relative text-black">
+			<FullCalendar ref="calendarRef" :options="calendarOptions" class="text-black" />
+
+			<!-- HOVER CARD -->
+			<div
+				v-if="hoveredEvent"
+				class="event-tooltip fixed bg-white border border-gray-200 shadow-xl rounded-lg p-4 w-72 text-sm z-50 text-black"
+				:style="{ top: hoverPosition.y + 'px', left: hoverPosition.x + 'px' }"
+				@mouseenter="keepTooltipOpen"
+				@mouseleave="hideTooltip"
+			>
+				<div class="font-bold text-base mb-1">
+					<a :href="'/apps/work-order/' + hoveredEvent.wo_name">{{
+						hoveredEvent.wo_name
+					}}</a>
+				</div>
+				<div class="space-y-1">
+					<div class="grid grid-cols-3 gap-1">
+						<span class="text-gray-500 col-span-1">Item:</span>
+						<span class="col-span-2 font-medium">{{
+							hoveredEvent.production_item
+						}}</span>
+					</div>
+					<div class="grid grid-cols-3 gap-1">
+						<span class="text-gray-500 col-span-1">Qty:</span>
+						<span class="col-span-2 font-medium">{{ hoveredEvent.qty }}</span>
+					</div>
+					<div class="grid grid-cols-3 gap-1" v-if="hoveredEvent.sales_order">
+						<span class="text-gray-500 col-span-1">SO:</span>
+						<span class="col-span-2 font-medium">{{ hoveredEvent.sales_order }}</span>
+					</div>
+					<div class="grid grid-cols-3 gap-1">
+						<span class="text-gray-500 col-span-1">Mould:</span>
+						<span class="col-span-2 font-medium">{{ hoveredEvent.mould || "-" }}</span>
+					</div>
+					<div class="grid grid-cols-3 gap-1">
+						<span class="text-gray-500 col-span-1">Machine:</span>
+						<span class="col-span-2 font-medium">{{
+							hoveredEvent.workstation || "-"
+						}}</span>
+					</div>
+					<div class="grid grid-cols-3 gap-1">
+						<span class="text-gray-500 col-span-1">Status:</span>
+						<span class="col-span-2 font-medium">{{ hoveredEvent.status }}</span>
+					</div>
+					<div class="border-t pt-1 mt-1 text-xs text-gray-400">
+						<div>
+							Start: {{ new Date(hoveredEvent.planned_start_date).toLocaleString() }}
+						</div>
+						<div>
+							End: {{ new Date(hoveredEvent.planned_end_date).toLocaleString() }}
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
@@ -93,6 +146,10 @@ const filters = reactive({
 	item: "",
 	shift: "",
 });
+
+const hoveredEvent = ref(null);
+const hoverPosition = reactive({ x: 0, y: 0 });
+let hoverTimeout = null;
 
 /* ---------------- MONTH PICKER ---------------- */
 const today = new Date();
@@ -146,7 +203,7 @@ function toLocalString(date) {
 	return `${y}-${m}-${d} ${h}:${min}:${s}`;
 }
 
-async function handleEventChange(info) {
+function handleEventChange(info) {
 	try {
 		const { start, end } = info.event;
 
@@ -158,51 +215,102 @@ async function handleEventChange(info) {
 		}
 		const safeEnd = newEnd || new Date(start.getTime() + 60 * 60 * 1000); // Fallback 1h
 
-		const res = await mssApi.reschedule({
-			wo_name: info.event.id,
-			planned_start_date: toLocalString(start),
-			planned_end_date: toLocalString(safeEnd),
-		});
+		// Optimistic UI update is already handled by FullCalendar dragging.
+		// We just need to persist it.
 
-		const responseData = res.data.message;
-
-		if (responseData.success) {
-			if (window.frappe) {
-				frappe.show_alert({
-					message: responseData.message || "Rescheduled successfully",
-					indicator: "green",
-				});
-			}
-		} else {
-			info.revert();
-			if (window.frappe) {
-				frappe.msgprint({
-					title: "Reschedule Prevented",
-					message: responseData.message || "Validation failed",
-					indicator: "orange",
-				});
-			} else {
-				alert(responseData.message || "Reschedule failed");
-			}
-		}
-
-		// Refresh to get any server-side adjustments (holidays, etc.)
-		await loadSchedule();
+		mssApi
+			.reschedule({
+				wo_name: info.event.id,
+				planned_start_date: toLocalString(start),
+				planned_end_date: toLocalString(safeEnd),
+			})
+			.then((res) => {
+				const responseData = res.data.message;
+				if (responseData.success) {
+					if (window.frappe) {
+						frappe.show_alert({
+							message: responseData.message || "Rescheduled successfully",
+							indicator: "green",
+						});
+					}
+					// Silent refresh to sync data
+					loadSchedule();
+				} else {
+					info.revert();
+					if (window.frappe) {
+						frappe.msgprint({
+							title: "Reschedule Prevented",
+							message: responseData.message || "Validation failed",
+							indicator: "orange",
+						});
+					} else {
+						alert(responseData.message || "Reschedule failed");
+					}
+				}
+			})
+			.catch((e) => {
+				info.revert();
+				console.error("Reschedule request failed", e);
+				if (window.frappe) {
+					frappe.msgprint({
+						title: "System Error",
+						message: extractFrappeError(e),
+						indicator: "red",
+					});
+				} else {
+					alert("Unexpected error: " + e.message);
+				}
+			});
 	} catch (e) {
 		info.revert();
-		console.error("Reschedule failed", e);
-
-		// Show Alert to User
-		if (window.frappe) {
-			frappe.msgprint({
-				title: "System Error",
-				message: extractFrappeError(e),
-				indicator: "red",
-			});
-		} else {
-			alert("Unexpected error: " + e.message);
-		}
+		console.error("Reschedule failed locally", e);
 	}
+}
+
+function handleEventClick(info) {
+	// FullCalendar distinguishes click vs drag automatically.
+	// eventClick only fires on a click, not after a drag/resize.
+	const woName = info.event.id;
+	if (woName) {
+		const url = `/app/work-order/${woName}`;
+		window.open(url, "_blank");
+	}
+}
+
+function handleEventMouseEnter(info) {
+	// Clear any pending hide
+	if (hoverTimeout) {
+		clearTimeout(hoverTimeout);
+		hoverTimeout = null;
+	}
+
+	hoveredEvent.value = info.event.extendedProps;
+
+	// Reduced gap so user can easily mouse over it
+	// Offset slightly so it doesn't flicker under the cursor immediately
+	const x = info.jsEvent.clientX + 5;
+	const y = info.jsEvent.clientY + 5;
+
+	hoverPosition.x = x;
+	hoverPosition.y = y;
+}
+
+function handleEventMouseLeave(info) {
+	// Give user time to move to the tooltip
+	hoverTimeout = setTimeout(() => {
+		hoveredEvent.value = null;
+	}, 300); // 300ms delay
+}
+
+function keepTooltipOpen() {
+	if (hoverTimeout) {
+		clearTimeout(hoverTimeout);
+		hoverTimeout = null;
+	}
+}
+
+function hideTooltip() {
+	hoveredEvent.value = null;
 }
 
 /* ---------------- CALENDAR OPTIONS ---------------- */
@@ -246,6 +354,9 @@ const calendarOptions = {
 
 	eventDrop: handleEventChange,
 	eventResize: handleEventChange,
+	eventClick: handleEventClick,
+	eventMouseEnter: handleEventMouseEnter,
+	eventMouseLeave: handleEventMouseLeave,
 
 	eventContent: (arg) => ({
 		html: renderWOCard(arg.event.extendedProps),
@@ -264,7 +375,7 @@ watch(
 	() => {
 		loadSchedule();
 	},
-	{ deep: true }
+	{ deep: true },
 );
 
 // Refetch events when schedule changes
@@ -312,15 +423,15 @@ function resetFilters() {
 function renderWOCard(wo) {
 	return `
     <div class="p-1 rounded border-l-4 ${statusClass(wo.status)}
-      bg-gradient-to-br from-blue-50 to-white text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-between">
+      bg-gradient-to-br from-blue-50  text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-between text-black">
       <div>
-        <div class="font-bold truncate text-indigo-700" title="${wo.wo_name}">${wo.wo_name}</div>
-        <div class="truncate font-semibold" title="${wo.production_item}">${
-		wo.production_item
-	}</div>
-        <div class="truncate text-gray-600">Mould: ${wo.mould || "-"}</div>
-        <div class="truncate text-gray-600">WS: ${wo.workstation || "-"}</div>
-        <div class="truncate text-gray-600">SO: ${wo.sales_order || "-"}</div>
+        <div class="font-bold truncate text-black" title="${wo.wo_name}">${wo.wo_name}</div>
+        <div class="truncate font-semibold text-black" title="${wo.production_item}">${
+			wo.production_item
+		}</div>
+        <div class="truncate text-black">Mould: ${wo.mould || "-"}</div>
+        <div class="truncate text-black">WS: ${wo.workstation || "-"}</div>
+        <div class="truncate text-black">SO: ${wo.sales_order || "-"}</div>
       </div>
       <div class="mt-1 font-mono text-xs">
         ${fmt(wo.planned_start_date)} - ${fmt(wo.planned_end_date)}
@@ -340,12 +451,20 @@ function fmt(dt) {
 function statusClass(status) {
 	return (
 		{
-			Draft: "border-blue-500",
-			"In Progress": "border-orange-500",
-			Completed: "border-green-500",
-		}[status] || "border-gray-400"
+			Draft: "border-blue-500 text-black",
+			"In Progress": "border-orange-500 text-black",
+			Completed: "border-green-500 text-black",
+		}[status] || "border-gray-400 text-black"
 	);
 }
 
 // onMounted removed to prevent double fetch (datesSet triggers initial load)
 </script>
+
+<style scoped>
+/* Tooltip styling */
+.event-tooltip {
+	z-index: 9999;
+	/* pointer-events: none; REMOVED to allow hovering over tooltip */
+}
+</style>

@@ -1229,6 +1229,40 @@ def create_work_orders_from_mss(payload):
                 if used <= 0:
                     continue
 
+                # Prepare Operations List
+                operations_list = []
+                if ln.get("bom_no"):
+                     bom_ops = frappe.get_all(
+                        "BOM Operation",
+                        filters={"parent": ln["bom_no"]},
+                        fields=["operation", "workstation", "time_in_mins", "batch_size", "sequence_id", "idx"],
+                        order_by="idx"
+                     )
+                     
+                     for op in bom_ops:
+                         # Calculate time based on qty
+                         batch_size = flt(op.batch_size) or 1.0
+                         # Time in mins for the TOTAL requested qty
+                         time_required = (used / batch_size) * flt(op.time_in_mins)
+                         
+                         op_data = {
+                             "operation": op.operation,
+                             "workstation": op.workstation,
+                             "time_in_mins": time_required,
+                             "batch_size": batch_size,
+                             "description": f"Operation {op.operation} from BOM {ln['bom_no']}",
+                             "status": "Pending",
+                             "completed_qty": 0
+                         }
+                         
+                         # Attempt to fetch Workstation Type if available on Workstation
+                         if op.workstation:
+                             ws_type = frappe.db.get_value("Workstation", op.workstation, "workstation_type")
+                             if ws_type:
+                                 op_data["workstation_type"] = ws_type
+                        
+                         operations_list.append(op_data)
+
                 wo_name = create_work_order(
                     {
                         "company": so.company,
@@ -1241,8 +1275,10 @@ def create_work_orders_from_mss(payload):
                         "qty": used,
                         "planned_start_date": st,
                         "planned_end_date": actual_end,
+                        "transfer_material_against": "Job Card",
+                        "skip_transfer": 0
                     },
-                    operations_args=[]
+                    operations_args=operations_list
                 )
 
                 # Apply Raw Material Adjustments if provided
