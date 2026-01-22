@@ -272,66 +272,159 @@ export default {
 				return;
 			}
 
-			const payload = selectedItems.value.map((item) => ({
-				bo_name: item.bo_name,
-				item_code: item.item_code,
-				schedule_qty: Number(item.schedule_qty) || 0,
-				rate: item.rate || 0,
-				bom_no: item.bom_no || null,
-				warehouse: item.warehouse || null,
-			}));
+			// Date Logic
+			const today = frappe.datetime.nowdate();
+			const uniqueBOs = [...new Set(selectedItems.value.map((i) => i.bo_name))];
+			const maxFromDate = selectedItems.value.reduce((max, item) => {
+				return item.from_date > max ? item.from_date : max;
+			}, "0000-00-00");
 
-			try {
-				const res = await api.createSalesOrderFromBOItems(payload);
-				const data = res?.data?.message;
+			let defaultDate = today;
 
-				if (!data || data.status !== "success") {
-					throw new Error("Unexpected server response");
+			if (uniqueBOs.length === 1) {
+				// Single BO: use its from_date if it's today or future
+				const boFromDate = selectedItems.value[0].from_date;
+				defaultDate = boFromDate > today ? boFromDate : today;
+			} else if (props.filters.month && props.filters.year) {
+				// Multiple BOs: Check filter month/year
+				const filterDateStr = `${props.filters.year}-${props.filters.month}-01`;
+				// Use Frappe's date parsing or JS. simple check:
+				const currentMonthStart = today.substring(0, 8) + "01";
+
+				if (filterDateStr > currentMonthStart) {
+					// Future month: default to 1st of that month
+					defaultDate = filterDateStr;
+				} else {
+					// Current/Past month: default to today
+					defaultDate = today;
 				}
+			}
 
-				let html = "";
+			// Ensure default date is not before any BO from_date
+			if (defaultDate < maxFromDate) {
+				defaultDate = maxFromDate;
+			}
 
-				// ✅ Created
-				if (data.created_sales_orders?.length) {
-					html += `
+			frappe.prompt(
+				[
+					{
+						label: "Date",
+						fieldname: "transaction_date",
+						fieldtype: "Date",
+						default: defaultDate,
+						reqd: 1,
+					},
+					{
+						label: "Delivery Date",
+						fieldname: "delivery_date",
+						fieldtype: "Date",
+						default: defaultDate,
+						reqd: 1,
+					},
+					{
+						label: "Customer's Purchase Order",
+						fieldname: "po_no",
+						fieldtype: "Data",
+					},
+					{
+						label: "Customer's Purchase Order Date",
+						fieldname: "po_date",
+						fieldtype: "Date",
+					},
+					{
+						label: "Customer PO Attachment",
+						fieldname: "customer_po_attachment",
+						fieldtype: "Attach",
+					},
+				],
+				async (values) => {
+					// Validation
+					const selectedDate = values.transaction_date;
+					const selectedDeliveryDate = values.delivery_date;
+
+					if (selectedDate < today || selectedDeliveryDate < today) {
+						frappe.msgprint(__("Past dates are not allowed."));
+						return;
+					}
+
+					if (selectedDate < maxFromDate || selectedDeliveryDate < maxFromDate) {
+						frappe.msgprint(
+							__("Date cannot be before the latest Blanket Order From Date ({0})", [
+								maxFromDate,
+							]),
+						);
+						return;
+					}
+
+					const payload = selectedItems.value.map((item) => ({
+						bo_name: item.bo_name,
+						item_code: item.item_code,
+						schedule_qty: Number(item.schedule_qty) || 0,
+						rate: item.rate || 0,
+						bom_no: item.bom_no || null,
+						warehouse: item.warehouse || null,
+						transaction_date: values.transaction_date,
+						delivery_date: values.delivery_date,
+						po_no: values.po_no,
+						po_date: values.po_date,
+						customer_po_attachment: values.customer_po_attachment,
+					}));
+
+					try {
+						const res = await api.createSalesOrderFromBOItems(payload);
+						const data = res?.data?.message;
+
+						if (!data || data.status !== "success") {
+							throw new Error("Unexpected server response");
+						}
+
+						let html = "";
+
+						// ✅ Created
+						if (data.created_sales_orders?.length) {
+							html += `
         <p class="text-green-600">
           <b>Created Sales Orders:</b><br>
           ${data.created_sales_orders.join("<br>")}
         </p>
       `;
-				}
+						}
 
-				// ⚠️ Skipped
-				if (data.skipped?.length) {
-					html += `
+						// ⚠️ Skipped
+						if (data.skipped?.length) {
+							html += `
         <hr>
         <p class="text-orange-600 mt-2">
           <b>Skipped:</b><br>
           ${data.skipped.map((s) => `BO: ${s.blanket_order} – ${s.reason}`).join("<br>")}
         </p>
       `;
-				}
+						}
 
-				showMessage({
-					title: "Sales Order Creation Summary",
-					message: html,
-					indicator: data.skipped?.length ? "orange" : "green",
-				});
+						showMessage({
+							title: "Sales Order Creation Summary",
+							message: html,
+							indicator: data.skipped?.length ? "orange" : "green",
+						});
 
-				selectedItems.value = [];
-				emit("update:selected", []);
-			} catch (err) {
-				// 🔥 Handles frappe.throw(), permission, DB errors
-				showMessage({
-					title: "Error",
-					message: err?.response?.data?._server_messages
-						? JSON.parse(err.response.data._server_messages)
-								.map((m) => JSON.parse(m).message)
-								.join("<br>")
-						: err.message || "Failed to create Sales Order",
-					indicator: "red",
-				});
-			}
+						selectedItems.value = [];
+						emit("update:selected", []);
+					} catch (err) {
+						// 🔥 Handles frappe.throw(), permission, DB errors
+						showMessage({
+							title: "Error",
+							message: err?.response?.data?._server_messages
+								? JSON.parse(err.response.data._server_messages)
+										.map((m) => JSON.parse(m).message)
+										.join("<br>")
+								: err.message || "Failed to create Sales Order",
+							indicator: "red",
+						});
+					}
+				},
+				"Create Sales Orders",
+				"Create",
+			);
 		};
 
 		const validateScheduleQty = (item) => {

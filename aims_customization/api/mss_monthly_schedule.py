@@ -192,11 +192,14 @@ def get_blanket_orders(search_text=None, customer=None, month=None, year=None, l
 
     if date_filter:
         if date_filter["type"] in ("month_year", "year"):
-            sql += " AND order_date BETWEEN %s AND %s"
-            params.extend([date_filter["start"], date_filter["end"]])
+            sql += """
+                AND from_date <= %s
+                AND (to_date >= %s OR to_date IS NULL)
+            """
+            params.extend([date_filter["end"], date_filter["start"]])
         elif date_filter["type"] == "month_only":
             sql += " AND MONTH(order_date)=%s" 
-            params.append(month) 
+            params.append(date_filter["month"]) 
 
     sql += " ORDER BY order_date DESC LIMIT %s"
     params.append(limit)
@@ -299,18 +302,18 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
 
          # CASE 1: Month + Year
         if date_filter["type"] == "month_year":
-             sql += """
-                 AND bo.from_date <= %s
-                 AND bo.to_date >= %s
-             """
-             params.extend([date_filter["end"], date_filter["start"]])
+            sql += """
+                AND bo.from_date <= %s
+                AND (bo.to_date >= %s OR bo.to_date IS NULL)
+            """
+            params.extend([date_filter["end"], date_filter["start"]])
          # CASE 2: Only Year
         elif date_filter["type"] == "year":
-             sql += """
-                 AND bo.from_date <= %s
-                 AND bo.to_date >= %s
-             """
-             params.extend([date_filter["end"], date_filter["start"]])
+            sql += """
+                AND bo.from_date <= %s
+                AND (bo.to_date >= %s OR bo.to_date IS NULL)
+            """
+            params.extend([date_filter["end"], date_filter["start"]])
                 # CASE 3: Only Month (ANY YEAR, cross-year safe)
         elif date_filter["type"] == "month_only":
             sql += """
@@ -328,14 +331,15 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
                             OR %s <= MONTH(bo.to_date)
                         )
                     )
+                    OR
+                    (
+                        bo.to_date IS NULL
+                        AND MONTH(bo.from_date) <= %s
+                    )
                 )
             """
-            params.extend([
-                date_filter["month"],
-                date_filter["month"],
-                date_filter["month"],
-                date_filter["month"],
-            ])
+            m = date_filter["month"]
+            params.extend([m, m, m, m, m])
 
 
     sql += " ORDER BY bo.order_date DESC, bo.name, boi.idx LIMIT %s"
@@ -438,7 +442,16 @@ def create_sales_order(items: str | list):
         so.customer = bo.customer
         so.company = bo.company
         so.blanket_order = bo_name
-        so.delivery_date = nowdate()
+        
+        first_item = bo_items[0]
+        so.transaction_date = first_item.get("transaction_date") or nowdate()
+        so.delivery_date = first_item.get("delivery_date") or nowdate()
+        so.po_no = first_item.get("po_no")
+        so.po_date = first_item.get("po_date")
+        
+        if first_item.get("customer_po_attachment"):
+            so.customer_po_attachment = first_item.get("customer_po_attachment")
+        
         so.currency = getattr(bo, "currency", None) or frappe.get_value("Company", bo.company, "default_currency") or "USD"
         so.status = "Draft"
 
@@ -456,7 +469,7 @@ def create_sales_order(items: str | list):
                 "item_name": item_doc.item_name,
                 "qty": it.get("schedule_qty"),
                 "rate": rate,
-                "delivery_date": nowdate(),
+                "delivery_date": so.delivery_date,
                 "warehouse": warehouse,
                 "blanket_order": bo_name,
                 "blanket_order_rate": rate,
