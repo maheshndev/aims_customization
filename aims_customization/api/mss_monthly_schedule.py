@@ -355,15 +355,20 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
         bo_item_map[key] = 0
 
     if bo_item_map:
-        consumed = frappe.db.sql("""
+        bo_names = [r["bo_name"] for r in rows]
+        placeholders = ", ".join(["%s"] * len(bo_names))
+        
+        consumed = frappe.db.sql(f"""
             SELECT
                 soi.blanket_order,
                 soi.item_code,
                 SUM(soi.qty) AS consumed_qty
             FROM `tabSales Order Item` soi
             JOIN `tabSales Order` so ON so.name = soi.parent
+            WHERE soi.blanket_order IN ({placeholders})
+              AND so.docstatus < 2
             GROUP BY soi.blanket_order, soi.item_code
-        """, as_dict=True)
+        """, tuple(bo_names), as_dict=True)
 
         for c in consumed:
             key = (c["blanket_order"], c["item_code"])
