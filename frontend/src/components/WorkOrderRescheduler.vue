@@ -85,7 +85,7 @@
 				<div class="flex items-center gap-3">
 					<button
 						@click="resetFilters"
-						class="flex items-center gap-2 px-6 py-2.5 text-sm font-black text-gray-600 bg-gray-300 border border-gray-200 rounded hover:border-gray-300 hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_4px_15px_-3px_rgba(0,0,0,0.1)] group"
+						class="flex items-center gap-2 px-4 py-2 text-sm font-black bg-gray-200 border border-gray-200 rounded hover:border-gray-300 hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_4px_15px_-3px_rgba(0,0,0,0.1)] group"
 					>
 						<span
 							class="text-base transition-transform duration-500 group-hover:rotate-180"
