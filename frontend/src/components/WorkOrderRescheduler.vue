@@ -1,131 +1,211 @@
 <template>
 	<div class="p-3 space-y-3">
-		<!-- FILTER BAR -->
-		<div class="flex flex-wrap items-end gap-3 bg-white p-3 rounded shadow-sm">
-			<div class="flex items-end gap-1">
-				<SearchSelect
-					label="Sales Order"
-					doctype="Sales Order"
-					v-model="filters.sales_order"
-				/>
-				<button
-					v-if="filters.sales_order"
-					@click="filters.sales_order = ''"
-					class="text-gray-400 hover:text-red-500 pb-2"
-				>
-					✕
-				</button>
-			</div>
-			<div class="flex items-end gap-1">
-				<SearchSelect label="Mould" doctype="Mould" v-model="filters.mould" />
-				<button
-					v-if="filters.mould"
-					@click="filters.mould = ''"
-					class="text-gray-400 hover:text-red-500 pb-2"
-				>
-					✕
-				</button>
-			</div>
-			<div class="flex items-end gap-1">
-				<SearchSelect label="Item" doctype="Item" v-model="filters.item" />
-				<button
-					v-if="filters.item"
-					@click="filters.item = ''"
-					class="text-gray-400 hover:text-red-500 pb-2"
-				>
-					✕
-				</button>
-			</div>
-			<div class="flex items-end gap-1">
-				<SearchSelect label="Shift" doctype="Shift Type" v-model="filters.shift" />
-				<button
-					v-if="filters.shift"
-					@click="filters.shift = ''"
-					class="text-gray-400 hover:text-red-500 pb-2"
-				>
-					✕
-				</button>
-			</div>
+		<div class="p-4 transition-all duration-300 hover:shadow-md rounded">
+			<div class="flex flex-wrap items-center gap-4 justify-between rounded-1xl">
+				<!-- Search Controls -->
+				<div class="flex flex-wrap items-center gap-4 flex-grow">
+					<div class="relative group">
+						<SearchSelect
+							label="Sales Order"
+							doctype="Sales Order"
+							v-model="filters.sales_order"
+							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
+						/>
+						<button
+							v-if="filters.sales_order"
+							@click="filters.sales_order = ''"
+							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+						>
+							✕
+						</button>
+					</div>
 
-			<!-- MONTH / YEAR -->
-			<div>
-				<label class="block text-xs text-gray-600">Month</label>
-				<input
-					type="month"
-					v-model="monthPicker"
-					class="border rounded px-2 py-1 text-sm"
-				/>
-			</div>
+					<div class="relative group">
+						<SearchSelect
+							label="Mould"
+							doctype="Mould"
+							v-model="filters.mould"
+							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
+						/>
+						<button
+							v-if="filters.mould"
+							@click="filters.mould = ''"
+							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+						>
+							✕
+						</button>
+					</div>
 
-			<button
-				@click="resetFilters"
-				class="ml-auto px-4 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
-			>
-				Reset All
-			</button>
+					<div class="relative group">
+						<SearchSelect
+							label="Item"
+							doctype="Item"
+							v-model="filters.item"
+							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
+						/>
+						<button
+							v-if="filters.item"
+							@click="filters.item = ''"
+							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+						>
+							✕
+						</button>
+					</div>
+
+					<div class="relative group">
+						<SearchSelect
+							label="Shift"
+							doctype="Shift Type"
+							v-model="filters.shift"
+							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
+						/>
+						<button
+							v-if="filters.shift"
+							@click="filters.shift = ''"
+							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+						>
+							✕
+						</button>
+					</div>
+
+					<!-- MONTH PICKER -->
+					<div class="flex flex-col w-40">
+						<label class="text-[10px] font-bold text-gray-600 tracking-widest"
+							>Month</label
+						>
+						<input
+							type="month"
+							v-model="monthPicker"
+							class="h-15 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+						/>
+					</div>
+				</div>
+
+				<!-- Actions -->
+				<div class="flex items-center gap-3">
+					<button
+						@click="resetFilters"
+						class="flex items-center gap-2 px-6 py-2.5 text-sm font-black text-gray-600 bg-gray-300 border border-gray-200 rounded hover:border-gray-300 hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_4px_15px_-3px_rgba(0,0,0,0.1)] group"
+					>
+						<span
+							class="text-base transition-transform duration-500 group-hover:rotate-180"
+							>↺</span
+						>
+						Reset Filters
+					</button>
+				</div>
+			</div>
 		</div>
 
 		<!-- CALENDAR -->
-		<div class="border rounded bg-white shadow-sm p-1 relative text-black">
+		<div class="border rounded-sm bg-white p-2 relative text-black">
 			<FullCalendar ref="calendarRef" :options="calendarOptions" class="text-black" />
 
-			<!-- HOVER CARD -->
+			<!-- HOVER CARD (Compact & Clean) -->
 			<div
 				v-if="hoveredEvent"
-				class="event-tooltip fixed bg-white border border-gray-200 shadow-xl rounded-lg p-4 w-72 text-sm z-50 text-black"
+				class="event-tooltip fixed bg-white border border-gray-200 shadow-2xl rounded-2xl p-3 w-72 text-sm z-[9999] transition-all duration-200"
 				:style="{ top: hoverPosition.y + 'px', left: hoverPosition.x + 'px' }"
 				@mouseenter="keepTooltipOpen"
 				@mouseleave="hideTooltip"
 			>
-				<div class="font-bold text-base mb-1 text-black">
-					<a :href="'/app/work-order/' + hoveredEvent.wo_name" target="_blank">{{
-						hoveredEvent.wo_name
-					}}</a>
-				</div>
-				<div class="space-y-1">
-					<div class="grid grid-cols-3 gap-1 text-black">
-						<span class="text-gray-500 col-span-1">Item:</span>
-						<span class="col-span-2 font-medium">{{
-							hoveredEvent.production_item
-						}}</span>
+				<!-- Header -->
+				<div class="flex items-start justify-between mb-2 border-b border-gray-50 pb-2">
+					<div class="flex flex-col gap-0.5">
+						<span class="text-[8px] font-black text-blue-600 uppercase tracking-widest"
+							>Work Order</span
+						>
+						<a
+							:href="'/app/work-order/' + hoveredEvent.wo_name"
+							target="_blank"
+							class="text-sm font-black text-gray-900 hover:text-blue-700 transition-colors leading-tight"
+						>
+							{{ hoveredEvent.wo_name }}
+						</a>
 					</div>
-					<div class="grid grid-cols-3 gap-1 text-black">
-						<span class="text-gray-500 col-span-1">Qty:</span>
-						<span class="col-span-2 font-medium">{{ hoveredEvent.qty || "-" }}</span>
-					</div>
-					<div class="grid grid-cols-3 gap-1 text-black" v-if="hoveredEvent.sales_order">
-						<span class="text-gray-500 col-span-1">SO:</span>
-						<span class="col-span-2 font-medium">{{
-							hoveredEvent.sales_order || "-"
-						}}</span>
-					</div>
-					<div class="grid grid-cols-3 gap-1 text-black">
-						<span class="text-gray-500 col-span-1">Mould:</span>
-						<span class="col-span-2 font-medium">{{ hoveredEvent.mould || "-" }}</span>
-					</div>
-					<div class="grid grid-cols-3 gap-1 text-black">
-						<span class="text-gray-500 col-span-1">Machine:</span>
-						<span class="col-span-2 font-medium">{{
-							hoveredEvent.workstation || "-"
-						}}</span>
-					</div>
-					<div class="grid grid-cols-3 gap-1 text-black">
-						<span class="text-gray-500 col-span-1">Status:</span>
-						<span class="col-span-2 font-medium">{{
-							hoveredEvent.status || "-"
-						}}</span>
-					</div>
-					<div class="border-t pt-1 mt-1 text-xs text-gray-400 text-black">
-						<div>
-							Start:
-							{{ new Date(hoveredEvent.planned_start_date).toLocaleString() || "-" }}
-						</div>
-						<div>
-							End:
-							{{ new Date(hoveredEvent.planned_end_date).toLocaleString() || "-" }}
-						</div>
+					<div
+						:class="[
+							'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider shadow-sm border',
+							getStatusColor(hoveredEvent.status).badge,
+						]"
+					>
+						{{ hoveredEvent.status }}
 					</div>
 				</div>
+
+				<!-- Info Grid -->
+				<div class="space-y-2.5">
+					<div class="flex gap-2">
+						<div
+							class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-xs shrink-0"
+						>
+							📦
+						</div>
+						<div>
+							<div
+								class="text-[8px] font-bold text-gray-400 uppercase tracking-tight mb-0.5"
+							>
+								Production Item
+							</div>
+							<div class="text-[11px] font-bold text-gray-800 leading-tight">
+								{{ hoveredEvent.production_item }}
+							</div>
+						</div>
+					</div>
+
+					<div class="grid grid-cols-2 gap-3 pl-9">
+						<div>
+							<div
+								class="text-[8px] font-bold text-gray-400 uppercase tracking-tight mb-0.5"
+							>
+								Qty
+							</div>
+							<div class="text-[12px] font-black text-gray-800">
+								{{ hoveredEvent.qty || "-" }}
+							</div>
+						</div>
+						<div>
+							<div
+								class="text-[8px] font-bold text-gray-400 uppercase tracking-tight mb-0.5"
+							>
+								Mould
+							</div>
+							<div class="text-[12px] font-black text-gray-800">
+								{{ hoveredEvent.mould || "-" }}
+							</div>
+						</div>
+					</div>
+
+					<!-- Timeline Section -->
+					<div class="bg-gray-50/80 rounded-xl p-2 border border-gray-100/50">
+						<div class="flex items-center gap-1.5 mb-1.5">
+							<span class="text-[10px]">🕒</span>
+							<span
+								class="text-[8px] font-black text-gray-400 uppercase tracking-widest"
+								>Timeline</span
+							>
+						</div>
+						<div class="space-y-1 font-mono text-[10px]">
+							<div class="flex justify-between items-center text-gray-500">
+								<span>START</span>
+								<span class="font-bold text-gray-700">{{
+									fmtFull(hoveredEvent.planned_start_date)
+								}}</span>
+							</div>
+							<div class="flex justify-between items-center text-gray-500">
+								<span>FINISH</span>
+								<span class="font-bold text-gray-700">{{
+									fmtFull(hoveredEvent.planned_end_date)
+								}}</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Subtle Shadow Pointer -->
+				<div
+					class="absolute -left-1 top-6 w-3 h-3 bg-white rotate-45 border-l border-b border-gray-200 -z-10 shadow-sm"
+				></div>
 			</div>
 		</div>
 	</div>
@@ -362,6 +442,11 @@ const calendarOptions = {
 	eventMouseEnter: handleEventMouseEnter,
 	eventMouseLeave: handleEventMouseLeave,
 
+	slotEventOverlap: true,
+	slotMaxTime: "24:00:00",
+	slotMinTime: "00:00:00",
+	allDaySlot: false,
+
 	eventContent: (arg) => {
 		if (arg.event.display === "background" || !arg.event.extendedProps.wo_name) {
 			return null;
@@ -427,26 +512,77 @@ function resetFilters() {
 }
 
 /* ---------------- UI ---------------- */
+function getStatusColor(status) {
+	const colors = {
+		Draft: {
+			border: "border-blue-500",
+			bg: "bg-blue-50",
+			text: "text-blue-900",
+			badge: "bg-blue-100 text-blue-700",
+			marker: "bg-blue-500",
+		},
+		"In Progress": {
+			border: "border-amber-500",
+			bg: "bg-amber-50",
+			text: "text-amber-900",
+			badge: "bg-amber-100 text-amber-700",
+			marker: "bg-amber-500",
+		},
+		Completed: {
+			border: "border-emerald-500",
+			bg: "bg-emerald-50",
+			text: "text-emerald-900",
+			badge: "bg-emerald-100 text-emerald-700",
+			marker: "bg-emerald-500",
+		},
+		Stopped: {
+			border: "border-rose-500",
+			bg: "bg-rose-50",
+			text: "text-rose-900",
+			badge: "bg-rose-100 text-rose-700",
+			marker: "bg-rose-500",
+		},
+	};
+	return (
+		colors[status] || {
+			border: "border-gray-400",
+			bg: "bg-gray-50",
+			text: "text-gray-900",
+			badge: "bg-gray-100 text-gray-600",
+			marker: "bg-gray-400",
+		}
+	);
+}
+
 function renderWOCard(wo) {
+	const c = getStatusColor(wo.status);
+	const isProcessing = wo.status === "In Progress";
+
 	return `
-    <div class="group text-black p-1 rounded border-l-4 ${statusClass(wo.status)}
-      bg-gradient-to-br from-blue-50 text-[10px] leading-tight overflow-hidden h-full flex flex-col justify-start
-      transform transition-all duration-200 hover:scale-105 hover:z-50 hover:shadow-xl hover:overflow-visible hover:h-auto hover:min-h-min origin-top-left" 
-      style="color: black !important; min-height: 22px;">
-      
-      <div class="flex-shrink-0 mb-0.5"> 
-        <div class="font-bold text-black pb-0.5 break-words whitespace-normal leading-3" title="${
+    <div class="h-full w-full p-1.5 flex flex-col gap-0.5 overflow-hidden transition-all duration-300 rounded-xl border-2 ${
+		c.border
+	} ${c.bg} ${c.text} shadow-sm group-hover:shadow-md cursor-pointer select-none relative">
+      <!-- Header -->
+      <div class="flex items-center gap-1 overflow-hidden min-h-[12px]">
+        <span class="w-1.5 h-1.5 rounded-full ${c.marker} flex-shrink-0 ${isProcessing ? "animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" : ""}"></span>
+        <span class="text-[8px] font-black uppercase tracking-tighter truncate opacity-60">${
 			wo.wo_name
-		}" style="color: black;">${wo.wo_name || "-"}</div>
-        <div class="font-semibold text-black break-words whitespace-normal leading-3" title="${
-			wo.production_item
-		}" style="color: black;">${wo.production_item || "-"}</div>
-      
-        <div class="truncate text-black" style="color: black;">Mould: ${wo.mould || "-"}</div>
-        <div class="truncate text-black" style="color: black;">WS: ${wo.workstation || "-"}</div>
-        <div class="truncate text-black" style="color: black;">SO: ${wo.sales_order || "-"}</div>
-        <div class="mt-1 font-mono text-xs text-black" style="color: black;">
-            ${fmt(wo.planned_start_date)} - ${fmt(wo.planned_end_date)}
+		}</span>
+      </div>
+
+      <!-- Content -->
+      <div class="text-[10px] font-black leading-[1.1] line-clamp-2 mt-0.5 px-0.5">
+        ${wo.production_item}
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-auto pt-1 flex items-center justify-between border-t border-black/5 opacity-50 overflow-hidden">
+        <div class="flex items-center gap-0.5 min-w-0">
+          <span class="text-[8px] opacity-70">⚙️</span>
+          <span class="text-[8px] font-bold truncate">${wo.workstation || "-"}</span>
+        </div>
+        <div class="flex items-center gap-0.5 flex-shrink-0">
+          <span class="text-[8px] font-mono font-bold">${fmt(wo.planned_start_date)}</span>
         </div>
       </div>
     </div>
@@ -458,16 +594,17 @@ function fmt(dt) {
 	return new Date(dt).toLocaleTimeString([], {
 		hour: "2-digit",
 		minute: "2-digit",
+		hour12: false,
 	});
 }
 
-function statusClass(status) {
+function fmtFull(dt) {
+	if (!dt) return "-";
+	const d = new Date(dt);
 	return (
-		{
-			Draft: "border-blue-500 text-black",
-			"In Progress": "border-orange-500 text-black",
-			Completed: "border-green-500 text-black",
-		}[status] || "border-gray-400 text-black"
+		d.toLocaleDateString() +
+		" " +
+		d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
 	);
 }
 
@@ -475,27 +612,159 @@ function statusClass(status) {
 </script>
 
 <style scoped>
-/* Tooltip styling */
-.event-tooltip {
-	z-index: 9999;
-	/* pointer-events: none; REMOVED to allow hovering over tooltip */
-}
-div {
-	color: black;
+/* FullCalendar Premium Overrides */
+:deep(.fc) {
+	--fc-border-color: #f8fafc; /* Ultra soft lines */
+	--fc-today-bg-color: #f8fbff;
+	--fc-highlight-color: rgba(59, 130, 246, 0.04);
+	--fc-now-indicator-color: #3b82f6;
+	font-family:
+		"Inter",
+		system-ui,
+		-apple-system,
+		sans-serif;
+	border: none !important;
 }
 
-:deep(.fc-daygrid-event),
-:deep(.fc-timegrid-event) {
+/* Scrollbar Polish */
+:deep(.fc-scroller) {
+	scrollbar-width: thin;
+	scrollbar-color: #e2e8f0 transparent;
+}
+
+:deep(.fc-scroller::-webkit-scrollbar) {
+	width: 6px;
+	height: 6px;
+}
+
+:deep(.fc-scroller::-webkit-scrollbar-thumb) {
+	background: #e2e8f0;
+	border-radius: 10px;
+}
+
+:deep(.fc-scroller::-webkit-scrollbar-track) {
+	background: transparent;
+}
+
+:deep(.fc-header-toolbar) {
+	padding: 1.5rem 2rem !important;
+	margin-bottom: 0 !important;
+	background: #fff;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+:deep(.fc-toolbar-title) {
+	font-size: 1.125rem !important;
+	font-weight: 900 !important;
+	color: #0f172a;
+	letter-spacing: -0.03em;
+}
+
+:deep(.fc-button) {
+	background: #fff !important;
+	border: 1px solid #e2e8f0 !important;
+	color: #64748b !important;
+	font-weight: 800 !important;
+	font-size: 0.65rem !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.075em !important;
+	padding: 0.6rem 1.25rem !important;
+	border-radius: 1rem !important;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+	box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+	border-bottom-width: 2px !important;
+}
+
+:deep(.fc-button:hover) {
+	background: #f8fafc !important;
+	color: #0f172a !important;
+	border-color: #cbd5e1 !important;
+	transform: translateY(-1px);
+}
+
+:deep(.fc-button-active) {
+	background: #f1f5f9 !important;
+	color: #3b82f6 !important;
+	border-color: #3b82f6 !important;
+	border-bottom-width: 2px !important;
+	box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+:deep(.fc-col-header-cell) {
+	padding: 1.25rem 0 !important;
+	background: #fff;
+	border-bottom: 1px solid #f1f5f9 !important;
+}
+
+:deep(.fc-col-header-cell-cushion) {
+	font-size: 0.65rem !important;
+	font-weight: 900 !important;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	color: #94a3b8;
+	text-decoration: none !important;
+}
+
+:deep(.fc-timegrid-slot-label-cushion) {
+	font-size: 0.6rem !important;
+	font-weight: 800 !important;
+	color: #cbd5e1;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+/* Now Indicator Glow */
+:deep(.fc-now-indicator-line) {
+	border-width: 1px !important;
+	box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+:deep(.fc-now-indicator-arrow) {
+	border-color: #3b82f6 !important;
+	border-width: 6px !important;
+	margin-top: -6px !important;
+}
+
+/* Event Card Luxury */
+:deep(.fc-v-event) {
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	margin: 0 !important;
+	padding: 1px 2px !important;
 	overflow: visible !important;
-	z-index: 1;
-}
-
-:deep(.fc-daygrid-event:hover),
-:deep(.fc-timegrid-event:hover) {
-	z-index: 50 !important;
+	transition: z-index 0.3s !important;
 }
 
 :deep(.fc-event-main) {
-	overflow: visible !important;
+	padding: 0 !important;
+	background: transparent !important;
+	height: 100%;
+}
+
+:deep(.fc-timegrid-event-harness) {
+	margin: 0 !important;
+}
+
+/* Tooltip Animation */
+.event-tooltip {
+	z-index: 9999;
+	animation: tooltipFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	transform-origin: left center;
+}
+
+@keyframes tooltipFadeIn {
+	from {
+		opacity: 0;
+		transform: scale(0.95) translateX(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1) translateX(0);
+	}
+}
+
+div {
+	color: inherit;
 }
 </style>

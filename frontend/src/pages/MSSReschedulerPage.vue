@@ -1,17 +1,26 @@
 <template>
-    <div class="p-6 bg-gray-50 min-h-screen font-sans space-y-6">
-        <h2>Rescheduler Screen</h2>
-        <SectionCard title="">
-            <WorkOrderRescheduler />
-        </SectionCard>
-    </div>
+	<div class="p-4 sm:p-8 bg-gray-50 min-h-screen font-sans space-y-8">
+		<div class="flex items-center justify-between border-b border-gray-200 pb-4 rounded-1xl">
+			<div>
+				<h1 class="text-2xl font-bold text-gray-900 tracking-tight">
+					Work Order Rescheduler
+				</h1>
+				<p class="text-sm text-gray-500 mt-1">
+					Manage and optimize production schedules with ease
+				</p>
+			</div>
+		</div>
+
+		<div
+			class="rounded-1xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md rounded-sm"
+		>
+			<WorkOrderRescheduler />
+		</div>
+	</div>
 </template>
 
 <script setup>
-    
-import { reactive } from "vue";
 import WorkOrderRescheduler from "../components/WorkOrderRescheduler.vue";
-import SectionCard from "../components/layout/SectionCard.vue";
 </script>
 
 <style lang="scss" scoped></style>

@@ -1,0 +1,1 @@
+import{_ as s,c as o,b as a,J as c,t as n,o as r}from"./style.js";const i={props:{title:String}},l={class:"p-2 mb-4"},_={class:"text-lg font-semibold mb-3"};function d(t,p,e,f,m,S){return r(),o("div",l,[a("h3",_,n(e.title),1),c(t.$slots,"default")])}const h=s(i,[["render",d]]);export{h as S};

@@ -196,6 +196,7 @@
 						</th>
 						<th class="border p-2 whitespace-nowrap text-right bg-gray-100">Gap</th>
 						<th class="border p-2 whitespace-nowrap bg-gray-100">Status</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">RM Status</th>
 						<th class="border p-2 whitespace-nowrap text-center bg-gray-100">
 							Preview
 						</th>
@@ -264,6 +265,19 @@
 									{{ r.validation_error }}
 								</span>
 								<span v-else class="text-green-600 text-xs font-medium"> OK </span>
+							</td>
+
+							<td class="border p-2 whitespace-nowrap text-center">
+								<span
+									class="px-2 py-0.5 rounded-full text-xs font-medium"
+									:class="
+										r.rm_sufficient
+											? 'bg-green-100 text-green-800'
+											: 'bg-red-100 text-red-800'
+									"
+								>
+									{{ r.rm_sufficient ? "Sufficient" : "Shortage" }}
+								</span>
 							</td>
 
 							<td class="border p-2 text-center whitespace-nowrap">
@@ -519,7 +533,10 @@ function sync() {
 					adjustable_rm_percentage: r.adjustable_rm_percentage,
 					total_adjusted_qty: r.required_qty,
 					total_base_qty: r.base_required_qty,
+					is_sufficient: r.is_sufficient,
 				}));
+
+			const rm_sufficient = lineRMs.every((r) => r.is_sufficient);
 
 			return {
 				...b,
@@ -528,6 +545,7 @@ function sync() {
 				machine: b.selected_workstation,
 				mould: b.selected_mould || null,
 				raw_materials: lineRMs,
+				rm_sufficient: rm_sufficient,
 				validation_error: null,
 			};
 		});
