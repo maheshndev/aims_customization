@@ -77,7 +77,7 @@
 				<tbody class="divide-y divide-gray-100">
 					<tr
 						v-for="(item, index) in filteredItems"
-						:key="item.bo_name + item.item_code"
+						:key="item.bo_name + item.item_code + item.idx"
 						:class="[
 							'hover:bg-gray-50 transition',
 							selectedItems.includes(item) ? 'bg-blue-50' : '',

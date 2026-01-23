@@ -198,8 +198,15 @@ def get_blanket_orders(search_text=None, customer=None, month=None, year=None, l
             """
             params.extend([date_filter["end"], date_filter["start"]])
         elif date_filter["type"] == "month_only":
-            sql += " AND MONTH(order_date)=%s" 
-            params.append(date_filter["month"]) 
+            sql += """
+                AND (
+                    (MONTH(from_date) <= MONTH(to_date) AND MONTH(from_date) <= %s AND MONTH(to_date) >= %s)
+                    OR (MONTH(from_date) > MONTH(to_date) AND (%s >= MONTH(from_date) OR %s <= MONTH(to_date)))
+                    OR (to_date IS NULL AND MONTH(from_date) <= %s)
+                )
+            """
+            m = date_filter["month"]
+            params.extend([m, m, m, m, m])
 
     sql += " ORDER BY order_date DESC LIMIT %s"
     params.append(limit)
@@ -375,10 +382,27 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
             if key in bo_item_map:
                 bo_item_map[key] = flt(c["consumed_qty"])
 
+    # Distribution logic: FIFO-style across multiple lines for the same item in a BO
+    # We maintain the pool of consumed quantity and subtract as we go.
+    consumed_pool = bo_item_map.copy()
+
     result = []
+    # Make sure rows are ordered by idx as fetched from SQL
     for r in rows:
-        consumed_qty = bo_item_map.get((r["bo_name"], r["item_code"]), 0)
-        remaining_bo_qty = flt(r["order_qty"]) - consumed_qty
+        key = (r["bo_name"], r["item_code"])
+        order_qty = flt(r["order_qty"])
+        
+        # How much of this row is already "consumed"?
+        pool_qty = consumed_pool.get(key, 0)
+        
+        # Amount to subtract from THIS line
+        subtracted = min(order_qty, pool_qty)
+        
+        # Update pool
+        consumed_pool[key] = pool_qty - subtracted
+        
+        remaining_bo_qty = order_qty - subtracted
+        row_consumed_qty = subtracted
 
         if remaining_bo_qty <= 0:
             continue
@@ -391,11 +415,12 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
             "to_date": r["to_date"],
             "item_code": r["item_code"],
             "item_name": r["item_name"],
-            "order_qty": flt(r["order_qty"]),
+            "order_qty": order_qty,
             "remaining_bo_qty": remaining_bo_qty,
             "schedule_qty": 0,
-            "consumed_qty": consumed_qty,
+            "consumed_qty": row_consumed_qty,
             "rate": flt(r["rate"]),
+            "idx": r["idx"], # Added idx
         })
 
     return result
@@ -578,7 +603,8 @@ def get_sales_orders(search_text: str = None, month: str = None, year: str =None
                 soi.qty,
                 soi.item_group,
                 soi.rate,
-                soi.bom_no
+                soi.bom_no,
+                soi.idx
             FROM `tabSales Order Item` soi
             WHERE soi.parent = %s
             ORDER BY soi.idx

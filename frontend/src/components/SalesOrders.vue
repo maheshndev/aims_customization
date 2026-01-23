@@ -119,7 +119,7 @@
 				<tbody class="divide-y divide-gray-100">
 					<tr
 						v-for="(item, index) in fgItems"
-						:key="item.item_code"
+						:key="item.sales_order_id + item.item_code + item.idx"
 						class="hover:bg-gray-50"
 						:class="[
 							'hover:bg-gray-50 transition',
