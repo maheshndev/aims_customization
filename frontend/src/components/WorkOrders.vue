@@ -87,9 +87,11 @@
 						</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">#</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">Work Order ID</th>
-						<th class="border px-3 py-2 text-left whitespace-nowrap">SO ID</th>
+						<th class="border px-3 py-2 text-left whitespace-nowrap">
+							Sales Order ID
+						</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">Status</th>
-						<th class="border px-3 py-2 text-left whitespace-nowrap">Item</th>
+						<th class="border px-3 py-2 text-left whitespace-nowrap">Item Code</th>
 						<th class="border px-3 py-2 text-right whitespace-nowrap">
 							Work Order Qty
 						</th>
@@ -104,13 +106,13 @@
 						<th class="border px-3 py-2 text-right whitespace-nowrap">
 							Disassembled Qty
 						</th>
-						<th class="border px-3 py-2 text-left whitespace-nowrap">BOM No</th>
+						<th class="border px-3 py-2 text-left whitespace-nowrap">BOM ID</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">FG Warehouse</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">
 							Scrap Warehouse
 						</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">WIP Warehouse</th>
-						<th class="border px-3 py-2 text-left whitespace-nowrap">Mould No.</th>
+						<th class="border px-3 py-2 text-left whitespace-nowrap">Mould ID</th>
 						<th class="border px-3 py-2 text-left whitespace-nowrap">Company</th>
 					</tr>
 				</thead>

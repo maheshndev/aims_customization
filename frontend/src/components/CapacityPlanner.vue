@@ -172,16 +172,14 @@
 							<input type="checkbox" v-model="selectAll" @change="toggleAll" />
 						</th>
 						<th class="border p-2 bg-gray-100">#</th>
-						<th class="border p-2 whitespace-nowrap bg-gray-100">Customer</th>
-						<th class="border p-2 whitespace-nowrap bg-gray-100">Sales Order</th>
-						<th
-							class="border p-2 whitespace-nowrap relative group cursor-pointer bg-gray-100"
-						>
-							SO Item Code
-						</th>
-						<th class="border p-2 whitespace-nowrap bg-gray-100">BOM</th>
-						<th class="border p-2 whitespace-nowrap bg-gray-100">Machine</th>
-						<th class="border p-2 whitespace-nowrap bg-gray-100">Mould</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">Customer Name</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">Sales Order ID</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">SO Item Code</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">Delivery Date</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">BOM ID</th>
+
+						<th class="border p-2 whitespace-nowrap bg-gray-100">Machine Name</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">Mould ID</th>
 						<th class="border p-2 whitespace-nowrap text-right bg-gray-100">
 							Schedule Qty
 						</th>
@@ -221,7 +219,17 @@
 							</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.sales_order }}</td>
 							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">
-								{{ r.item_code }}
+								<div
+									:style="{ paddingLeft: r.level * 20 + 'px' }"
+									class="flex items-center gap-1"
+								>
+									<span
+										v-if="r.level > 0"
+										class="text-xs bg-gray-100 text-gray-500 px-1 rounded"
+										>L{{ r.level }}</span
+									>
+									<span>{{ r.item_code }}</span>
+								</div>
 								<!-- Tooltip -->
 								<div
 									class="absolute left-1/2 transform -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap"
@@ -229,6 +237,14 @@
 									{{ r.item_name }}
 								</div>
 							</td>
+							<td class="border p-2 whitespace-nowrap">
+								{{
+									r.delivery_date
+										? new Date(r.delivery_date).toLocaleDateString()
+										: "—"
+								}}
+							</td>
+
 							<td class="border p-2 whitespace-nowrap">{{ r.bom_no }}</td>
 							<td class="border p-2 whitespace-nowrap">{{ r.machine }}</td>
 							<td class="border p-2 whitespace-nowrap relative group cursor-pointer">
@@ -540,8 +556,9 @@ function sync() {
 
 			return {
 				...b,
-				rowKey: `${b.bom_no}_${b.sales_order}_${i}`,
+				rowKey: `${b.bom_no}_${b.sales_order}_${b.level || 0}_${i}`,
 				schedule_qty: Number(b.required_for_selected_qty || 0),
+
 				machine: b.selected_workstation,
 				mould: b.selected_mould || null,
 				raw_materials: lineRMs,
@@ -567,7 +584,26 @@ function toggleAll() {
 
 watch(selectedKeys, (val) => {
 	selectAll.value = rows.value.length > 0 && val.length === rows.value.length;
+
+	// Auto-default planStart if at least one row is selected
+	if (val.length > 0) {
+		const dates = selectedRows.value
+			.map((r) => r.delivery_date)
+			.filter(Boolean)
+			.map((d) => new Date(d));
+
+		if (dates.length > 0) {
+			const earliest = new Date(Math.min(...dates));
+			const todayDt = new Date();
+			todayDt.setHours(0, 0, 0, 0);
+
+			// Use max(the earliest SO date, today)
+			const target = earliest < todayDt ? todayDt : earliest;
+			planStart.value = target.toISOString().slice(0, 10);
+		}
+	}
 });
+
 const hasValidationErrors = computed(() => selectedRows.value.some((r) => r.validation_error));
 
 async function validateCapacity(customLines = null) {
@@ -737,6 +773,7 @@ async function togglePreview(row) {
 				bom_no: row.bom_no,
 				raw_materials: row.raw_materials,
 				sales_order: row.sales_order,
+				delivery_date: row.delivery_date,
 			},
 		],
 	};
@@ -774,6 +811,7 @@ async function createWorkOrders() {
 				bom_no: r.bom_no,
 				raw_materials: r.raw_materials,
 				sales_order: r.sales_order,
+				delivery_date: r.delivery_date,
 			})),
 		};
 

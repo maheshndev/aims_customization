@@ -40,7 +40,7 @@
 						</th>
 						<th class="px-3 py-2 border whitespace-nowrap">#</th>
 						<th class="px-3 py-2 border whitespace-nowrap">Sales Order ID</th>
-						<th class="px-3 py-2 border whitespace-nowrap">Customer</th>
+						<th class="px-3 py-2 border whitespace-nowrap">Customer Name</th>
 						<th class="px-3 py-2 border text-right whitespace-nowrap">Total Qty</th>
 						<th class="px-3 py-2 border whitespace-nowrap">Month</th>
 						<th class="px-3 py-2 border whitespace-nowrap">Transaction</th>
@@ -111,7 +111,7 @@
 						<th class="px-3 py-2 border text-right whitespace-nowrap">Qty</th>
 						<th class="px-3 py-2 border whitespace-nowrap">Item Group</th>
 						<th class="px-3 py-2 border text-right whitespace-nowrap">Rate</th>
-						<th class="px-3 py-2 border whitespace-nowrap">BOM No</th>
+						<th class="px-3 py-2 border whitespace-nowrap">BOM ID</th>
 						<th class="px-3 py-2 border whitespace-nowrap">Action</th>
 					</tr>
 				</thead>

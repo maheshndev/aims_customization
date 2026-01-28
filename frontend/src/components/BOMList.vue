@@ -98,7 +98,17 @@
 						<td
 							class="px-2 py-2 border whitespace-nowrap relative group cursor-pointer"
 						>
-							{{ bom.item_code }}
+							<div
+								:style="{ paddingLeft: bom.level * 20 + 'px' }"
+								class="flex items-center gap-1"
+							>
+								<span
+									v-if="bom.level > 0"
+									class="text-xs bg-gray-100 text-gray-500 px-1 rounded"
+									>L{{ bom.level }}</span
+								>
+								<span>{{ bom.item_code }}</span>
+							</div>
 							<!-- Tooltip -->
 							<div
 								class="absolute left-1/2 transform -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap"
@@ -106,6 +116,7 @@
 								{{ bom.item_name }}
 							</div>
 						</td>
+
 						<td class="px-2 py-2 border whitespace-nowrap">{{ bom.bom_qty }}</td>
 						<td class="px-2 py-2 border text-xs whitespace-nowrap">
 							<span class="px-2 py-1 bg-gray-100 rounded-full">{{
@@ -193,11 +204,11 @@ const search = ref("");
 const headers = [
 	"#",
 	"Sales Order",
-	"BOM",
+	"BOM ID",
 	"FG Item",
-	"Qty",
+	"BOM Qty",
 	"Type",
-	"Customer",
+	"Customer Name",
 	"Req Qty",
 	"Cavity",
 	"PCS wt",
@@ -270,7 +281,7 @@ const fetchBOMs = async () => {
 			const firstMould = b.moulds?.[0];
 			return {
 				...b,
-				row_uid: `${b.sales_order}::${b.item_code}::${b.bom_no}`,
+				row_uid: `${b.sales_order}::${b.item_code}::${b.bom_no}::${b.level || 0}`,
 				bom_operations: b.bom_operations || [],
 				moulds: b.moulds || [],
 				selected_workstation: b.bom_operations?.[0]?.workstation || "",

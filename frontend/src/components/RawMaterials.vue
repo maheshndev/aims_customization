@@ -54,7 +54,7 @@
 							Sales Order ID
 						</th>
 
-						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">BOM No</th>
+						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">BOM ID</th>
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							Material Code
 						</th>
@@ -196,10 +196,10 @@ import { api } from "../services/api";
 
 const props = defineProps({
 	boms: { type: Array, default: () => [] },
-	modelValue: { type: Array, default: () => [] },
+	selected: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:modelValue", "raw-material-loaded"]);
+const emit = defineEmits(["update:selected", "raw-material-loaded"]);
 
 const materials = ref([]);
 const selectedRows = ref([]);
@@ -222,7 +222,7 @@ const fetchMaterials = async () => {
 	if (!props.boms.length) {
 		materials.value = [];
 		selectedRows.value = [];
-		emit("update:modelValue", []);
+		emit("update:selected", []);
 		emit("raw-material-loaded", []);
 		return;
 	}
@@ -267,7 +267,7 @@ watch(() => props.boms, fetchMaterials, { deep: true, immediate: true });
 watch(
 	selectedRows,
 	(newSelection) => {
-		emit("update:modelValue", newSelection);
+		emit("update:selected", newSelection);
 	},
 	{ deep: true },
 );
@@ -295,7 +295,7 @@ const refreshRM = async () => {
 };
 
 watch(
-	() => props.modelValue,
+	() => props.selected,
 	(newModelValue) => {
 		if (!newModelValue) return;
 

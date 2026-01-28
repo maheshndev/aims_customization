@@ -158,8 +158,8 @@ export default {
 		const searchText = ref("");
 
 		const headers = [
-			"Customer",
-			"Blanket Order No.",
+			"Customer Name",
+			"Blanket Order ID.",
 			"Item Code",
 			"Item Name",
 			"Qty",

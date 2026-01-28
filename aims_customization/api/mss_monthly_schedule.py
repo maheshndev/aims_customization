@@ -662,19 +662,24 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
     so_items = frappe.get_all(
         "Sales Order Item",
         filters={"parent": ["in", list(valid_so_names)]},
-        fields=["parent", "item_code", "qty", "bom_no", "blanket_order"]
+        fields=["parent", "item_code", "qty", "bom_no", "blanket_order", "delivery_date"]
     )
 
-    for so_item in so_items:
-        so_name = so_item.parent
-        item_code = so_item.item_code
-        required_qty = flt(so_item.qty or 0)
-        forced_bom = so_item.bom_no
+    def process_item_recursive(item_code, required_qty, so_name, customer, blanket_order, delivery_date=None, forced_bom=None, level=0, processed_items=None):
+
+        if processed_items is None:
+            processed_items = set()
+        
+        # Avoid infinite recursion (though BOMs shouldn't have circular refs)
+        item_key = (item_code, forced_bom or "")
+        if item_key in processed_items:
+            return []
+        processed_items.add(item_key)
 
         bom_filters = {"name": forced_bom} if forced_bom else {
             "item": item_code,
             "is_active": 1,
-            "is_default":1
+            "is_default": 1
         }
 
         boms = frappe.get_all(
@@ -685,14 +690,14 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
         )
 
         if not boms:
-            continue
+            return []
 
         item_data = frappe.db.get_value(
             "Item",
             item_code,
             [
                 "pcs_wt", "runner_wt", "shot_wt",
-                "gross_wt", "cycle_time", "cavity","item_name"
+                "gross_wt", "cycle_time", "cavity", "item_name"
             ],
             as_dict=True
         ) or {}
@@ -707,23 +712,21 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
         moulds = []
         if mould_nos:
             missing = [m for m in mould_nos if m not in mould_cache]
-
             if missing:
                 mould_details = frappe.get_all(
                     "Mould",
                     filters={"name": ["in", list(set(missing))]},
                     fields=["name as mould_no", "mould_name", "cavity_count"]
                 )
-
                 for m in mould_details:
                     mould_cache[m.mould_no] = {
                         "mould_no": m.mould_no,
                         "mould_name": m.mould_name or "",
                         "cavity_count": int(flt(m.cavity_count or 0))
                     }
-
             moulds = [mould_cache[m] for m in mould_nos if m in mould_cache]
 
+        node_results = []
         for bom in boms:
             bom_no = bom.bom_no
 
@@ -757,10 +760,10 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "docstatus": ["!=", 2]
             })
 
-            result.append({
+            node_results.append({
                 "sales_order": so_name,
-                "blanket_order": so_item.blanket_order or "",
-                "customer": customer_map.get(so_name),
+                "blanket_order": blanket_order or "",
+                "customer": customer,
                 "item_code": item_code,
                 "item_name": item_data.get("item_name"),
                 "bom_no": bom_no,
@@ -776,8 +779,46 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "bom_operations": bom_operations,
                 "moulds": moulds,
                 "required_for_selected_qty": required_qty,
-                "has_work_order": bool(existing_wo)
+                "has_work_order": bool(existing_wo),
+                "level": level,
+                "delivery_date": delivery_date
             })
+
+            # Recursively process sub-assemblies
+            for b_item in bom_items:
+                # Check if this item has a BOM (it's a sub-assembly)
+                sub_bom = frappe.db.get_value("BOM", {"item": b_item.rm_item_code, "is_active": 1, "is_default": 1}, "name")
+                if sub_bom:
+                    # Calculate required qty for sub-assembly
+                    # (required_qty / bom_qty) * qty_per_bom
+                    sub_req_qty = (required_qty / (flt(bom.bom_qty) or 1.0)) * flt(b_item.qty_per_bom)
+                    sub_assemblies = process_item_recursive(
+                        item_code=b_item.rm_item_code,
+                        required_qty=sub_req_qty,
+                        so_name=so_name,
+                        customer=customer,
+                        blanket_order=blanket_order,
+                        delivery_date=delivery_date,
+                        level=level + 1,
+                        processed_items=processed_items
+                    )
+
+                    node_results.extend(sub_assemblies)
+        
+        return node_results
+
+    for so_item in so_items:
+        result.extend(process_item_recursive(
+            item_code=so_item.item_code,
+            required_qty=flt(so_item.qty or 0),
+            so_name=so_item.parent,
+            customer=customer_map.get(so_item.parent),
+            blanket_order=so_item.blanket_order,
+            delivery_date=so_item.delivery_date,
+            forced_bom=so_item.bom_no,
+            level=0
+        ))
+
 
     return result
 
@@ -1113,14 +1154,25 @@ def validate_capacity(payload):
                  t_parts = [int(x) for x in str(custom_start_time).split(":")]
                  start_dt_override = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
 
+            delivery_date = ln.get("delivery_date")
+            delivery_date_dt = None
+            if delivery_date:
+                delivery_date_dt = combine_datetime(getdate(delivery_date), time(6, 0))
+
             available = 0.0
             for w in windows:
                 st, et = w["start"], w["end"]
-                if start_dt_override:
-                     st = max(st, start_dt_override)
                 
-                if st < et:
-                     available += (et - st).total_seconds() / 3600 * utilization / 100
+                # Effective start is max of window start, global start override, and SO delivery date
+                effective_st = st
+                if start_dt_override:
+                     effective_st = max(effective_st, start_dt_override)
+                if delivery_date_dt:
+                     effective_st = max(effective_st, delivery_date_dt)
+                
+                if effective_st < et:
+                     available += (et - effective_st).total_seconds() / 3600 * utilization / 100
+
 
             result.append({
                 "rowKey": ln["row_key"],
@@ -1175,6 +1227,12 @@ def preview_capacity_plan(payload):
         now = frappe.utils.now_datetime()
         current_start = availability.get("latest_end") or default_start
         current_start = max(now, current_start)
+
+        delivery_date = ln.get("delivery_date")
+        if delivery_date:
+            delivery_date_dt = combine_datetime(getdate(delivery_date), time(6, 0))
+            current_start = max(current_start, delivery_date_dt)
+
 
         preview = []
         shift_no = 1
@@ -1238,7 +1296,7 @@ def create_work_orders_from_mss(payload):
                 failed.append(f"{ln['item_code']} – Qty must be > 0")
                 continue
 
-            so = frappe.get_doc("Sales Order", ln["sales_order"])
+            so = frappe.get_doc("Sales Order", ln["sales_order"]) or ""
             fg, wip = resolve_warehouses(so.company, ln["item_code"])
 
             windows = get_shift_windows(
@@ -1253,10 +1311,20 @@ def create_work_orders_from_mss(payload):
                  t_parts = [int(x) for x in str(custom_start_time).split(":")]
                  default_start = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
 
+            delivery_date = ln.get("delivery_date")
+            delivery_date_dt = None
+            if delivery_date:
+                delivery_date_dt = combine_datetime(getdate(delivery_date), time(6, 0))
+
             availability = get_last_wo_end(ln["machine"], ln.get("mould"))
             now = frappe.utils.now_datetime()
             current_start = availability.get("latest_end") or default_start
             current_start = max(now, current_start)
+
+            if delivery_date_dt:
+                current_start = max(current_start, delivery_date_dt)
+
+
 
             for w in windows:
                 if remaining <= 0:
@@ -1313,12 +1381,12 @@ def create_work_orders_from_mss(payload):
                     {
                         "company": so.company,
                         "production_item": ln["item_code"],
-                        "bom_no": ln["bom_no"],
-                        "mould": ln.get("mould"),
-                        "sales_order": ln["sales_order"],
+                        "bom_no": ln["bom_no"] ,
+                        "mould": ln.get("mould") or "",
+                        "sales_order": ln["sales_order"] if frappe.db.get_value("BOM", ln["bom_no"], "bom_type") == "FG" else "", 
                         "fg_warehouse": fg,
                         "wip_warehouse": wip,
-                        "qty": used,
+                        "qty": used or 1,
                         "planned_start_date": st,
                         "planned_end_date": actual_end,
                         "transfer_material_against": "Job Card",
