@@ -77,14 +77,14 @@
 								Status
 							</th>
 							<th
-								class="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+								class="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 min-w-[200px]"
 							>
-								Job Cards
+								Timeline
 							</th>
 							<th
 								class="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 min-w-[200px]"
 							>
-								Timeline
+								Job Card Timeline
 							</th>
 						</tr>
 					</thead>
@@ -97,6 +97,7 @@
 								</td>
 							</tr>
 						</template>
+
 						<template v-else-if="!rows.length">
 							<tr>
 								<td colspan="9" class="px-3 py-16 text-center">
@@ -159,27 +160,18 @@
 									<StatusBadge :status="r.status" />
 								</td>
 
-								<!-- Job Cards Column -->
-								<td class="px-2 py-2">
-									<div class="flex flex-wrap gap-1">
-										<template v-for="bar in r.timeline" :key="bar.label">
-											<a
-												v-if="bar.label.startsWith('Job')"
-												:href="`/app/job-card/${bar.label}`"
-												target="_blank"
-												class="px-1.5 py-0.5 rounded text-[9px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 transition whitespace-nowrap"
-											>
-												{{ bar.label }}
-											</a>
-										</template>
-									</div>
-								</td>
-
 								<td class="px-2 py-2">
 									<GanttMini
 										:bars="
 											r.timeline.filter((b) => !b.label.startsWith('Job'))
 										"
+									/>
+								</td>
+
+								<!-- Job Cards Timeline Column -->
+								<td class="px-2 py-2">
+									<GanttMini
+										:bars="r.timeline.filter((b) => b.label.startsWith('Job'))"
 									/>
 								</td>
 							</tr>
