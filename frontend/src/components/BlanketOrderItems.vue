@@ -272,6 +272,34 @@ export default {
 				return;
 			}
 
+			const invalidItemsDetails = [];
+			selectedItems.value.forEach((item) => {
+				if (!item.schedule_qty || item.schedule_qty <= 0) {
+					// Find the index in filteredItems to get the visible row number
+					// logical row number is index + 1
+					const rowIndex = filteredItems.value.findIndex(
+						(fi) =>
+							fi.bo_name === item.bo_name &&
+							fi.item_code === item.item_code &&
+							fi.idx === item.idx,
+					);
+					if (rowIndex !== -1) {
+						invalidItemsDetails.push(`Row #${rowIndex + 1} (${item.item_code})`);
+					}
+				}
+			});
+
+			if (invalidItemsDetails.length) {
+				showMessage({
+					title: "Invalid Quantity",
+					message:
+						"<b>Please Enter Schedule Qty greater than 0 for:</b><br>" +
+						invalidItemsDetails.join("<br>"),
+					indicator: "orange",
+				});
+				return;
+			}
+
 			// Date Logic
 			const today = frappe.datetime.nowdate();
 			const uniqueBOs = [...new Set(selectedItems.value.map((i) => i.bo_name))];
