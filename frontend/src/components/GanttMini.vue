@@ -1,12 +1,12 @@
 <template>
 	<div
 		v-if="hasBars"
-		class="relative h-14 bg-gray-50/50 border border-gray-100/50 rounded-lg overflow-hidden group/gantt"
+		class="relative h-10 bg-gray-50/50 border border-gray-100/50 rounded-lg overflow-hidden group/gantt"
 	>
 		<div
 			v-for="(bar, index) in normalizedBars"
 			:key="index"
-			class="absolute rounded-md text-[9px] font-bold text-white px-2 flex items-center whitespace-nowrap shadow-sm transition-all hover:shadow-md cursor-help z-10"
+			class="absolute h-6 top-2 rounded-md text-[9px] font-bold text-white px-2 flex items-center whitespace-nowrap shadow-sm transition-all hover:h-7 hover:top-1.5 hover:shadow-md cursor-help z-10"
 			:style="getBarStyle(bar)"
 			:title="`${bar.label}: ${bar.startStr} to ${bar.endStr}`"
 		>
@@ -65,16 +65,12 @@ function getBarStyle(bar) {
 	const left = ((bar.start - minTime.value) / total) * 100;
 	const width = ((bar.end - bar.start) / total) * 100;
 
-	const isJob = bar.label.startsWith("Job");
-
 	return {
 		left: `${left}%`,
 		width: `${Math.max(width, 3)}%`,
-		backgroundColor: isJob
+		backgroundColor: bar.label.startsWith("Job")
 			? "#6366f1" // Indigo 500
 			: "#10b981", // Emerald 500
-		top: isJob ? "55%" : "10%",
-		height: "35%",
 	};
 }
 </script>
