@@ -182,7 +182,7 @@
 		</div>
 
 		<!-- Charts Section -->
-		<div v-if="rows.length" class="hidden sm:block">
+		<div v-if="rows.length" class="block sm:hidden">
 			<ProductionCharts :rows="rows" />
 		</div>
 	</div>
