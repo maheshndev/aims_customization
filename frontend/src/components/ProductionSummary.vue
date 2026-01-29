@@ -35,6 +35,34 @@
 			<Kpi label="Avg Completion" :value="avgProgress + '%'" />
 		</div>
 
+		<!-- Legend Section -->
+		<div
+			class="flex flex-wrap gap-4 text-[10px] text-gray-500 bg-white p-2 rounded-xl border border-gray-100 shadow-sm"
+		>
+			<span class="font-bold text-gray-400 uppercase tracking-wider">Legend:</span>
+			<div class="flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+				<span>Work Order</span>
+			</div>
+			<div class="flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+				<span>Job Card</span>
+			</div>
+			<div class="w-px h-3 bg-gray-200 mx-1"></div>
+			<div class="flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-emerald-100 border border-emerald-200"></span>
+				<span>Completed</span>
+			</div>
+			<div class="flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-indigo-100 border border-indigo-200"></span>
+				<span>In Production</span>
+			</div>
+			<div class="flex items-center gap-1.5">
+				<span class="w-2 h-2 rounded-full bg-amber-100 border border-amber-200"></span>
+				<span>Planned</span>
+			</div>
+		</div>
+
 		<!-- Table Section -->
 		<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
 			<div class="overflow-x-auto">
@@ -122,8 +150,10 @@
 								>
 									{{ index + 1 }}
 								</td>
-								<td class="px-2 py-2">
-									<div class="font-bold text-gray-800 text-xs">
+								<td class="px-2 py-2" :title="r.item_name">
+									<div
+										class="font-bold text-gray-800 text-xs truncate max-w-[200px]"
+									>
 										{{ r.item_name }}
 									</div>
 									<div

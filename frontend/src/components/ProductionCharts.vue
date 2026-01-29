@@ -1,9 +1,7 @@
 <template>
-	<div
-		class="grid lg:grid-cols-2 2xl:grid-cols-2 sm:grid-cols-1 md:grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-2 mt-2"
-	>
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-4">
 		<!-- Quantity Overview -->
-		<div class="bg-white p-2 sm:p-2 rounded-xl border border-gray-100 shadow-sm min-h-[300px]">
+		<div class="bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]">
 			<h4
 				class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-3 sm:mb-4 flex items-center"
 			>
@@ -16,7 +14,7 @@
 		</div>
 
 		<!-- Status Breakdown -->
-		<div class="bg-white p-2 sm:p-2 rounded-xl border border-gray-100 shadow-sm min-h-[300px]">
+		<div class="bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]">
 			<h4
 				class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-3 sm:mb-4 flex items-center"
 			>
@@ -27,11 +25,10 @@
 				<Doughnut :data="statusData" :options="doughnutOptions" />
 			</div>
 		</div>
-	</div>
-	<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mt-4">
-		<!-- Progress Distribution (Spans 2 on XL) -->
+
+		<!-- Progress Distribution (Full Width) -->
 		<div
-			class="md:col-span-2 xl:col-span-4 bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]"
+			class="md:col-span-2 bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]"
 		>
 			<h4
 				class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-3 sm:mb-4 flex items-center"
@@ -44,9 +41,9 @@
 			</div>
 		</div>
 
-		<!-- Production Trend (Full width) -->
+		<!-- Production Trend (Full Width) -->
 		<div
-			class="md:col-span-2 xl:col-span-4 bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]"
+			class="md:col-span-2 bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]"
 		>
 			<h4
 				class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-3 sm:mb-4 flex items-center"
@@ -126,13 +123,22 @@ const barOptions = {
 	responsive: true,
 	maintainAspectRatio: false,
 	plugins: {
-		legend: { display: false },
+		legend: { display: false }, // Legend redundant for bar chart individual items
 		tooltip: {
 			callbacks: {
 				label: function (context) {
-					return context.parsed.y + "%";
+					const row = props.rows[context.dataIndex];
+					return `${context.parsed.y}% - ${row.status}`;
+				},
+				afterLabel: function (context) {
+					const row = props.rows[context.dataIndex];
+					return `Produced: ${row.produced_qty} / ${row.order_qty}`;
 				},
 			},
+			displayColors: true,
+			backgroundColor: "rgba(0, 0, 0, 0.8)",
+			titleFont: { size: 11 },
+			bodyFont: { size: 10 },
 		},
 	},
 	scales: {
@@ -163,6 +169,7 @@ const qtyData = computed(() => {
 		labels: ["Produced", "Balance"],
 		datasets: [
 			{
+				label: "Quantity",
 				data: [produced, Math.max(total - produced, 0)],
 				backgroundColor: ["#10b981", "#f1f5f9"],
 				borderWidth: 0,
@@ -180,6 +187,17 @@ const doughnutOptions = {
 		legend: {
 			position: "bottom",
 			labels: { usePointStyle: true, font: { size: 9 }, boxWidth: 8, padding: 10 },
+		},
+		tooltip: {
+			callbacks: {
+				label: function (context) {
+					const label = context.label || "";
+					const value = context.parsed;
+					const total = context.chart._metasets[context.datasetIndex].total;
+					const percentage = Math.round((value / total) * 100) + "%";
+					return `${label}: ${value} (${percentage})`;
+				},
+			},
 		},
 	},
 };
@@ -229,7 +247,14 @@ const lineOptions = {
 	responsive: true,
 	maintainAspectRatio: false,
 	plugins: {
-		legend: { display: false },
+		legend: { display: true, labels: { boxWidth: 10, font: { size: 9 } } }, // Enable legend
+		tooltip: {
+			callbacks: {
+				label: function (context) {
+					return `Produced: ${context.parsed.y}`;
+				},
+			},
+		},
 	},
 	scales: {
 		x: {

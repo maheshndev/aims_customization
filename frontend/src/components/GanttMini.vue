@@ -8,7 +8,7 @@
 			:key="index"
 			class="absolute h-6 top-2 rounded-md text-[9px] font-bold text-white px-2 flex items-center whitespace-nowrap shadow-sm transition-all hover:h-7 hover:top-1.5 hover:shadow-md cursor-help z-10"
 			:style="getBarStyle(bar)"
-			:title="`${bar.label}: ${bar.startStr} to ${bar.endStr}`"
+			:title="`${bar.label}\n${bar.startStr} - ${bar.endStr}\nDuration: ${Math.round((bar.end - bar.start) / (1000 * 60 * 60 * 24))} days`"
 		>
 			{{ bar.label }}
 		</div>
