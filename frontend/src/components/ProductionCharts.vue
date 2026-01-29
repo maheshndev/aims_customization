@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="grid lg:grid-cols-2 2xl:grid-cols-2 grid-cols-1 md:grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-2 mt-2"
+		class="grid lg:grid-cols-2 2xl:grid-cols-2 sm:grid-cols-1 md:grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-2 mt-2"
 	>
 		<!-- Quantity Overview -->
 		<div class="bg-white p-2 sm:p-2 rounded-xl border border-gray-100 shadow-sm min-h-[300px]">
