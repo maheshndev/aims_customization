@@ -1354,15 +1354,26 @@ def create_work_orders_from_mss(payload):
                      for op in bom_ops:
                          # Calculate time based on qty
                          batch_size = flt(op.batch_size) or 1.0
-                         # Time in mins for the TOTAL requested qty
+                         
+                         # Standard BOM time calculation
                          time_required = (used / (flt(op.batch_size) or 1.0)) * flt(op.time_in_mins)
+                         
+                         # Capacity Override Logic:
+                         # "set time in minutes after calculating capacity"
+                         # We set the capacity-derived time for the operation that matches the main machine.
+                         if op.workstation == ln["machine"]:
+                             # Capacity Time = (Qty / Pcs Per Hour) * 60 mins
+                             if pcs_hr > 0:
+                                 time_required = (used / pcs_hr) * 60.0
+                         
                          if time_required <= 0:
                              time_required = 0.01
                          
                          op_data = {
                              "operation": op.operation,
                              "workstation": op.workstation,
-                             "time_in_mins": time_required,
+                             "time_in_mins": round(time_required, 2),
+                             "bom_no": ln["bom_no"],  # Added BOM NO
                              "batch_size": batch_size,
                              "description": f"Operation {op.operation} from BOM {ln['bom_no']}",
                              "status": "Pending",

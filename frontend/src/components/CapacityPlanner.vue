@@ -60,11 +60,30 @@
 					<!-- Column 3 -->
 					<div>
 						<label class="block text-xs text-gray-500 mb-1">Plan Start Time</label>
-						<input
-							type="time"
-							v-model="planStartTime"
-							class="border rounded px-2 py-1 w-full"
-						/>
+						<div class="relative">
+							<input
+								type="time"
+								v-model="planStartTime"
+								class="border rounded pl-8 pr-18 py-10 w-full cursor-pointer"
+								@click="
+									$event.target.showPicker ? $event.target.showPicker() : null
+								"
+							/>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none z-50"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
+							</svg>
+						</div>
 					</div>
 
 					<!-- Column 1 (Row 2) -->
@@ -77,7 +96,36 @@
 						/>
 					</div>
 
-					<!-- Column 2 (Row 2) - Action Buttons -->
+					<!-- Column 2 (Row 2) -->
+					<div>
+						<label class="block text-xs text-gray-500 mb-1">Plan End Time</label>
+						<div class="relative">
+							<input
+								type="time"
+								v-model="planEndTime"
+								class="border rounded pl-8 pr-18 py-10 w-full cursor-pointer"
+								@click="
+									$event.target.showPicker ? $event.target.showPicker() : null
+								"
+							/>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none z-50"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
+							</svg>
+						</div>
+					</div>
+
+					<!-- Column 3 (Row 2) - Action Buttons -->
 					<div class="flex gap-2 items-end">
 						<button
 							class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex-1"
@@ -360,6 +408,7 @@ const planStart = ref(today());
 // planStartTime: Time string HH:mm
 const planStartTime = ref("06:00");
 const planEnd = ref(null);
+const planEndTime = ref("22:00");
 
 const showModal = ref(false);
 const modalAction = ref(null);
@@ -599,7 +648,9 @@ watch(selectedKeys, (val) => {
 
 			// Use max(the earliest SO date, today)
 			const target = earliest < todayDt ? todayDt : earliest;
-			planStart.value = target.toISOString().slice(0, 10);
+			const targetStr = target.toISOString().slice(0, 10);
+			planStart.value = targetStr;
+			planEnd.value = targetStr; // Default End Date to Start Date
 		}
 	}
 });
@@ -626,6 +677,7 @@ async function validateCapacity(customLines = null) {
 			plan_start_date: planStart.value,
 			plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
+			plan_end_time: planEndTime.value,
 			lines: targetLines.map((r) => ({
 				row_key: r.rowKey,
 				item_code: r.item_code,
@@ -698,6 +750,7 @@ async function loadPreview() {
 			plan_start_date: planStart.value,
 			plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
+			plan_end_time: planEndTime.value,
 			lines: selectedRows.value.map((r) => ({
 				row_key: r.rowKey,
 				item_code: r.item_code,
@@ -801,6 +854,7 @@ async function createWorkOrders() {
 			plan_start_date: planStart.value,
 			plan_start_time: planStartTime.value,
 			plan_end_date: planEnd.value,
+			plan_end_time: planEndTime.value,
 			lines: selectedRows.value.map((r) => ({
 				item_code: r.item_code,
 				schedule_qty: r.schedule_qty,

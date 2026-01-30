@@ -25,7 +25,8 @@
 				<Doughnut :data="statusData" :options="doughnutOptions" />
 			</div>
 		</div>
-
+	</div>
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-4">
 		<!-- Progress Distribution (Full Width) -->
 		<div
 			class="md:col-span-2 bg-white p-3 sm:p-4 rounded-xl border border-gray-100 shadow-sm min-h-[300px]"
