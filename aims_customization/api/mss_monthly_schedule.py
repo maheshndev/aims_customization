@@ -753,12 +753,15 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 order_by="idx"
             )
 
-            # Check if Work Order exists for this SO + Item
-            existing_wo = frappe.db.exists("Work Order", {
+            # Check existing Work Orders for this SO + Item to calculate remaining qty
+            wos = frappe.get_all("Work Order", {
                 "sales_order": so_name,
                 "production_item": item_code,
-                "docstatus": ["!=", 2]
-            })
+                "docstatus": ["!=", 2]  # Exclude cancelled
+            }, ["qty"])
+            
+            planned_qty = sum(flt(w.qty) for w in wos)
+            remaining_qty = max(0, flt(required_qty) - planned_qty)
 
             node_results.append({
                 "sales_order": so_name,
@@ -778,8 +781,10 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "bom_items": bom_items,
                 "bom_operations": bom_operations,
                 "moulds": moulds,
-                "required_for_selected_qty": required_qty,
-                "has_work_order": bool(existing_wo),
+                "total_so_qty": required_qty,
+                "planned_qty": planned_qty,
+                "required_for_selected_qty": remaining_qty,
+                "has_work_order": remaining_qty <= 0 and planned_qty > 0,
                 "level": level,
                 "delivery_date": delivery_date
             })
@@ -1299,40 +1304,61 @@ def create_work_orders_from_mss(payload):
             so = frappe.get_doc("Sales Order", ln["sales_order"]) or ""
             fg, wip = resolve_warehouses(so.company, ln["item_code"])
 
-            windows = get_shift_windows(
-                payload["plan_start_date"],
-                payload.get("plan_end_date")
-            )
-
-            custom_start_time = payload.get("plan_start_time")
-            default_start = combine_datetime(getdate(payload["plan_start_date"]), time(6, 0))
+            # Determine Windows
+            windows = []
+            selected_slots = ln.get("selected_slots")
             
-            if custom_start_time:
-                 t_parts = [int(x) for x in str(custom_start_time).split(":")]
-                 default_start = combine_datetime(getdate(payload["plan_start_date"]), time(*t_parts[:3]))
+            if selected_slots:
+                for ss in selected_slots:
+                    windows.append({
+                        "start": get_datetime(ss["start"]),
+                        "end": get_datetime(ss["end"]),
+                        "qty": flt(ss.get("qty"))
+                    })
+            else:
+                # Determine Strict Global Window
+                start_date = getdate(payload["plan_start_date"])
+                end_date = getdate(payload.get("plan_end_date") or start_date)
+                
+                def parse_t(t_val, default_h):
+                    if not t_val: return time(default_h, 0)
+                    parts = [int(x) for x in str(t_val).split(":")]
+                    return time(*parts[:3])
 
-            delivery_date = ln.get("delivery_date")
-            delivery_date_dt = None
-            if delivery_date:
-                delivery_date_dt = combine_datetime(getdate(delivery_date), time(6, 0))
+                s_time = parse_t(payload.get("plan_start_time"), 6)
+                e_time = parse_t(payload.get("plan_end_time"), 22)
 
-            availability = get_last_wo_end(ln["machine"], ln.get("mould"))
-            now = frappe.utils.now_datetime()
-            current_start = availability.get("latest_end") or default_start
-            current_start = max(now, current_start)
+                global_start = datetime.combine(start_date, s_time)
+                global_end = datetime.combine(end_date, e_time)
+                
+                if global_end <= global_start:
+                     if end_date == start_date:
+                          global_end = datetime.combine(end_date, time(23, 59, 59, 0))
 
-            if delivery_date_dt:
-                current_start = max(current_start, delivery_date_dt)
+                all_shift_windows = get_shift_windows(start_date, end_date)
+                for w in all_shift_windows:
+                    s = max(w["start"], global_start)
+                    e = min(w["end"], global_end)
+                    if s < e:
+                        windows.append({"start": s, "end": e})
 
-
+            current_start = global_start if not selected_slots else None
 
             for w in windows:
                 if remaining <= 0:
                     break
 
-                st, et = max(w["start"], current_start), w["end"]
-                if st >= et or has_overlap(ln["machine"], ln.get("mould"), st, et):
-                    continue
+                st, et = w["start"], w["end"]
+                
+                # Check overlap with existing WOs
+                if has_overlap(ln["machine"], ln.get("mould"), st, et):
+                     # If the window is partially blocked, allocate_qty_in_window *might* handle it if we passed smart params
+                     # but here we skip the whole window if there's any overlap?
+                     # Better: Find the free gap within this window.
+                     # However, simplicity: The UI guides the user to select a free slot.
+                     # If they select a slot, it should be free.
+                     # We will do a robust check: skip if overlap.
+                     continue
 
                 used, actual_end = allocate_qty_in_window(
                     remaining, st, et, pcs_hr, utilization
@@ -1388,13 +1414,18 @@ def create_work_orders_from_mss(payload):
                         
                          operations_list.append(op_data)
 
+                # Bypassing SO-to-Item validation for SFGs:
+                # If item is not directly in SO, we skip it in the insert() and set it via db_set afterward.
+                actual_so = ln.get("sales_order")
+                is_item_in_so = any(i.item_code == ln["item_code"] for i in so.items) if so else False
+
                 wo_name = create_work_order(
                     {
-                        "company": so.company,
+                        "company": so.company if so else frappe.db.get_default("company"),
                         "production_item": ln["item_code"],
-                        "bom_no": ln["bom_no"] ,
+                        "bom_no": ln["bom_no"],
                         "mould": ln.get("mould") or "",
-                        "sales_order": ln["sales_order"] if frappe.db.get_value("BOM", ln["bom_no"], "bom_type") == "FG" else "", 
+                        "sales_order": actual_so if is_item_in_so else "",
                         "fg_warehouse": fg,
                         "wip_warehouse": wip,
                         "qty": used or 1,
@@ -1406,41 +1437,34 @@ def create_work_orders_from_mss(payload):
                     operations_args=operations_list
                 )
 
-                # Apply Raw Material Adjustments if provided
-                if ln.get("raw_materials"):
-                    # Use direct DB fetch to ensure we get items created during wo.insert()
-                    rm_adjustments = {rm.get('item_code'): rm for rm in ln['raw_materials']}
-                    
-                    wo_items = frappe.get_all(
-                        "Work Order Item",
-                        filters={"parent": wo_name},
-                        fields=["name", "item_code", "required_qty"]
-                    )
-                    
-                    adjusted_any = False
-                    for row in wo_items:
-                        item_code = row.get("item_code")
-                        adj = rm_adjustments.get(item_code)
-                        if adj:
-                            base_pct = flt(adj.get('base_rm_percentage')) or 100.0
-                            adj_pct = flt(adj.get('adjustable_rm_percentage')) or base_pct
-                            
-                            # If percentage changed from the original BOM percentage, apply the ratio
-                            if adj_pct != base_pct and base_pct > 0:
-                                ratio = adj_pct / base_pct
-                                new_qty = flt(row.get("required_qty") * ratio)
-                                
-                                # Update database directly to avoid WO save() side effects
-                                frappe.db.set_value("Work Order Item", row.get("name"), "required_qty", new_qty)
-                                
-                                # If the custom field exists on WO Item, update it for reference
-                                if frappe.get_meta("Work Order Item").has_field("adjustable_rm_percentage"):
-                                     frappe.db.set_value("Work Order Item", row.name, "adjustable_rm_percentage", adj_pct)
-                                
-                                adjusted_any = True
-                    
-                    if adjusted_any:
-                        frappe.db.commit() # Ensure changes are saved for this specific Work Order
+                # Force set the SO link for display/tracking if it was skipped
+                if actual_so and not is_item_in_so:
+                    frappe.db.set_value("Work Order", wo_name, "sales_order", actual_so)
+
+                # --- NEW: Direct Material Adjustment (Override BOM Items) ---
+                modified_materials = ln.get("modified_items")
+                if modified_materials:
+                    # Clear existing WO Items and insert the new ones
+                    frappe.db.sql("DELETE FROM `tabWork Order Item` WHERE parent = %s", wo_name)
+                    for rm in modified_materials:
+                        # Ratio adjustment: The modified_materials should be for the WHOLE SO.
+                        # Since we might have split the WO, we need to scale the modified qty by (this_wo_qty / total_so_qty).
+                        total_qty = flt(ln["schedule_qty"])
+                        scaling = (used / total_qty) if total_qty > 0 else 1.0
+                        
+                        rm_qty = flt(rm.get("qty")) * scaling
+                        
+                        frappe.get_doc({
+                            "doctype": "Work Order Item",
+                            "parent": wo_name,
+                            "parentfield": "required_items",
+                            "parenttype": "Work Order",
+                            "item_code": rm["item_code"],
+                            "source_warehouse": rm.get("source_warehouse") or wip,
+                            "required_qty": rm_qty
+                        }).insert(ignore_permissions=True)
+
+
 
                 created.append(wo_name)
                 remaining -= used
@@ -1459,6 +1483,238 @@ def create_work_orders_from_mss(payload):
         "failed": failed,
         "already_exists": already_exists
     }
+
+
+
+# -----------------------------
+# HELPERS: SLOT CALCULATION & SIMULATION
+# -----------------------------
+def get_availability_slots(machine, mould, start_dt, end_dt):
+    """
+    Returns a SORTED list of available time slots (start, end)
+    within the requested [start_dt, end_dt] window.
+    Merges overlapping time slots.
+    """
+    # 1. Get Base Shift Windows (The "Potential" Time)
+    shift_windows = get_shift_windows(start_dt.date(), end_dt.date())
+    
+    # Filter shift windows to be strictly within start_dt and end_dt
+    potential_slots = []
+    for sw in shift_windows:
+        s = max(sw["start"], start_dt)
+        e = min(sw["end"], end_dt)
+        if s < e:
+            potential_slots.append((s, e))
+
+    if not potential_slots:
+        return []
+
+    # 2. Get Busy Intervals (Existing Work Orders)
+    busy_intervals = []
+    
+    # Machine Busy Time
+    if machine:
+        wos = frappe.get_all(
+            "Work Order",
+            filters={
+                "status": ["not in", ["Cancelled", "Completed"]],
+                "workstation": machine,
+                "planned_end_date": [">", start_dt],
+                "planned_start_date": ["<", end_dt]
+            },
+            fields=["planned_start_date", "planned_end_date", "actual_start_date", "actual_end_date"]
+        )
+        for w in wos:
+            bs = w.actual_start_date or w.planned_start_date
+            be = w.actual_end_date or w.planned_end_date
+            if bs and be:
+                busy_intervals.append((bs, be))
+
+    # Mould Busy Time (if applicable)
+    if mould:
+        wos_m = frappe.get_all(
+            "Work Order",
+            filters={
+                "status": ["not in", ["Cancelled", "Completed"]],
+                "mould": mould,
+                "planned_end_date": [">", start_dt],
+                "planned_start_date": ["<", end_dt]
+            },
+            fields=["planned_start_date", "planned_end_date", "actual_start_date", "actual_end_date"]
+        )
+        for w in wos_m:
+            bs = w.actual_start_date or w.planned_start_date
+            be = w.actual_end_date or w.planned_end_date
+            if bs and be:
+                busy_intervals.append((bs, be))
+
+    # Merge overlapping busy intervals
+    if busy_intervals:
+        busy_intervals.sort(key=lambda x: x[0])
+        merged_busy = []
+        if busy_intervals:
+            curr_start, curr_end = busy_intervals[0]
+            for i in range(1, len(busy_intervals)):
+                next_start, next_end = busy_intervals[i]
+                if next_start < curr_end:
+                    curr_end = max(curr_end, next_end)
+                else:
+                    merged_busy.append((curr_start, curr_end))
+                    curr_start, curr_end = next_start, next_end
+            merged_busy.append((curr_start, curr_end))
+        busy_intervals = merged_busy
+
+    # 3. Subtract Busy from Potential
+    # We iterate through potential slots and "cut out" the busy parts
+    final_slots = []
+    
+    for p_start, p_end in potential_slots:
+        # Optimization: We can process this potential slot against busy intervals
+        temp_slots = [(p_start, p_end)]
+        
+        for b_start, b_end in busy_intervals:
+            new_temp = []
+            for t_start, t_end in temp_slots:
+                # No overlap
+                if b_end <= t_start or b_start >= t_end:
+                    new_temp.append((t_start, t_end))
+                # Full overlap (busy covers whole slot)
+                elif b_start <= t_start and b_end >= t_end:
+                    continue 
+                # Partial overlap
+                else:
+                    # Cut into pieces
+                    if b_start > t_start:
+                        new_temp.append((t_start, b_start))
+                    if b_end < t_end:
+                        new_temp.append((b_end, t_end))
+            temp_slots = new_temp
+        
+        final_slots.extend(temp_slots)
+
+    # 4. Merge Final Slots (if shifts overlapped or split adjacently)
+    if not final_slots:
+        return []
+        
+    final_slots.sort(key=lambda x: x[0])
+    merged_final = []
+    curr_s, curr_e = final_slots[0]
+    
+    for i in range(1, len(final_slots)):
+         next_s, next_e = final_slots[i]
+         if next_s <= curr_e: # Overlap or continuous
+             curr_e = max(curr_e, next_e)
+         else:
+             merged_final.append((curr_s, curr_e))
+             curr_s, curr_e = next_s, next_e
+    merged_final.append((curr_s, curr_e))
+    
+    # Filter tiny slots (< 1 min)
+    clean_slots = []
+    for s, e in merged_final:
+        if (e - s).total_seconds() >= 60:
+            clean_slots.append((s, e))
+            
+    return clean_slots
+
+def analyze_availability(machine, mould, production_params, start_dt, end_dt, utilization=90.0):
+    """
+    Returns ALL available slots in the window with calculated capacity for each.
+    production_params: { item_code, cycle_time, cavity }
+    Returns: list of {start, end, max_qty, duration_hrs, desc}
+    """
+    raw_slots = get_availability_slots(machine, mould, start_dt, end_dt)
+    if not raw_slots:
+        return []
+
+    cycle = flt(production_params.get("cycle_time"))
+    cavity = flt(production_params.get("cavity")) or 1.0
+    
+    # production rate (pcs / hr)
+    rate = 0
+    if cycle > 0:
+        rate = (3600 / cycle) * cavity
+
+    results = []
+    for s_start, s_end in raw_slots:
+        duration_hrs = (s_end - s_start).total_seconds() / 3600.0
+        usable_hrs = duration_hrs * (utilization / 100.0)
+        max_qty = round(usable_hrs * rate)
+
+        fmt_s = s_start.strftime("%d-%m %H:%M")
+        fmt_e = s_end.strftime("%d-%m %H:%M")
+        
+        desc = f"{fmt_s} to {fmt_e} ({round(duration_hrs,1)}h) | Max Qty: {max_qty}"
+        
+        results.append({
+            "start": s_start,
+            "end": s_end,
+            "duration_hrs": round(duration_hrs, 1),
+            "max_qty": max_qty,
+            "desc": desc
+        })
+
+    return results
+
+
+@frappe.whitelist()
+def get_availability_slots_api(payload):
+    """
+    API WRAPPER: Returns ALL available slots with capacity info.
+    Payload: { lines: [], plan_start_date, ..., production_utilization: 90 }
+    """
+    payload = frappe.parse_json(payload)
+    lines = payload.get("lines", [])
+    utilization = flt(payload.get("production_utilization", 90))
+    
+    # Determine Global Window
+    start_date = getdate(payload.get("plan_start_date") or nowdate())
+    end_date = getdate(payload.get("plan_end_date") or start_date) 
+    
+    def parse_t(t_val, default_h):
+        if not t_val: return time(default_h, 0)
+        parts = [int(x) for x in str(t_val).split(":")]
+        return time(*parts[:3])
+
+    s_time = parse_t(payload.get("plan_start_time"), 0)
+    e_time = parse_t(payload.get("plan_end_time"), 23)
+
+    global_start = datetime.combine(start_date, s_time)
+    global_end = datetime.combine(end_date, e_time)
+    
+    if global_end <= global_start:
+         if end_date == start_date:
+             global_end = datetime.combine(end_date, time(23, 59))
+
+    resp = {}
+    
+    for ln in lines:
+        rk = ln.get("rowKey") or ln.get("row_key")
+        
+        # Get Suggestions via analyze_availability
+        slots = analyze_availability(
+            ln.get("machine"),
+            ln.get("mould"),
+            {
+                "item_code": ln.get("item_code"),
+                "cycle_time": ln.get("cycle_time"),
+                "cavity": ln.get("cavity")
+            },
+            global_start,
+            global_end,
+            utilization=utilization
+        )
+        
+        # Serialize datetimes
+        for s in slots:
+            s["start"] = s["start"].strftime("%Y-%m-%d %H:%M:%S")
+            s["end"] = s["end"].strftime("%Y-%m-%d %H:%M:%S")
+        
+        resp[rk] = slots
+        
+    return resp
+
+
 
 ########################################################################################################################        
 ##### -------------------- Level 7: Work Orders for Blanket Orders -------------------- #####

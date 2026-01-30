@@ -72,9 +72,6 @@
 							Qty Percentage %
 						</th>
 						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
-							Adjustable Qty Percentage %
-						</th>
-						<th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
 							Available Stock
 						</th>
 						<!-- <th class="border px-3 py-2 w-32 text-right whitespace-nowrap">
@@ -133,17 +130,6 @@
 						</td>
 						<td class="border px-3 py-2 text-center whitespace-nowrap text-xs">
 							{{ rm.base_rm_percentage }}%
-						</td>
-						<td class="border px-3 py-2 text-center whitespace-nowrap">
-							<input
-								type="number"
-								min="0"
-								max="100"
-								step="0.01"
-								v-model.number="rm.adjustable_rm_percentage"
-								@input="recalculateRM(rm)"
-								class="w-20 text-xs text-center border rounded px-1 py-0.5"
-							/>
 						</td>
 
 						<td class="border px-3 py-2 text-right whitespace-nowrap">
@@ -271,22 +257,6 @@ watch(
 	},
 	{ deep: true },
 );
-const recalculateRM = (rm) => {
-	if (rm.adjustable_rm_percentage === null || rm.adjustable_rm_percentage === undefined) return;
-
-	const baseQty = rm.base_required_qty || 0;
-	const basePercent = rm.base_rm_percentage || 100;
-	const adjPercent = rm.adjustable_rm_percentage;
-
-	// Formula: newQty = (baseQty * adjPercent) / basePercent
-	const newQty = +((baseQty * adjPercent) / basePercent).toFixed(6);
-
-	rm.required_qty = newQty;
-	rm.total_required_qty = newQty; // Ensure CapacityPlanner gets the adjusted qty
-
-	rm.balance_qty = +(rm.available_qty - newQty).toFixed(6);
-	rm.is_sufficient = rm.balance_qty >= 0;
-};
 
 const refreshRM = async () => {
 	selectedRows.value = [];
