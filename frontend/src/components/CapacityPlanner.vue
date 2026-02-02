@@ -1,5 +1,5 @@
 <template>
-	<div class="p-4 bg-white rounded shadow space-y-4">
+	<div class="p-4 bg-white rounded shadow-sm space-y-4">
 		<p class="text-xs text-gray-500">
 			Capacity Planner for calculate machine capacity and plan work orders
 		</p>

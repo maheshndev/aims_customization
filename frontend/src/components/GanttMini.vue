@@ -1,12 +1,13 @@
 <template>
 	<div
 		v-if="hasBars"
-		class="relative h-10 bg-gray-50/50 border border-gray-100/50 rounded-lg overflow-hidden group/gantt"
+		class="relative bg-gray-50/50 border border-gray-100/50 rounded-lg overflow-hidden group/gantt"
+		:style="{ height: `${containerHeight}px` }"
 	>
 		<div
-			v-for="(bar, index) in normalizedBars"
+			v-for="(bar, index) in positionedBars"
 			:key="index"
-			class="absolute h-6 top-2 rounded-md text-[9px] font-bold text-white px-2 flex items-center whitespace-nowrap shadow-sm transition-all hover:h-7 hover:top-1.5 hover:shadow-md cursor-help z-10"
+			class="absolute h-6 rounded-md text-[9px] font-bold text-white px-2 flex items-center whitespace-nowrap shadow-sm transition-all hover:h-7 hover:shadow-md cursor-help z-10"
 			:style="getBarStyle(bar)"
 			:title="`${bar.label}\n${bar.startStr} - ${bar.endStr}\nDuration: ${Math.round((bar.end - bar.start) / (1000 * 60 * 60 * 24))} days`"
 		>
@@ -56,6 +57,50 @@ const minTime = computed(() => Math.min(...normalizedBars.value.map((b) => b.sta
 const maxTime = computed(() => Math.max(...normalizedBars.value.map((b) => b.end)));
 
 /**
+ * Check if two bars overlap in time
+ */
+function barsOverlap(bar1, bar2) {
+	return bar1.start < bar2.end && bar2.start < bar1.end;
+}
+
+/**
+ * Assign rows to bars to avoid overlaps
+ */
+const positionedBars = computed(() => {
+	const bars = [...normalizedBars.value];
+	const rows = [];
+
+	bars.forEach((bar) => {
+		// Find the first row where this bar doesn't overlap with any existing bar
+		let rowIndex = 0;
+		while (rowIndex < rows.length) {
+			const hasOverlap = rows[rowIndex].some((existingBar) => barsOverlap(bar, existingBar));
+			if (!hasOverlap) {
+				break;
+			}
+			rowIndex++;
+		}
+
+		// Add bar to the found row (or create a new row)
+		if (!rows[rowIndex]) {
+			rows[rowIndex] = [];
+		}
+		rows[rowIndex].push(bar);
+		bar.row = rowIndex;
+	});
+
+	return bars;
+});
+
+/**
+ * Calculate container height based on number of rows
+ */
+const containerHeight = computed(() => {
+	const maxRow = Math.max(...positionedBars.value.map((b) => b.row || 0));
+	return Math.max(40, (maxRow + 1) * 32); // 32px per row (6px bar + 2px padding + 24px spacing)
+});
+
+/**
  * Calculate bar style
  */
 function getBarStyle(bar) {
@@ -64,10 +109,12 @@ function getBarStyle(bar) {
 
 	const left = ((bar.start - minTime.value) / total) * 100;
 	const width = ((bar.end - bar.start) / total) * 100;
+	const top = (bar.row || 0) * 32 + 8; // 32px per row, 8px top padding
 
 	return {
 		left: `${left}%`,
 		width: `${Math.max(width, 3)}%`,
+		top: `${top}px`,
 		backgroundColor: bar.label.startsWith("Job")
 			? "#6366f1" // Indigo 500
 			: "#10b981", // Emerald 500
