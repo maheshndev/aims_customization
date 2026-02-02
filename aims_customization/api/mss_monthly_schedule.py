@@ -488,9 +488,14 @@ def create_sales_order(items: str | list):
         for it in bo_items:
             item_doc = frappe.get_doc("Item", it.get("item_code"))
 
-            warehouse = (
-                it.get("warehouse") or frappe.get_value("Item Default", {"parent": it.get("item_code")}, "default_warehouse") or ""
-            )
+            warehouse = it.get("warehouse")
+            if not warehouse:
+                try:
+                    # Use the robust helper to find FG warehouse
+                    warehouse, _ = resolve_warehouses(bo.company, it.get("item_code"))
+                except Exception:
+                    # Fallback to item default with company filter if resolve_warehouses fails
+                    warehouse = frappe.get_value("Item Default", {"parent": it.get("item_code"), "company": bo.company}, "default_warehouse") or ""
             
             rate = it.get("rate") or item_doc.standard_rate or 0
 
@@ -921,7 +926,8 @@ def pcs_per_hour(cycle_time, cavity):
     cycle = flt(cycle_time)
     cavity = max(1, cint(cavity))
     if cycle <= 0:
-        frappe.throw(_("Invalid cycle time"))
+        # Fallback to a very small rate or return 0 instead of throwing to avoid breaking the tool
+        return 0
     return (3600 / cycle) * cavity
 
 def get_holidays(holiday_list):
@@ -941,6 +947,14 @@ def get_shift_windows(start_date, end_date):
         fields=["name", "start_time", "end_time"],
         order_by="start_time"
     )
+
+    if not shift_types:
+        # Fallback to a default 24h shift if none defined in the system
+        shift_types = [frappe._dict({
+            "name": "Default 24h",
+            "start_time": "00:00:00",
+            "end_time": "23:59:59"
+        })]
 
     day = start_date
     while day <= end_date:
