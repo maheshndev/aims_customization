@@ -917,6 +917,13 @@ def _to_time(val):
     if isinstance(val, timedelta):
         s = int(val.total_seconds())
         return time((s // 3600) % 24, (s % 3600) // 60, s % 60)
+    if isinstance(val, str):
+        try:
+            # Handle HH:mm:ss or HH:mm
+            parts = [int(x) for x in val.split(":")]
+            return time(*parts)
+        except Exception:
+            return None
     return None
 
 def combine_datetime(date, t):
@@ -1509,6 +1516,9 @@ def get_availability_slots(machine, mould, start_dt, end_dt):
     within the requested [start_dt, end_dt] window.
     Merges overlapping time slots.
     """
+    if not start_dt or not end_dt:
+        return []
+
     # 1. Get Base Shift Windows (The "Potential" Time)
     shift_windows = get_shift_windows(start_dt.date(), end_dt.date())
     
@@ -1521,7 +1531,12 @@ def get_availability_slots(machine, mould, start_dt, end_dt):
             potential_slots.append((s, e))
 
     if not potential_slots:
-        return []
+        # If we still have no potential slots, it might be due to window filtering
+        # Try to provide at least one slot if start < end
+        if start_dt < end_dt:
+             potential_slots = [(start_dt, end_dt)]
+        else:
+             return []
 
     # 2. Get Busy Intervals (Existing Work Orders)
     busy_intervals = []
@@ -1687,8 +1702,23 @@ def get_availability_slots_api(payload):
     
     def parse_t(t_val, default_h):
         if not t_val: return time(default_h, 0)
-        parts = [int(x) for x in str(t_val).split(":")]
-        return time(*parts[:3])
+        t_str = str(t_val).strip()
+        # Handle "07:30 AM" or "19:30"
+        if " " in t_str:
+            # Try parsing with AM/PM
+            try:
+                return datetime.strptime(t_str, "%I:%M %p").time()
+            except Exception:
+                try:
+                    return datetime.strptime(t_str, "%H:%M %p").time()
+                except Exception:
+                    t_str = t_str.split(" ")[0] # Fallback to HH:mm
+        
+        try:
+            parts = [int(x) for x in t_str.split(":")]
+            return time(*parts[:3])
+        except Exception:
+            return time(default_h, 0)
 
     s_time = parse_t(payload.get("plan_start_time"), 0)
     e_time = parse_t(payload.get("plan_end_time"), 23)
@@ -1724,6 +1754,13 @@ def get_availability_slots_api(payload):
             s["start"] = s["start"].strftime("%Y-%m-%d %H:%M:%S")
             s["end"] = s["end"].strftime("%Y-%m-%d %H:%M:%S")
         
+        # Log empty slots for debugging
+        if not slots:
+             frappe.log_error(
+                 message=f"No slots found for {rk}. machine={ln.get('machine')}, cycle={ln.get('cycle_time')}, utilization={utilization}, window={global_start} to {global_end}",
+                 title="MSS Capacity Planner: No Slots"
+             )
+
         resp[rk] = slots
         
     return resp
