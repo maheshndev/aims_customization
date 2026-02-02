@@ -32,6 +32,7 @@
 		<!-- Step 3: BOMs -->
 		<SectionCard title="Bill Of Material">
 			<BOMList
+				ref="bomListRef"
 				:sales-orders="selected.salesOrders"
 				v-model:selected="selected.boms"
 				@update:capBOMs="(val) => (selected.bomsObjects = val)"
@@ -57,6 +58,7 @@
 				:raw-materials="state.allRawMaterials"
 				:available-machine-hours="machineCapacity"
 				@capacity-updated="handleCapacityUpdate"
+				@refresh="onRefreshPlanning"
 			/>
 		</SectionCard>
 
@@ -85,7 +87,7 @@
 </template>
 
 <script>
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import SectionCard from "../components/layout/SectionCard.vue";
 
 // Components
@@ -139,6 +141,8 @@ export default {
 			jobCards: [],
 		});
 
+		const bomListRef = ref(null);
+
 		// Data loaded by each component
 		const state = reactive({
 			blanketOrders: [],
@@ -169,7 +173,21 @@ export default {
 			state.capacity = e.capacity;
 		}
 
-		return { filters, selected, state, onApplyFilters, handleCapacityUpdate };
+		function onRefreshPlanning() {
+			if (bomListRef.value) {
+				bomListRef.value.refreshBomList();
+			}
+		}
+
+		return {
+			filters,
+			selected,
+			state,
+			onApplyFilters,
+			handleCapacityUpdate,
+			onRefreshPlanning,
+			bomListRef,
+		};
 	},
 };
 </script>

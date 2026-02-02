@@ -214,6 +214,12 @@
 							>
 								Adjust RMs
 							</button>
+							<button
+								class="px-3 py-1 bg-green-50 text-black border border-green-200 rounded-lg hover:bg-green-100 font-bold transition-all shadow-sm text-[11px]"
+								@click="$emit('refresh')"
+							>
+								🔄 Refresh
+							</button>
 						</div>
 					</div>
 
@@ -1371,6 +1377,10 @@ async function createWorkOrders() {
 					? "orange"
 					: "green",
 		});
+
+		if (msg.created_work_orders?.length) {
+			emit("refresh");
+		}
 	} catch (err) {
 		showMessage({
 			title: "Work Order Creation Failed",

@@ -310,4 +310,8 @@ const refreshBomList = async () => {
 };
 
 watch(() => props.salesOrders, fetchBOMs, { deep: true, immediate: true });
+
+defineExpose({
+	refreshBomList,
+});
 </script>
