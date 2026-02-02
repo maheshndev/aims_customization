@@ -1592,8 +1592,19 @@ def get_availability_slots(machine, mould, start_dt, end_dt):
                     curr_start, curr_end = next_start, next_end
             merged_busy.append((curr_start, curr_end))
         busy_intervals = merged_busy
+    
+    # Debug Logging
+    if not busy_intervals and not potential_slots:
+        pass # Handle later if needed
+    else:
+        # Only log if final slots will be empty or for specific machine
+        frappe.log_error(
+            message=f"Machine: {machine}, Mould: {mould}\nPotential: {potential_slots}\nBusy: {busy_intervals}",
+            title="MSS Scheduler Debug: Slot Calc"
+        )
 
     # 3. Subtract Busy from Potential
+    # ...
     # We iterate through potential slots and "cut out" the busy parts
     final_slots = []
     
