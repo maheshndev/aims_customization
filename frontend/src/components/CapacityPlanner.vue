@@ -20,6 +20,13 @@
 				>
 					+ Plan & Create WOs
 				</button>
+
+				<button
+					class="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 border border-gray-300 transition-all active:scale-95"
+					@click="handleLocalRefresh"
+				>
+					Refresh
+				</button>
 			</div>
 		</div>
 
@@ -812,31 +819,25 @@ function closeModal() {
 	showMaterials.value = false;
 }
 
-function refreshData() {
-	// Clear previous results
-	schedulePreview.value = [];
+function handleLocalRefresh() {
+	// Clear all validation states and gaps to unblock buttons
 	rows.value.forEach((r) => {
 		r.validation_error = null;
 		r.capacity_gap = null;
 		r.available_hours = null;
 		r.required_hours = null;
 		r.pcs_per_hour = null;
+		r.rm_sufficient = true;
 	});
 	preview.value = {};
+	schedulePreview.value = [];
+	availableSlots.value = {};
 
-	// Re-trigger validation or check availability if inputs are valid
-	if (validateInputs()) {
-		if (modalAction.value === "validate") {
-			validateCapacity();
-		} else {
-			checkAvailability();
-		}
-		showMessage({
-			title: "Refreshed",
-			message: "Data refreshed based on new inputs.",
-			indicator: "green",
-		});
-	}
+	showMessage({
+		title: "Planner Refreshed",
+		message: "Calculations cleared. You can now re-validate.",
+		indicator: "blue",
+	});
 }
 
 function confirmAction() {
