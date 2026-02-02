@@ -1,83 +1,118 @@
 <template>
 	<div class="p-3 space-y-3">
 		<div class="p-4 transition-all duration-300 hover:shadow-md rounded">
-			<div class="flex flex-wrap items-center gap-4 justify-between rounded-1xl">
+			<div
+				class="flex flex-wrap items-center gap-4 justify-between rounded-1xl relative z-20"
+			>
 				<!-- Search Controls -->
 				<div class="flex flex-wrap items-center gap-4 flex-grow">
-					<div class="relative group">
-						<SearchSelect
-							label="Sales Order"
-							doctype="Sales Order"
-							v-model="filters.sales_order"
-							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
-						/>
+					<div class="flex items-end gap-1">
+						<div class="w-56">
+							<SearchSelect
+								label="Customer"
+								doctype="Customer"
+								v-model="filters.customer"
+								class="transition-all duration-200 group-hover:scale-[1.02]"
+							/>
+						</div>
+						<button
+							v-if="filters.customer"
+							@click="filters.customer = ''"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
+						>
+							X
+						</button>
+					</div>
+
+					<div class="flex items-end gap-1">
+						<div class="w-56">
+							<SearchSelect
+								label="Sales Order"
+								doctype="Sales Order"
+								v-model="filters.sales_order"
+								class="transition-all duration-200 group-hover:scale-[1.02]"
+							/>
+						</div>
 						<button
 							v-if="filters.sales_order"
 							@click="filters.sales_order = ''"
-							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
 						>
-							✕
+							X
 						</button>
 					</div>
 
-					<div class="relative group">
-						<SearchSelect
-							label="Mould"
-							doctype="Mould"
-							v-model="filters.mould"
-							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
-						/>
+					<div class="flex items-end gap-1">
+						<div class="w-56">
+							<SearchSelect
+								label="Mould"
+								doctype="Mould"
+								v-model="filters.mould"
+								class="transition-all duration-200 group-hover:scale-[1.02]"
+							/>
+						</div>
 						<button
 							v-if="filters.mould"
 							@click="filters.mould = ''"
-							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
 						>
-							✕
+							X
 						</button>
 					</div>
 
-					<div class="relative group">
-						<SearchSelect
-							label="Item"
-							doctype="Item"
-							v-model="filters.item"
-							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
-						/>
+					<div class="flex items-end gap-1">
+						<div class="w-56">
+							<SearchSelect
+								label="Item"
+								doctype="Item"
+								v-model="filters.item"
+								class="transition-all duration-200 group-hover:scale-[1.02]"
+							/>
+						</div>
 						<button
 							v-if="filters.item"
 							@click="filters.item = ''"
-							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
 						>
-							✕
+							X
 						</button>
 					</div>
 
-					<div class="relative group">
-						<SearchSelect
-							label="Shift"
-							doctype="Shift Type"
-							v-model="filters.shift"
-							class="w-48 transition-all duration-200 group-hover:scale-[1.02]"
-						/>
+					<div class="flex items-end gap-1">
+						<div class="w-56">
+							<SearchSelect
+								label="Shift"
+								doctype="Shift Type"
+								v-model="filters.shift"
+								class="transition-all duration-200 group-hover:scale-[1.02]"
+							/>
+						</div>
 						<button
 							v-if="filters.shift"
 							@click="filters.shift = ''"
-							class="absolute -top-1 -right-1 h-5 w-5 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] hover:bg-red-200 transition-colors z-10"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
 						>
-							✕
+							X
 						</button>
 					</div>
 
 					<!-- MONTH PICKER -->
-					<div class="flex flex-col w-40">
-						<label class="text-[10px] font-bold text-gray-600 tracking-widest"
-							>Month</label
+					<div class="flex items-end gap-1">
+						<div class="flex flex-col w-56">
+							<label class="text-[10px] font-bold text-gray-600">Month</label>
+							<input
+								type="month"
+								v-model="monthPicker"
+								class="h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all px-3"
+							/>
+						</div>
+						<button
+							v-if="monthPicker"
+							@click="monthPicker = ''"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
 						>
-						<input
-							type="month"
-							v-model="monthPicker"
-							class="h-15 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-						/>
+							X
+						</button>
 					</div>
 				</div>
 
@@ -112,7 +147,7 @@
 				<!-- Header -->
 				<div class="flex items-start justify-between mb-2 border-b border-gray-50 pb-2">
 					<div class="flex flex-col gap-0.5">
-						<span class="text-[8px] font-black text-blue-600 uppercase tracking-widest"
+						<span class="text-[8px] font-black text-blue-600 uppercase"
 							>Work Order</span
 						>
 						<a
@@ -180,8 +215,7 @@
 					<div class="bg-gray-50/80 rounded-xl p-2 border border-gray-100/50">
 						<div class="flex items-center gap-1.5 mb-1.5">
 							<span class="text-[10px]">🕒</span>
-							<span
-								class="text-[8px] font-black text-gray-400 uppercase tracking-widest"
+							<span class="text-[8px] font-black text-gray-400 uppercase"
 								>Timeline</span
 							>
 						</div>
@@ -227,6 +261,7 @@ const schedule = ref([]);
 const holidays = ref([]);
 
 const filters = reactive({
+	customer: "",
 	sales_order: "",
 	mould: "",
 	item: "",
@@ -457,7 +492,10 @@ const calendarOptions = {
 
 /* ---------------- WATCHERS ---------------- */
 watch(monthPicker, (val) => {
-	const [y, m] = val.split("-").map(Number);
+	if (!val) return;
+	const parts = val.split("-");
+	if (parts.length < 2) return;
+	const [y, m] = parts.map(Number);
 	calendarRef.value?.getApi().gotoDate(new Date(y, m - 1, 1));
 });
 
@@ -504,6 +542,7 @@ async function loadSchedule() {
 
 /* ---------------- RESET ---------------- */
 function resetFilters() {
+	filters.customer = "";
 	filters.sales_order = "";
 	filters.mould = "";
 	filters.item = "";

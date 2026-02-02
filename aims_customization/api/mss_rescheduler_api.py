@@ -39,8 +39,8 @@ def get_mss_schedule_range(
             conditions.append("wo.production_item = %(item)s")
             values["item"] = item
         if shift:
-            conditions.append("wo.shift = %(shift)s")
-            values["shift"] = shift
+            # Shift filter will be applied in Python post-processing for time-based overlap
+            pass
         
         condition_sql = " AND ".join(conditions)
 
@@ -60,16 +60,53 @@ def get_mss_schedule_range(
                 (SELECT workstation FROM `tabWork Order Operation` WHERE parent = wo.name ORDER BY idx ASC LIMIT 1) as workstation
             FROM `tabWork Order` wo
             LEFT JOIN `tabSales Order` so ON so.name = wo.sales_order
-            WHERE {condition_sql} AND wo.docstatus=0
+            WHERE {condition_sql} AND wo.docstatus < 2
             ORDER BY wo.planned_start_date
         """,
             values,
             as_dict=True,
         )
+        if shift:
+            from datetime import datetime, timedelta
+            shift_doc = frappe.get_doc("Shift Type", shift)
+            s_start_time = shift_doc.start_time
+            s_end_time = shift_doc.end_time
+            
+            filtered_data = []
+            for wo in data:
+                wo_start = wo.planned_start_date
+                wo_end = wo.planned_end_date
+                
+                if not wo_start or not wo_end:
+                    continue
+                    
+                # Check overlap for each day the WO spans
+                overlap = False
+                curr_day = wo_start.date()
+                while curr_day <= wo_end.date():
+                    # Defensive check for timedelta vs time
+                    s_t_start = (datetime.min + s_start_time).time() if isinstance(s_start_time, timedelta) else s_start_time
+                    s_t_end = (datetime.min + s_end_time).time() if isinstance(s_end_time, timedelta) else s_end_time
+                    
+                    s_dt_start = datetime.combine(curr_day, s_t_start)
+                    if s_t_end < s_t_start:
+                        s_dt_end = datetime.combine(curr_day + timedelta(days=1), s_t_end)
+                    else:
+                        s_dt_end = datetime.combine(curr_day, s_t_end)
+                    
+                    if max(wo_start, s_dt_start) <= min(wo_end, s_dt_end):
+                        overlap = True
+                        break
+                    curr_day += timedelta(days=1)
+                
+                if overlap:
+                    filtered_data.append(wo)
+            data = filtered_data
+
         return {"success": True, "data": data}
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "MSS Rescheduler API: get_mss_schedule_range")
-        return {"success": False, "message": "Failed to load schedule range"}
+        return {"success": False, "message": f"Failed to load schedule range: {str(e)}"}
 
 
 @frappe.whitelist()
@@ -184,10 +221,10 @@ def mss_search_options(doctype, txt=None, limit=20):
         txt = f"%{txt}%" if txt else "%"
 
         allowed = {
-            "Customer": ("name",),
-            "Sales Order": ("name",),
+            "Customer": ("name", "customer_name"),
+            "Sales Order": ("name", "customer_name"),
             "Item": ("name", "item_name"),
-            "Mould": ("name",),
+            "Mould": ("name", "mould_name"),
             "Shift Type": ("name",),
         }
 

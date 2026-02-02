@@ -13,7 +13,6 @@
 						<option value="">Select Year</option>
 						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
 					</select>
-
 					<span
 						v-if="localFilters.year"
 						@click="clearYear"
