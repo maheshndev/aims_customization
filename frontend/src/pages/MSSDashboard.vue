@@ -44,7 +44,6 @@
 			<RawMaterials
 				:boms="selected.boms"
 				:filters="filters"
-				v-model:selected="selected.rawMaterials"
 				@raw-material-loaded="(val) => (state.allRawMaterials = val)"
 			/>
 		</SectionCard>
@@ -135,7 +134,6 @@ export default {
 			salesOrders: [],
 			boms: [],
 			bomsObjects: [],
-			rawMaterials: [],
 			boList: [],
 			workOrders: [],
 			jobCards: [],
@@ -165,7 +163,6 @@ export default {
 			selected.items = [];
 			selected.salesOrders = [];
 			selected.boms = [];
-			selected.rawMaterials = [];
 			selected.workOrders = [];
 			selected.jobCards = [];
 		};

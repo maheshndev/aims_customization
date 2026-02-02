@@ -12,19 +12,7 @@
 			{{ error }}
 		</div>
 
-		<div v-if="!loading" class="flex justify-start gap-2 mb-3">
-			<button
-				class="px-3 py-1 text-sm bg-blue-100 text-black rounded hover:bg-blue-200"
-				@click="selectAll"
-			>
-				Select All
-			</button>
-			<button
-				class="px-3 py-1 text-sm bg-gray-100 text-black rounded hover:bg-gray-200"
-				@click="unselectAll"
-			>
-				Unselect All
-			</button>
+		<div v-if="!loading" class="mb-3">
 			<button
 				class="px-3 py-1 bg-green-100 text-black rounded hover:bg-green-200"
 				@click="refreshRM"
@@ -40,15 +28,6 @@
 			<table class="min-w-full table-auto divide-y divide-gray-200">
 				<thead class="bg-gray-50 sticky top-0 text-xs text-gray-700 uppercase">
 					<tr>
-						<th
-							class="border px-3 py-2 w-10 text-center sticky left-0 bg-gray-50 z-10"
-						>
-							<input
-								type="checkbox"
-								:checked="isAllSelected"
-								@change="toggleSelectAll"
-							/>
-						</th>
 						<th class="border px-3 py-2 w-10 text-left whitespace-nowrap">#</th>
 						<th class="border px-3 py-2 w-40 text-left whitespace-nowrap">
 							Sales Order ID
@@ -96,15 +75,8 @@
 					<tr
 						v-for="(rm, index) in materials"
 						:key="`${rm.sales_order}_${rm.bom_no}_${rm.rm_item_code}`"
-						class="transition"
-						:class="{
-							'hover:bg-gray-50': true,
-							'bg-blue-50': selectedRows.includes(rm),
-						}"
+						class="hover:bg-gray-50 transition"
 					>
-						<td class="border px-3 py-2 text-center sticky left-0 bg-white z-10">
-							<input type="checkbox" v-model="selectedRows" :value="rm" />
-						</td>
 						<td class="border px-3 py-2 whitespace-nowrap">{{ index + 1 }}</td>
 						<td class="border px-3 py-2 font-medium whitespace-nowrap">
 							{{ rm.sales_order }}
@@ -182,33 +154,17 @@ import { api } from "../services/api";
 
 const props = defineProps({
 	boms: { type: Array, default: () => [] },
-	selected: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:selected", "raw-material-loaded"]);
+const emit = defineEmits(["raw-material-loaded"]);
 
 const materials = ref([]);
-const selectedRows = ref([]);
 const loading = ref(false);
 const error = ref(null);
-
-const isAllSelected = computed(
-	() => materials.value.length && selectedRows.value.length === materials.value.length,
-);
-
-const selectAll = () => {
-	selectedRows.value = materials.value.slice();
-};
-const unselectAll = () => {
-	selectedRows.value = [];
-};
-const toggleSelectAll = () => (isAllSelected.value ? unselectAll() : selectAll());
 
 const fetchMaterials = async () => {
 	if (!props.boms.length) {
 		materials.value = [];
-		selectedRows.value = [];
-		emit("update:selected", []);
 		emit("raw-material-loaded", []);
 		return;
 	}
@@ -236,9 +192,6 @@ const fetchMaterials = async () => {
 			};
 		});
 
-		// selectedRows.value = materials.value.slice(); // User requested to NOT select all by default
-		selectedRows.value = [];
-
 		emit("raw-material-loaded", materials.value);
 	} catch (err) {
 		console.error("Raw Material Fetch Error:", err);
@@ -250,41 +203,8 @@ const fetchMaterials = async () => {
 
 watch(() => props.boms, fetchMaterials, { deep: true, immediate: true });
 
-watch(
-	selectedRows,
-	(newSelection) => {
-		emit("update:selected", newSelection);
-	},
-	{ deep: true },
-);
-
 const refreshRM = async () => {
-	selectedRows.value = [];
 	materials.value = [];
 	await fetchMaterials();
 };
-
-watch(
-	() => props.selected,
-	(newModelValue) => {
-		if (!newModelValue) return;
-
-		const currentCodes = selectedRows.value
-			.map((item) => item.rm_item_code)
-			.sort()
-			.join(",");
-		const newCodes = newModelValue
-			.map((item) => item.rm_item_code)
-			.sort()
-			.join(",");
-
-		if (currentCodes !== newCodes) {
-			const existingMaterials = newModelValue.filter((item) =>
-				materials.value.some((m) => m.rm_item_code === item.rm_item_code),
-			);
-			selectedRows.value = existingMaterials.slice();
-		}
-	},
-	{ deep: true, immediate: true },
-);
 </script>

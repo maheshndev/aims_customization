@@ -1171,6 +1171,8 @@ def validate_capacity(payload):
     for ln in lines:
         try:
             pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
+            if pcs_hr <= 0:
+                raise Exception("Invalid Pcs/Hr (Zero). Please check cycle time.")
             required_hours = ln["schedule_qty"] / pcs_hr
 
             windows = get_shift_windows(payload["plan_start_date"], payload["plan_end_date"])
@@ -1317,6 +1319,9 @@ def create_work_orders_from_mss(payload):
     for ln in payload.get("lines", []):
         try:
             pcs_hr = pcs_per_hour(ln["cycle_time"], ln["cavity"])
+            if pcs_hr <= 0:
+                 failed.append(f"{ln['item_code']} – Invalid Pcs/Hr (Zero). Please check cycle time.")
+                 continue
             remaining = flt(ln["schedule_qty"])
 
             if remaining <= 0:
@@ -1357,12 +1362,14 @@ def create_work_orders_from_mss(payload):
                      if end_date == start_date:
                           global_end = datetime.combine(end_date, time(23, 59, 59, 0))
 
-                all_shift_windows = get_shift_windows(start_date, end_date)
-                for w in all_shift_windows:
-                    s = max(w["start"], global_start)
-                    e = min(w["end"], global_end)
-                    if s < e:
-                        windows.append({"start": s, "end": e})
+                all_shift_windows = get_availability_slots(
+                    ln["machine"], 
+                    ln.get("mould"), 
+                    global_start, 
+                    global_end
+                )
+                for s, e in all_shift_windows:
+                    windows.append({"start": s, "end": e})
 
             current_start = global_start if not selected_slots else None
 
@@ -1372,15 +1379,8 @@ def create_work_orders_from_mss(payload):
 
                 st, et = w["start"], w["end"]
                 
-                # Check overlap with existing WOs
-                if has_overlap(ln["machine"], ln.get("mould"), st, et):
-                     # If the window is partially blocked, allocate_qty_in_window *might* handle it if we passed smart params
-                     # but here we skip the whole window if there's any overlap?
-                     # Better: Find the free gap within this window.
-                     # However, simplicity: The UI guides the user to select a free slot.
-                     # If they select a slot, it should be free.
-                     # We will do a robust check: skip if overlap.
-                     continue
+                # We no longer need has_overlap check here if using get_availability_slots
+                # as it already excluded busy intervals.
 
                 used, actual_end = allocate_qty_in_window(
                     remaining, st, et, pcs_hr, utilization
@@ -1779,8 +1779,6 @@ def get_availability_slots_api(payload):
 
 
 
-########################################################################################################################        
-##### -------------------- Level 7: Work Orders for Blanket Orders -------------------- #####
 @frappe.whitelist()
 def get_work_orders_for_so(so_list: str | list = None):
     
@@ -1796,7 +1794,40 @@ def get_work_orders_for_so(so_list: str | list = None):
     if not so_list:
         return []
 
-    placeholders = ",".join(["%s"] * len(so_list))
+    # Step 1: Get all items from the selected Sales Orders (including their BOMs)
+    so_items = frappe.db.sql("""
+        SELECT DISTINCT soi.item_code, soi.parent as sales_order
+        FROM `tabSales Order Item` soi
+        WHERE soi.parent IN ({})
+    """.format(",".join(["%s"] * len(so_list))), tuple(so_list), as_dict=True)
+    
+    # Step 2: Get all BOM items (including sub-assemblies) for these items
+    all_items = set()
+    for so_item in so_items:
+        all_items.add(so_item.item_code)
+        
+        # Get BOM for this item
+        bom = frappe.db.get_value("Item", so_item.item_code, "default_bom")
+        if bom:
+            # Get all sub-assembly items from this BOM recursively
+            sub_items = frappe.db.sql("""
+                SELECT DISTINCT item_code 
+                FROM `tabBOM Item` 
+                WHERE parent = %s
+            """, (bom,), as_dict=True)
+            
+            for sub in sub_items:
+                all_items.add(sub.item_code)
+
+    if not all_items:
+        return []
+
+    # Step 3: Fetch work orders for all these items (FG + SFG)
+    # Include work orders that either:
+    # 1. Have sales_order in our list, OR
+    # 2. Have production_item in our item list
+    placeholders_so = ",".join(["%s"] * len(so_list))
+    placeholders_items = ",".join(["%s"] * len(all_items))
 
     sql = f"""
         SELECT
@@ -1819,10 +1850,13 @@ def get_work_orders_for_so(so_list: str | list = None):
             stock_uom, 
             mould
         FROM `tabWork Order`
-        WHERE sales_order IN ({placeholders}) 
+        WHERE (sales_order IN ({placeholders_so}) 
+               OR production_item IN ({placeholders_items}))
+        AND docstatus < 2
         ORDER BY planned_start_date DESC
     """
-    work_orders = frappe.db.sql(sql, tuple(so_list), as_dict=True) or []
+    
+    work_orders = frappe.db.sql(sql, tuple(so_list) + tuple(all_items), as_dict=True) or []
 
     result = []
     
