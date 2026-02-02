@@ -223,7 +223,7 @@
 							</button>
 							<button
 								class="px-3 py-1 bg-green-50 text-black border border-green-200 rounded-lg hover:bg-green-100 font-bold transition-all shadow-sm text-[11px]"
-								@click="$emit('refresh')"
+								@click="handlePopupRefresh"
 							>
 								🔄 Refresh
 							</button>
@@ -544,7 +544,7 @@
 						<th class="border p-2 whitespace-nowrap bg-gray-100">Customer Name</th>
 						<th class="border p-2 whitespace-nowrap bg-gray-100">Sales Order ID</th>
 						<th class="border p-2 whitespace-nowrap bg-gray-100">SO Item Code</th>
-						<th class="border p-2 whitespace-nowrap bg-gray-100">Delivery Date</th>
+						<th class="border p-2 whitespace-nowrap bg-gray-100">SO Date</th>
 						<th class="border p-2 whitespace-nowrap bg-gray-100">BOM ID</th>
 
 						<th class="border p-2 whitespace-nowrap bg-gray-100">Machine Name</th>
@@ -613,11 +613,7 @@
 								</div>
 							</td>
 							<td class="border p-2 whitespace-nowrap">
-								{{
-									r.delivery_date
-										? new Date(r.delivery_date).toLocaleDateString()
-										: "—"
-								}}
+								{{ r.so_date ? new Date(r.so_date).toLocaleDateString() : "—" }}
 							</td>
 
 							<td class="border p-2 whitespace-nowrap">{{ r.bom_no }}</td>
@@ -817,6 +813,14 @@ function closeModal() {
 	availableSlots.value = {};
 	selectedSlotsMap.value = {};
 	showMaterials.value = false;
+}
+
+function handlePopupRefresh() {
+	if (modalAction.value === "validate") {
+		validateCapacity();
+	} else if (modalAction.value === "create") {
+		checkAvailability();
+	}
 }
 
 function handleLocalRefresh() {
@@ -1045,8 +1049,7 @@ function sync() {
 	const rms = props.rawMaterials || [];
 
 	rows.value = props.capBoms
-		// 2. Filter out items that already have Work Orders
-		.filter((b) => !b.has_work_order)
+		// 2. Map items to planning rows
 		.map((b, i) => {
 			// 3. Inject updated Raw Materials (percentages/qtys) filtered for this specific SO + BOM
 			const lineRMs = rms
@@ -1099,7 +1102,7 @@ watch(selectedKeys, (val) => {
 	// Auto-default planStart if at least one row is selected
 	if (val.length > 0) {
 		const dates = selectedRows.value
-			.map((r) => r.delivery_date)
+			.map((r) => r.so_date)
 			.filter(Boolean)
 			.map((d) => new Date(d));
 
@@ -1108,7 +1111,7 @@ watch(selectedKeys, (val) => {
 			const todayDt = new Date();
 			todayDt.setHours(0, 0, 0, 0);
 
-			// Use max(the earliest SO date, today)
+			// Logic: If SO date < today, set to today. Otherwise set to SO date.
 			const target = earliest < todayDt ? todayDt : earliest;
 			const targetStr = target.toISOString().slice(0, 10);
 			planStart.value = targetStr;
@@ -1288,7 +1291,7 @@ async function togglePreview(row) {
 				bom_no: row.bom_no,
 				raw_materials: row.raw_materials,
 				sales_order: row.sales_order,
-				delivery_date: row.delivery_date,
+				delivery_date: row.so_date,
 			},
 		],
 	};
@@ -1337,7 +1340,7 @@ async function createWorkOrders() {
 					bom_no: r.bom_no,
 					raw_materials: r.raw_materials,
 					sales_order: r.sales_order,
-					delivery_date: r.delivery_date,
+					delivery_date: r.so_date,
 					selected_slots: slots,
 					modified_items: showMaterials.value ? modified_items : null,
 				};

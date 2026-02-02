@@ -655,11 +655,12 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
             "name": ["in", sales_orders],
             "docstatus": 1  
         },
-        fields=["name", "customer"]
+        fields=["name", "customer", "transaction_date"]
     )
 
     valid_so_names = {so.name for so in sales_orders_data}
     customer_map = {so.name: so.customer for so in sales_orders_data}
+    so_date_map = {so.name: so.transaction_date for so in sales_orders_data}
 
     if not valid_so_names:
         return []
@@ -667,10 +668,10 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
     so_items = frappe.get_all(
         "Sales Order Item",
         filters={"parent": ["in", list(valid_so_names)]},
-        fields=["parent", "item_code", "qty", "bom_no", "blanket_order", "delivery_date"]
+        fields=["parent", "item_code", "qty", "bom_no", "blanket_order"]
     )
 
-    def process_item_recursive(item_code, required_qty, so_name, customer, blanket_order, delivery_date=None, forced_bom=None, level=0, processed_items=None):
+    def process_item_recursive(item_code, required_qty, so_name, customer, blanket_order, so_date=None, forced_bom=None, level=0, processed_items=None):
 
         if processed_items is None:
             processed_items = set()
@@ -791,7 +792,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                 "required_for_selected_qty": remaining_qty,
                 "has_work_order": remaining_qty <= 0 and planned_qty > 0,
                 "level": level,
-                "delivery_date": delivery_date
+                "so_date": so_date
             })
 
             # Recursively process sub-assemblies
@@ -808,7 +809,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
                         so_name=so_name,
                         customer=customer,
                         blanket_order=blanket_order,
-                        delivery_date=delivery_date,
+                        so_date=so_date,
                         level=level + 1,
                         processed_items=processed_items
                     )
@@ -824,7 +825,7 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
             so_name=so_item.parent,
             customer=customer_map.get(so_item.parent),
             blanket_order=so_item.blanket_order,
-            delivery_date=so_item.delivery_date,
+            so_date=so_date_map.get(so_item.parent),
             forced_bom=so_item.bom_no,
             level=0
         ))

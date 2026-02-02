@@ -88,6 +88,9 @@
 						<td class="px-2 py-2 border font-medium whitespace-nowrap">
 							{{ bom.sales_order }}
 						</td>
+						<td class="px-2 py-2 border whitespace-nowrap text-gray-600">
+							{{ bom.so_date ? new Date(bom.so_date).toLocaleDateString() : "—" }}
+						</td>
 						<td class="px-2 py-2 border font-medium whitespace-nowrap">
 							<span
 								class="cursor-pointer hover:underline hover:text-blue-600"
@@ -124,6 +127,12 @@
 							}}</span>
 						</td>
 						<td class="px-2 py-2 border whitespace-nowrap">{{ bom.customer }}</td>
+						<td class="px-2 py-2 border font-medium text-blue-600 whitespace-nowrap">
+							{{ bom.total_so_qty }}
+						</td>
+						<td class="px-2 py-2 border font-medium text-orange-600 whitespace-nowrap">
+							{{ bom.planned_qty }}
+						</td>
 						<td class="px-2 py-2 border font-bold text-gray-800 whitespace-nowrap">
 							{{ bom.required_for_selected_qty }}
 						</td>
@@ -204,12 +213,15 @@ const search = ref("");
 const headers = [
 	"#",
 	"Sales Order",
+	"SO Date",
 	"BOM ID",
 	"FG Item",
 	"BOM Qty",
 	"Type",
 	"Customer Name",
-	"Req Qty",
+	"SO Qty",
+	"Planned Qty",
+	"Req Qty (Bal)",
 	"Cavity",
 	"PCS wt",
 	"Runner",
