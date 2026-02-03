@@ -39,6 +39,8 @@ export const api = {
 					customer: filters.customer,
 					month: filters.month,
 					year: filters.year,
+					start: filters.start || 0,
+					page_len: filters.page_len || 20,
 					// search_text will be null/undefined, allowing the backend to handle the search logic
 				},
 			},

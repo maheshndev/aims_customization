@@ -41,6 +41,9 @@ def get_mss_schedule_range(
         if status:
             conditions.append("wo.status = %(status)s")
             values["status"] = status
+        else:
+            # Default: Exclude Completed and Cancelled
+            conditions.append("wo.status NOT IN ('Completed', 'Cancelled')")
         if shift:
             # Shift filter will be applied in Python post-processing for time-based overlap
             pass

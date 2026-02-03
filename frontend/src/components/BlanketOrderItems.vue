@@ -58,7 +58,12 @@
 			{{ error }}
 		</div>
 
-		<div v-if="filteredItems.length && !loading" class="overflow-auto rounded-b-2xl">
+		<div
+			v-if="filteredItems.length && !loading && !error"
+			class="overflow-auto rounded-b-2xl no-scrollbar border-b border-gray-200"
+			style="max-height: 450px"
+			@scroll="handleScroll"
+		>
 			<table class="min-w-[1200px] table-auto divide-y divide-gray-200 text-sm">
 				<thead class="bg-gray-100 sticky top-0 z-10 uppercase">
 					<tr>
@@ -128,6 +133,10 @@
 			</table>
 		</div>
 
+		<div v-if="loadingMore" class="text-center py-2 text-gray-500 text-xs">
+			Loading more...
+		</div>
+
 		<div
 			v-if="selectedBoNames.length && !filteredItems.length && !loading"
 			class="text-gray-500 mt-4 text-center text-sm px-4"
@@ -156,6 +165,12 @@ export default {
 		const loading = ref(false);
 		const error = ref(null);
 		const searchText = ref("");
+
+		// Infinite Scroll State
+		const start = ref(0);
+		const pageLen = 20; // Fetch 20 by default
+		const hasMore = ref(true);
+		const loadingMore = ref(false);
 
 		const headers = [
 			"Customer Name",
@@ -212,45 +227,80 @@ export default {
 			});
 		};
 		const refreshBOrders = async () => {
-			items.value = [];
-			selectedItems.value = [];
-			await loadItems();
+			// items.value = []; // Don't clear immediately to avoid flicker if just refreshing
+			// selectedItems.value = [];
+			// Reset pagination
+			start.value = 0;
+			hasMore.value = true;
+			await loadItems(); // loadItems handles recursive clear if !loadMore
 		};
-		const loadItems = async () => {
-			loading.value = true;
-			error.value = null;
+
+		const loadItems = async (isLoadMore = false) => {
+			if (isLoadMore) {
+				if (!hasMore.value || loadingMore.value) return;
+				loadingMore.value = true;
+			} else {
+				loading.value = true;
+				error.value = null;
+				start.value = 0; // Reset start
+				hasMore.value = true;
+			}
 
 			try {
 				if (props.filters.customer || props.filters.month || props.filters.year) {
-					const res = await api.getBlanketOrdersWithItems(props.filters);
+					const params = {
+						...props.filters,
+						start: start.value,
+						page_len: pageLen,
+					};
+
+					const res = await api.getBlanketOrdersWithItems(params);
 					const data = res?.data?.message;
 
 					if (!Array.isArray(data)) {
 						throw new Error("Invalid response from server");
 					}
 
-					// if (!data.length) {
-					//   showMessage({
-					//     title: "No Data",
-					//     message: "No pending items found for selected filters",
-					//     indicator: "orange",
-					//   });
-					// }
+					if (isLoadMore) {
+						items.value = [...items.value, ...data];
+					} else {
+						items.value = data;
+						// selectedItems.value = []; // Optional: Clear selection on full reload?
+					}
 
-					items.value = data;
+					if (data.length < pageLen) {
+						hasMore.value = false;
+					} else {
+						start.value += pageLen;
+					}
 				} else {
 					items.value = [];
 				}
 			} catch (e) {
-				error.value = e?.message || "Failed to load Blanket Order items";
-
-				showMessage({
-					title: "Load Failed",
-					message: error.value,
-					indicator: "red",
-				});
+				// error.value = e?.message || "Failed to load Blanket Order items";
+				// Only show error on initial load failure
+				if (!isLoadMore) {
+					error.value = e?.message || "Failed to load Blanket Order items";
+					showMessage({
+						title: "Load Failed",
+						message: error.value,
+						indicator: "red",
+					});
+				} else {
+					// Silent fail or toast for load more
+					console.error("Failed to load more items", e);
+				}
 			} finally {
 				loading.value = false;
+				loadingMore.value = false;
+			}
+		};
+
+		const handleScroll = (e) => {
+			const { scrollTop, clientHeight, scrollHeight } = e.target;
+			// Buffer of 50px
+			if (scrollTop + clientHeight >= scrollHeight - 50) {
+				loadItems(true);
 			}
 		};
 
@@ -518,6 +568,8 @@ export default {
 			createSalesOrder,
 			refreshBOrders,
 			validateScheduleQty,
+			loadingMore,
+			handleScroll,
 		};
 	},
 };

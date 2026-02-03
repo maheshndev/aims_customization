@@ -741,7 +741,7 @@ const planStart = ref(today());
 // planStartTime: Time string HH:mm
 const planStartTime = ref("07:30");
 const planEnd = ref(null);
-const planEndTime = ref("22:00");
+const planEndTime = ref("19:30");
 
 const showModal = ref(false);
 const modalAction = ref(null);
@@ -792,7 +792,7 @@ function resetFields() {
 		planStart.value = today();
 		planStartTime.value = "07:30";
 		planEnd.value = null;
-		planEndTime.value = "22:00";
+		planEndTime.value = "19:30";
 	}
 
 	schedulePreview.value = [];

@@ -258,7 +258,7 @@ def get_blanket_orders(search_text=None, customer=None, month=None, year=None, l
 
 ##### -------------------- Level 2: Items for Blanket Orders Section -------------------- #####
 @frappe.whitelist()
-def get_blanket_orders_with_items( search_text=None, customer=None, month=None, year=None, limit=500 ):
+def get_blanket_orders_with_items( search_text=None, customer=None, month=None, year=None, start=0, page_len=20 ):
     sql = """
         SELECT
             bo.name AS bo_name,
@@ -349,8 +349,8 @@ def get_blanket_orders_with_items( search_text=None, customer=None, month=None, 
             params.extend([m, m, m, m, m])
 
 
-    sql += " ORDER BY bo.order_date DESC, bo.name, boi.idx LIMIT %s"
-    params.append(limit)
+    sql += " ORDER BY bo.order_date DESC, bo.name, boi.idx LIMIT %s, %s"
+    params.extend([cint(start), cint(page_len)])
     
     rows = frappe.db.sql(sql, tuple(params), as_dict=True) or []
     if not rows:
