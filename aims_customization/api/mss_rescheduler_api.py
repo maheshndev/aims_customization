@@ -60,7 +60,7 @@ def get_mss_schedule_range(
                 (SELECT workstation FROM `tabWork Order Operation` WHERE parent = wo.name ORDER BY idx ASC LIMIT 1) as workstation
             FROM `tabWork Order` wo
             LEFT JOIN `tabSales Order` so ON so.name = wo.sales_order
-            WHERE {condition_sql} AND wo.docstatus = 0
+            WHERE {condition_sql} AND wo.docstatus < 2
             ORDER BY wo.planned_start_date
         """,
             values,
