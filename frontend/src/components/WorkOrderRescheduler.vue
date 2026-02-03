@@ -96,6 +96,30 @@
 						</button>
 					</div>
 
+					<!-- STATUS FILTER -->
+					<div class="flex items-end gap-1">
+						<div class="flex flex-col w-56">
+							<label class="text-[10px] font-bold text-gray-600">Status</label>
+							<select
+								v-model="filters.status"
+								class="h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all px-3"
+							>
+								<option value="">All Statuses</option>
+								<option value="Draft">Draft</option>
+								<option value="In Progress">In Progress</option>
+								<option value="Completed">Completed</option>
+								<option value="Stopped">Stopped</option>
+							</select>
+						</div>
+						<button
+							v-if="filters.status"
+							@click="filters.status = ''"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
+						>
+							X
+						</button>
+					</div>
+
 					<!-- MONTH PICKER -->
 					<div class="flex items-end gap-1">
 						<div class="flex flex-col w-56">
@@ -266,6 +290,7 @@ const filters = reactive({
 	mould: "",
 	item: "",
 	shift: "",
+	status: "",
 });
 
 const hoveredEvent = ref(null);
@@ -547,39 +572,48 @@ function resetFilters() {
 	filters.mould = "";
 	filters.item = "";
 	filters.shift = "";
+	filters.status = "";
 	// Watcher will trigger loadSchedule
 }
 
 /* ---------------- UI ---------------- */
-function getStatusColor(status) {
+function getStatusColor(status, isDraft = false) {
 	const colors = {
 		Draft: {
-			border: "border-blue-500",
-			bg: "bg-blue-50",
-			text: "text-blue-900",
-			badge: "bg-blue-100 text-blue-700",
-			marker: "bg-blue-500",
+			border: "border-blue-600",
+			bg: "bg-gradient-to-br from-blue-100 to-blue-200",
+			text: "text-blue-950",
+			badge: "bg-blue-600 text-white border-blue-700",
+			marker: "bg-blue-600",
+			opacity: "opacity-100",
+			shadow: "shadow-lg shadow-blue-500/30",
 		},
 		"In Progress": {
-			border: "border-amber-500",
+			border: "border-amber-400",
 			bg: "bg-amber-50",
-			text: "text-amber-900",
+			text: "text-amber-800",
 			badge: "bg-amber-100 text-amber-700",
 			marker: "bg-amber-500",
+			opacity: "opacity-65",
+			shadow: "shadow-sm",
 		},
 		Completed: {
-			border: "border-emerald-500",
+			border: "border-emerald-400",
 			bg: "bg-emerald-50",
-			text: "text-emerald-900",
+			text: "text-emerald-800",
 			badge: "bg-emerald-100 text-emerald-700",
 			marker: "bg-emerald-500",
+			opacity: "opacity-60",
+			shadow: "shadow-sm",
 		},
 		Stopped: {
-			border: "border-rose-500",
+			border: "border-rose-400",
 			bg: "bg-rose-50",
-			text: "text-rose-900",
+			text: "text-rose-800",
 			badge: "bg-rose-100 text-rose-700",
 			marker: "bg-rose-500",
+			opacity: "opacity-65",
+			shadow: "shadow-sm",
 		},
 	};
 	return (
@@ -589,21 +623,30 @@ function getStatusColor(status) {
 			text: "text-gray-900",
 			badge: "bg-gray-100 text-gray-600",
 			marker: "bg-gray-400",
+			opacity: "opacity-70",
+			shadow: "shadow-sm",
 		}
 	);
 }
 
 function renderWOCard(wo) {
-	const c = getStatusColor(wo.status);
+	const isDraft = wo.status === "Draft";
+	const c = getStatusColor(wo.status, isDraft);
 	const isProcessing = wo.status === "In Progress";
+	const pulseAnimation = isDraft ? "animate-pulse-slow" : isProcessing ? "animate-pulse" : "";
+	const borderWidth = isDraft ? "border-[1px]" : "border";
+	const draftBadge = isDraft
+		? `<div class="absolute -top-1 -right-1 bg-blue-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-lg border border-white">Re SCHEDULING</div>`
+		: "";
 
 	return `
-    <div class="h-full w-full p-1.5 flex flex-col gap-0.5 overflow-hidden transition-all duration-300 rounded-xl border-2 ${
+    <div class="h-full w-full p-1.5 flex flex-col gap-0.5 overflow-hidden transition-all duration-300 rounded-xl ${borderWidth} ${
 		c.border
-	} ${c.bg} ${c.text} shadow-sm group-hover:shadow-md cursor-pointer select-none relative">
+	} ${c.bg} ${c.text} ${c.shadow} ${c.opacity} hover:opacity-100 cursor-pointer select-none relative ${pulseAnimation}">
+      ${draftBadge}
       <!-- Header -->
       <div class="flex items-center gap-1 overflow-hidden min-h-[12px]">
-        <span class="w-1.5 h-1.5 rounded-full ${c.marker} flex-shrink-0 ${isProcessing ? "animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" : ""}"></span>
+        <span class="w-1.5 h-1.5 rounded-full ${c.marker} flex-shrink-0 ${isProcessing ? "animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" : isDraft ? "shadow-[0_0_10px_rgba(37,99,235,0.8)]" : ""}"></span>
         <span class="text-[8px] font-black uppercase tracking-tighter truncate opacity-60">${
 			wo.wo_name
 		}</span>
@@ -805,5 +848,22 @@ function fmtFull(dt) {
 
 div {
 	color: inherit;
+}
+
+/* Custom slow pulse animation for draft work orders */
+@keyframes pulse-slow {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.95;
+		transform: scale(1.01);
+	}
+}
+
+.animate-pulse-slow {
+	animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

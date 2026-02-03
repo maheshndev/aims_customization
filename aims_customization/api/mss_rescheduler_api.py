@@ -17,7 +17,7 @@ def is_holiday(dt, holiday_list):
 
 @frappe.whitelist()
 def get_mss_schedule_range(
-    from_date, to_date, customer=None, sales_order=None, mould=None, item=None, shift=None
+    from_date, to_date, customer=None, sales_order=None, mould=None, item=None, shift=None, status=None
 ):
     try:
         from_dt = get_datetime(f"{from_date} 00:00:00")
@@ -38,6 +38,9 @@ def get_mss_schedule_range(
         if item:
             conditions.append("wo.production_item = %(item)s")
             values["item"] = item
+        if status:
+            conditions.append("wo.status = %(status)s")
+            values["status"] = status
         if shift:
             # Shift filter will be applied in Python post-processing for time-based overlap
             pass
