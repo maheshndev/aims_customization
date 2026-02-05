@@ -17,7 +17,7 @@ def is_holiday(dt, holiday_list):
 
 @frappe.whitelist()
 def get_mss_schedule_range(
-    from_date, to_date, customer=None, sales_order=None, mould=None, item=None, shift=None, status=None
+    from_date, to_date, customer=None, sales_order=None, mould=None, item=None, shift=None, status=None, workstation=None
 ):
     try:
         from_dt = get_datetime(f"{from_date} 00:00:00")
@@ -44,6 +44,16 @@ def get_mss_schedule_range(
         else:
             # Default: Exclude Completed and Cancelled
             conditions.append("wo.status NOT IN ('Completed', 'Cancelled')")
+        
+        if workstation:
+            conditions.append("""
+                EXISTS (
+                    SELECT 1 FROM `tabWork Order Operation` wop 
+                    WHERE wop.parent = wo.name AND wop.workstation = %(workstation)s
+                )
+            """)
+            values["workstation"] = workstation
+
         if shift:
             # Shift filter will be applied in Python post-processing for time-based overlap
             pass
@@ -232,6 +242,7 @@ def mss_search_options(doctype, txt=None, limit=20):
             "Item": ("name", "item_name"),
             "Mould": ("name", "mould_name"),
             "Shift Type": ("name",),
+            "Workstation": ("name", "workstation_name"),
         }
 
         if doctype not in allowed:

@@ -1,5 +1,5 @@
 <template>
-	<div class="p-4 sm:p-8 bg-gray-50 min-h-screen font-sans space-y-8">
+	<div class="p-4 sm:p-8 bg-gray-50 font-sans space-y-8">
 		<div class="flex items-center justify-between border-b border-gray-200 pb-4 rounded-1xl">
 			<div>
 				<h2 class="text-2xl font-bold text-gray-900 tracking-tight">

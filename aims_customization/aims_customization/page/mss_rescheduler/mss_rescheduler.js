@@ -13,7 +13,7 @@ frappe.pages["mss-rescheduler"].on_page_load = function (wrapper) {
 		const link = document.createElement("link");
 		link.id = "mss-vue-css";
 		link.rel = "stylesheet";
-		link.href = "/assets/aims_customization/mss-vue-app/style.css";
+		link.href = "/assets/aims_customization/mss-vue-app/style.css?v=" + new Date().getTime();
 		document.head.appendChild(link);
 	}
 
@@ -25,7 +25,9 @@ frappe.pages["mss-rescheduler"].on_page_load = function (wrapper) {
 		const script = document.createElement("script");
 		script.id = scriptId;
 		script.type = "module";
-		script.src = "/assets/aims_customization/mss-vue-app/mss-rescheduler-main.js";
+		script.src =
+			"/assets/aims_customization/mss-vue-app/mss-rescheduler-main.js?v=" +
+			new Date().getTime();
 
 		// Mount Vue after script loads
 		script.onload = () => {

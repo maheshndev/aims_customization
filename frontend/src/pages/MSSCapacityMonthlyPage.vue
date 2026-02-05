@@ -1,5 +1,5 @@
 <template>
-	<div class="min-h-screen bg-gray-50 p-6 space-y-6">
+	<div class="bg-gray-50 p-6 space-y-6">
 		<h2 class="text-xl font-semibold text-gray-800">Monthly Capacity Sheet</h2>
 
 		<!-- Filters -->
@@ -9,12 +9,18 @@
 
 		<!-- Machine Capacity -->
 		<SectionCard title="Available Machines">
-			<MachineCapacityMonthly :filters="filters" v-model:selected="selected.selectedMachines" />
+			<MachineCapacityMonthly
+				:filters="filters"
+				v-model:selected="selected.selectedMachines"
+			/>
 		</SectionCard>
 
 		<!-- Item Capacity -->
 		<SectionCard title="Items Monthly Capacity Report ">
-			<ItemsCapacityMonthly :filters="filters" :selected-machines="selected.selectedMachines" />
+			<ItemsCapacityMonthly
+				:filters="filters"
+				:selected-machines="selected.selectedMachines"
+			/>
 		</SectionCard>
 	</div>
 </template>
@@ -46,11 +52,11 @@ export default {
 		});
 
 		const selected = reactive({
-			selectedMachines: []
+			selectedMachines: [],
 		});
 
 		const state = reactive({
-			selectedMachines: []
+			selectedMachines: [],
 		});
 
 		const onApplyFilters = () => {

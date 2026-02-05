@@ -1,5 +1,5 @@
 <template>
-	<div class="p-6 bg-gray-50 min-h-screen font-sans space-y-6">
+	<div class="p-6 bg-gray-50 font-sans space-y-6">
 		<h2 class="p-2">Monthly Schedule Screen (MSS)</h2>
 		<!-- Filters -->
 		<SectionCard title="Filters">

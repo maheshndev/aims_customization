@@ -151,17 +151,16 @@
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4 mr-1"
-					fill="none"
+					class="h-4 w-4 mr-2"
 					viewBox="0 0 24 24"
+					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M4 4v5h.582m15.356 2A8.001 8.001 0 004 12a7.961 7.961 0 00-1.565 3.59M18 20v-5h.582m-15.356-2A8.001 8.001 0 0120 12a7.961 7.961 0 011.565-3.59"
-					/>
+					<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+					<path d="M3 3v5h5" />
 				</svg>
 				Reset All
 			</button>
@@ -172,17 +171,15 @@
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-4 w-4 mr-1"
-					fill="none"
+					class="h-4 w-4 mr-2"
 					viewBox="0 0 24 24"
+					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M9 12l2 2 4-4m5.618-4.111a.75.75 0 01-.197 1.055l-4.522 3.86a.75.75 0 01-.894 0l-4.522-3.86a.75.75 0 01-.197-1.055l3.86-4.522a.75.75 0 011.055-.197l4.522 3.86a.75.75 0 01.197 1.055z"
-					/>
+					<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
 				</svg>
 				Apply Filters
 			</button>

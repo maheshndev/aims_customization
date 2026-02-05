@@ -47,7 +47,12 @@
 								#
 							</th>
 							<th
-								class="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+								class="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 text-left"
+							>
+								Sales Order
+							</th>
+							<th
+								class="px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 text-left"
 							>
 								Item Details
 							</th>
@@ -92,7 +97,7 @@
 					<tbody class="divide-y divide-gray-50">
 						<template v-if="loading && !rows.length">
 							<tr v-for="i in 3" :key="i">
-								<td colspan="9" class="px-3 py-6 animate-pulse">
+								<td colspan="10" class="px-3 py-6 animate-pulse">
 									<div class="h-3 bg-gray-50 rounded w-full"></div>
 								</td>
 							</tr>
@@ -100,7 +105,7 @@
 
 						<template v-else-if="!rows.length">
 							<tr>
-								<td colspan="9" class="px-3 py-16 text-center">
+								<td colspan="10" class="px-3 py-16 text-center">
 									<div class="flex flex-col items-center">
 										<span class="text-3xl mb-2">📋</span>
 										<p class="text-xs text-gray-400 font-medium">
@@ -126,11 +131,24 @@
 									<div
 										class="font-bold text-gray-800 text-xs truncate max-w-[200px]"
 									>
+										{{ r.sales_order }}
+									</div>
+									<div class="text-[9px] text-gray-500">
+										{{
+											r.transaction_date
+												? new Date(r.transaction_date).toLocaleDateString()
+												: "-"
+										}}
+									</div>
+								</td>
+								<td class="px-2 py-2">
+									<div
+										class="font-medium text-gray-700 text-xs truncate max-w-[180px]"
+										:title="r.item_name"
+									>
 										{{ r.item_name }}
 									</div>
-									<div
-										class="text-[9px] text-gray-400 font-medium tracking-tight"
-									>
+									<div class="text-[9px] text-gray-400 font-mono">
 										{{ r.item_code }}
 									</div>
 								</td>

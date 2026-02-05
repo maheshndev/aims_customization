@@ -106,7 +106,7 @@ const statusColorsMap = {
 
 /* ---------------- BAR ---------------- */
 const progressData = computed(() => ({
-	labels: props.rows.map((r) => r.item_name || r.item_code),
+	labels: props.rows.map((r) => `${r.sales_order} - ${r.item_name || r.item_code}`),
 	datasets: [
 		{
 			label: "Progress %",
@@ -228,7 +228,7 @@ const statusData = computed(() => {
 
 /* ---------------- LINE ---------------- */
 const lineData = computed(() => ({
-	labels: props.rows.map((r) => r.item_name || r.item_code),
+	labels: props.rows.map((r) => `${r.sales_order} - ${r.item_name || r.item_code}`),
 	datasets: [
 		{
 			label: "Produced Qty",

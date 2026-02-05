@@ -17,7 +17,7 @@ function load_vue_app() {
 		const link = document.createElement("link");
 		link.id = "mss-vue-css";
 		link.rel = "stylesheet";
-		link.href = "/assets/aims_customization/mss-vue-app/style.css";
+		link.href = "/assets/aims_customization/mss-vue-app/style.css?v=" + new Date().getTime();
 		document.head.appendChild(link);
 	}
 
@@ -28,7 +28,7 @@ function load_vue_app() {
 		const script = document.createElement("script");
 		script.id = scriptId;
 		script.type = "module";
-		script.src = "/assets/aims_customization/mss-vue-app/main.js";
+		script.src = "/assets/aims_customization/mss-vue-app/main.js?v=" + new Date().getTime();
 
 		script.onload = () => {
 			console.log("Vue App JS Loaded ✔️");

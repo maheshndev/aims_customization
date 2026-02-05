@@ -1049,6 +1049,7 @@ function sync() {
 	const rms = props.rawMaterials || [];
 
 	rows.value = props.capBoms
+		.filter((b) => Number(b.required_for_selected_qty) > 0)
 		// 2. Map items to planning rows
 		.map((b, i) => {
 			// 3. Inject updated Raw Materials (percentages/qtys) filtered for this specific SO + BOM

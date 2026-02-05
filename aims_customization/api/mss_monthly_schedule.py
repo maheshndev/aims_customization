@@ -144,26 +144,39 @@ def _get_so_consumed_qty(bo_name, item_code):
 
 ##### -------------------- Level 0: Customers in Filters Section -------------------- #####
 @frappe.whitelist()
-def get_customers(search_text: str = None, customer_id: str = None, limit: int = 20):
-    
-    sql = "SELECT name, customer_name FROM `tabCustomer` WHERE disabled=0"
-    params = []
+def get_customers(search_text=None, customer_id=None, limit=10):
+    try:
+        limit = cint(limit) or 10
+        
+        # 1. Initialization case
+        if customer_id:
+            return frappe.get_all("Customer", filters={"name": customer_id}, fields=["name", "customer_name"])
 
-    if customer_id:
-        sql += " AND name = %s"
-        params.append(customer_id)
-    elif search_text:
-        sql += " AND (name LIKE %s OR customer_name LIKE %s)"
-        params.extend([f"%{search_text}%", f"%{search_text}%"])
-        sql += " ORDER BY customer_name ASC LIMIT %s"
-        params.append(limit)
-    else:
-        sql += " ORDER BY customer_name ASC LIMIT %s"
-        params.append(limit)
+        # 2. Build filters
+        filters = {"disabled": 0}
+        
+        # 3. Handle search text
+        or_filters = None
+        if search_text and str(search_text).strip():
+            s = f"%{search_text}%"
+            or_filters = [
+                {"name": ["like", s]},
+                {"customer_name": ["like", s]}
+            ]
 
-    rows = frappe.db.sql(sql, tuple(params), as_dict=True) or []
-    
-    return [{"name": r["name"], "customer_name": r["customer_name"]} for r in rows]
+        # 4. Fetch list
+        return frappe.get_all(
+            "Customer",
+            filters=filters,
+            or_filters=or_filters,
+            fields=["name", "customer_name"],
+            order_by="customer_name asc",
+            limit_page_length=limit,
+            ignore_permissions=True
+        )
+    except Exception:
+        frappe.log_error(title="MSS Filter Customer Error", message=frappe.get_traceback())
+        return []
 
 ##### -------------------- Level 1: Blanket Orders Section -------------------- #####
 @frappe.whitelist()
@@ -768,6 +781,9 @@ def get_boms_for_sales_orders(sales_orders: str | list = None):
             
             planned_qty = sum(flt(w.qty) for w in wos)
             remaining_qty = max(0, flt(required_qty) - planned_qty)
+            
+            if remaining_qty <= 0:
+                continue
 
             node_results.append({
                 "sales_order": so_name,
@@ -1853,6 +1869,7 @@ def get_work_orders_for_so(so_list: str | list = None):
         WHERE (sales_order IN ({placeholders_so}) 
                OR production_item IN ({placeholders_items}))
         AND docstatus < 2
+        AND status NOT IN ('Completed', 'Cancelled')
         ORDER BY planned_start_date DESC
     """
     
@@ -1972,46 +1989,66 @@ def get_production_control_dashboard(customer=None, month=None, year=None):
     year = cint(year) if year else None
     date_range = get_date_range(month, year)
 
-    rows = frappe.db.sql("""
+    # Filter by Month/Year if provided
+    date_filter = ""
+    sql_params = {"customer": customer}
+    
+    if month and year:
+        date_filter = "AND MONTH(so.transaction_date) = %(month)s AND YEAR(so.transaction_date) = %(year)s"
+        sql_params["month"] = month
+        sql_params["year"] = year
+
+    # 1. Fetch Sales Order Items matching the criteria
+    rows = frappe.db.sql(f"""
         SELECT
-            bo.name AS blanket_order,
-            boi.item_code,
-            boi.item_name,
-            boi.qty AS order_qty,
             so.name AS sales_order,
-            so.transaction_date
-        FROM `tabBlanket Order Item` boi
-        JOIN `tabBlanket Order` bo ON bo.name = boi.parent AND bo.docstatus = 1
-        LEFT JOIN `tabSales Order Item` soi
-            ON soi.blanket_order = bo.name
-            AND soi.item_code = boi.item_code
-        LEFT JOIN `tabSales Order` so ON so.name = soi.parent AND so.docstatus = 1
-        WHERE bo.customer = %(customer)s
-    """, {"customer": customer}, as_dict=True)
+            so.transaction_date,
+            soi.item_code,
+            soi.item_name,
+            soi.qty AS order_qty,
+            soi.blanket_order
+        FROM `tabSales Order` so
+        JOIN `tabSales Order Item` soi ON soi.parent = so.name
+        WHERE so.customer = %(customer)s
+          AND so.docstatus = 1
+          {date_filter}
+        ORDER BY so.transaction_date DESC
+    """, sql_params, as_dict=True)
 
     result = []
 
     for r in rows:
+        # Get Production (Produced Qty) from Work Orders linked to this SO + Item
+        # Only count valid (submitted/completed) WOs, or Drafts? Usually Drafts count as 'Planned'.
+        # The user dashboard typically tracks ACTUAL production (submitted WOs with produced qty).
+        # We'll fetch SUM(produced_qty) from Work Order.
+        
+        # We can also fetch the timeline here for the Gantt chart
+        
+        # Helper functions handle the totaling logic
         production = _get_production_totals(r.sales_order, r.item_code)
         dispatched = _get_dispatched_totals(r.sales_order, r.item_code)
-        consumed = _get_so_consumed_qty(r.blanket_order, r.item_code)
-
-        timeline = _build_timeline(r.sales_order, r.item_code, date_range)
+        
+        produced_qty = flt(production.get("produced_qty", 0))
+        
+        # Timeline
+        timeline = _build_timeline(r.sales_order, r.item_code, None)
 
         row = {
-            "blanket_order": r.blanket_order,
+            "sales_order": r.sales_order,
+            "blanket_order": r.blanket_order or "",
             "item_code": r.item_code,
             "item_name": r.item_name,
             "order_qty": flt(r.order_qty),
-            "produced_qty": flt(production["produced_qty"]),
-            "dispatched_qty": flt(dispatched["qty"]),
-            "consumed_qty": flt(consumed),
+            "produced_qty": produced_qty,
+            "dispatched_qty": flt(dispatched.get("qty", 0)),
+            "consumed_qty": 0,  # Not relevant for SO view
             "transaction_date": r.transaction_date,
-            "balance_qty": flt(r.order_qty) - flt(production["produced_qty"]),
-            "progress": _calc_progress(r.order_qty, production["produced_qty"]),
+            "balance_qty": max(0, flt(r.order_qty) - produced_qty),
+            "progress": _calc_progress(r.order_qty, produced_qty),
             "timeline": timeline,
             "status": compute_status({
-                "produced_qty": flt(production["produced_qty"]),
+                "produced_qty": produced_qty,
                 "order_qty": flt(r.order_qty)
             })
         }

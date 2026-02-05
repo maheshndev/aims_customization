@@ -5,48 +5,6 @@
 		</p>
 
 		<div class="flex flex-wrap gap-5">
-			<div class="relative flex-1 min-w-[100px] max-w-[210px] mx-1">
-				<label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
-				<div class="relative">
-					<select
-						v-model="localFilters.year"
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white"
-					>
-						<option value="">Select Year (Optional)</option>
-						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
-					</select>
-
-					<span
-						v-if="localFilters.year"
-						@click="clearYear"
-						class="absolute px-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
-					>
-						<b>✕</b>
-					</span>
-				</div>
-			</div>
-			<div class="relative flex-1 min-w-[100px] max-w-[210px] mx-1">
-				<label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
-				<div class="relative">
-					<select
-						v-model="localFilters.month"
-						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white"
-					>
-						<option value="">Select Month (Optional)</option>
-						<option v-for="m in monthOptions" :key="m.value" :value="m.value">
-							{{ m.label }}
-						</option>
-					</select>
-					<span
-						v-if="localFilters.month"
-						@click="clearMonth"
-						class="absolute px-1 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
-					>
-						<b>✕</b>
-					</span>
-				</div>
-			</div>
-
 			<div class="relative flex-3 min-w-[100px] max-w-[350px] mx-1">
 				<!-- <span class="text-red-700"> * Important</span> -->
 				<label class="block text-sm font-medium text-gray-700 mb-1">Customer </label>
@@ -142,6 +100,47 @@
 						No customers found matching "{{ searchCustomerText }}"
 					</li>
 				</ul>
+			</div>
+			<div class="relative flex-1 min-w-[100px] max-w-[210px] mx-1">
+				<label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
+				<div class="relative">
+					<select
+						v-model="localFilters.month"
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white"
+					>
+						<option value="">Select Month (Optional)</option>
+						<option v-for="m in monthOptions" :key="m.value" :value="m.value">
+							{{ m.label }}
+						</option>
+					</select>
+					<span
+						v-if="localFilters.month"
+						@click="clearMonth"
+						class="absolute px-1 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
+					>
+						<b>✕</b>
+					</span>
+				</div>
+			</div>
+			<div class="relative flex-1 min-w-[100px] max-w-[210px] mx-1">
+				<label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
+				<div class="relative">
+					<select
+						v-model="localFilters.year"
+						class="w-full h-9 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-8 pl-2 text-sm appearance-none bg-white"
+					>
+						<option value="">Select Year (Optional)</option>
+						<option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+					</select>
+
+					<span
+						v-if="localFilters.year"
+						@click="clearYear"
+						class="absolute px-2 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-700 text-base leading-none"
+					>
+						<b>✕</b>
+					</span>
+				</div>
 			</div>
 		</div>
 
@@ -272,8 +271,8 @@ export default {
 		async fetchCustomers(searchText = "") {
 			this.customerSearchLoading = true;
 			try {
-				const res = await api.getCustomers(searchText);
-				this.customers = res.data.message.map((c) => ({
+				const res = await api.getCustomers(searchText || "");
+				this.customers = (res.data.message || []).map((c) => ({
 					value: c.name,
 					label: c.customer_name || c.name,
 				}));
@@ -288,12 +287,14 @@ export default {
 		async handleCustomerFocus() {
 			this.dropdownOpen = true;
 
-			if (!this.searchCustomerText && this.customers.length === 0) {
-				await this.fetchCustomers("");
+			// Re-fetch only if we don't have a list or if the search text is empty (to show default 10)
+			if (!this.searchCustomerText || this.customers.length === 0) {
+				await this.fetchCustomers(this.searchCustomerText || "");
 			}
 		},
 
 		handleCustomerInput() {
+			this.dropdownOpen = true; // Ensure dropdown stays open while typing
 			this.localFilters.customer = "";
 			this.debouncedFetchCustomers(this.searchCustomerText);
 		},

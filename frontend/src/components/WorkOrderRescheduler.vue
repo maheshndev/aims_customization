@@ -96,6 +96,24 @@
 						</button>
 					</div>
 
+					<div class="flex items-end gap-1">
+						<div class="w-56">
+							<SearchSelect
+								label="Workstation"
+								doctype="Workstation"
+								v-model="filters.workstation"
+								class="transition-all duration-200 group-hover:scale-[1.02]"
+							/>
+						</div>
+						<button
+							v-if="filters.workstation"
+							@click="filters.workstation = ''"
+							class="h-9 flex items-center justify-center text-xl text-gray-400 hover:text-gray-600 transition-colors"
+						>
+							X
+						</button>
+					</div>
+
 					<!-- STATUS FILTER -->
 					<div class="flex items-end gap-1">
 						<div class="flex flex-col w-56">
@@ -271,6 +289,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from "vue";
+
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -291,6 +310,7 @@ const filters = reactive({
 	item: "",
 	shift: "",
 	status: "",
+	workstation: "",
 });
 
 const hoveredEvent = ref(null);
@@ -430,7 +450,7 @@ function handleEventMouseEnter(info) {
 		hoverTimeout = null;
 	}
 
-	hoveredEvent.value = info.event.extendedProps;
+	hoveredEvent.value = { ...info.event.extendedProps };
 
 	// Reduced gap so user can easily mouse over it
 	// Offset slightly so it doesn't flicker under the cursor immediately
@@ -492,7 +512,7 @@ const calendarOptions = {
 	},
 
 	datesSet(info) {
-		visibleRange.from = info.startStr;
+		visibleRange.from = info.start.toISOString().slice(0, 10);
 		visibleRange.to = new Date(info.end.getTime() - 1).toISOString().slice(0, 10);
 
 		loadSchedule();
@@ -573,6 +593,7 @@ function resetFilters() {
 	filters.item = "";
 	filters.shift = "";
 	filters.status = "";
+	filters.workstation = "";
 	// Watcher will trigger loadSchedule
 }
 
@@ -677,6 +698,7 @@ function renderWOCard(wo) {
         <span class="text-[8px] font-black uppercase tracking-tighter truncate opacity-60">${
 			wo.wo_name
 		}</span>
+        <span class="text-[7px] font-bold px-1 rounded bg-black/5 ml-auto">${wo.status}</span>
       </div>
 
       <!-- Content -->
