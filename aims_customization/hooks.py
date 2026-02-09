@@ -25,13 +25,9 @@ after_migrate = [
    
     "aims_customization.patches.v_0.change_the_datatype_qty_field_on_bomitem_from_float_to_data.execute",
     "aims_customization.patches.v_0.add_status_for_design_feasibility_on_quotation.execute",
-    "aims_customization.patches.v_0.add_mould_detail_tab_on_item_master.execute",
     "aims_customization.patches.v_0.add_is_mold_item_field_on_item.execute",
     "aims_customization.patches.v_0.document_naming_series_for_shape.execute",
     "aims_customization.patches.v_0.add_is_moulding_item_checkbox_on_item.execute",
-    "aims_customization.patches.v_0.add_selection_of_tool_on_item.execute",
-    "aims_customization.patches.v_0.add_moulds_field_on_item.execute",
-    "aims_customization.patches.v_0.add_mould_name_field_on_item.execute",
     "aims_customization.patches.v_0.add_design_document_attachment_on_quotation.execute",
     "aims_customization.patches.v_0.add_other_than_mould_or_moulding_item.execute",
     "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute",
