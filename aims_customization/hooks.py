@@ -38,11 +38,11 @@ doctype_js = {
     "Pre Feasibility":["public/js/fetched_current_login_user_name_on_preparedby_field_on_pre_feasibility.js",
     "public/js/prefeasibility_template.js"],
     "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
-    "Item":["public/js/fetched_cavity_from_mould_on_item.js"],
+    
     "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
     "Sales Invoice": ["public/js/sales_invoice_and_credit_note_default_print_format_setting.js",
                       "public/js/default_value_for_declaration.js"],
-    "Work Order":"public/js/add_filter_for_mould_field_in_workorder.js"
+    
 }
 
 
