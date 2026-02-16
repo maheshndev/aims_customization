@@ -17,23 +17,18 @@ after_migrate = [
     "aims_customization.patches.v_0.add_customer_po_attachment_field_on_sales_order.execute",
     "aims_customization.patches.v_0.add_short_close_reason_field.execute",
    
-    
-    
     "aims_customization.patches.v_0.add_rm_percentage_field_on_bom.execute",
     "aims_customization.patches.v_0.add_pre_feasibility_item_field_on_lead.execute",
     "aims_customization.patches.v_0.add_bom_type_field_on_bom.execute",
    
     "aims_customization.patches.v_0.change_the_datatype_qty_field_on_bomitem_from_float_to_data.execute",
     "aims_customization.patches.v_0.add_status_for_design_feasibility_on_quotation.execute",
-    "aims_customization.patches.v_0.add_is_mold_item_field_on_item.execute",
+   
     "aims_customization.patches.v_0.document_naming_series_for_shape.execute",
-    "aims_customization.patches.v_0.add_is_moulding_item_checkbox_on_item.execute",
     "aims_customization.patches.v_0.add_design_document_attachment_on_quotation.execute",
-    "aims_customization.patches.v_0.add_other_than_mould_or_moulding_item.execute",
     "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute",
     "aims_customization.patches.v_0.add_mould_in_workorder.execute"
 
-    
 ]
 doctype_js = {
 	"Lead": ["public/js/add_pre_feasibility_option_on_lead.js",
@@ -43,7 +38,7 @@ doctype_js = {
     "Pre Feasibility":["public/js/fetched_current_login_user_name_on_preparedby_field_on_pre_feasibility.js",
     "public/js/prefeasibility_template.js"],
     "Sales Order":"public/js/on_sales_order_hide_buttons_when_workflow_state_pending_for_approval.js",
-    "Item":["public/js/fetched_cavity_from_mould_on_item.js","public/js/is_mold_and_is_molding_show_hide_mandatory_mold_details_tab_fiedls.js"],
+    "Item":["public/js/fetched_cavity_from_mould_on_item.js"],
     "BOM":"public/js/calculate_bom_quantity_based_on_gross_wt.js",
     "Sales Invoice": ["public/js/sales_invoice_and_credit_note_default_print_format_setting.js",
                       "public/js/default_value_for_declaration.js"],
