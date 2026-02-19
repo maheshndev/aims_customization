@@ -27,7 +27,7 @@ after_migrate = [
     "aims_customization.patches.v_0.document_naming_series_for_shape.execute",
     "aims_customization.patches.v_0.add_design_document_attachment_on_quotation.execute",
     "aims_customization.patches.v_0.add_supplier_code_in_supplier_details.execute",
-    "aims_customization.patches.v_0.add_mould_in_workorder.execute"
+    
 
 ]
 doctype_js = {

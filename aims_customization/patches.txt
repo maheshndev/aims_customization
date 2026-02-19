@@ -23,4 +23,4 @@ aims_customization.patches.v_0.change_the_datatype_qty_field_on_bomitem_from_flo
 aims_customization.patches.v_0.document_naming_series_for_shape
 aims_customization.patches.v_0.add_design_document_attachment_on_quotation
 aims_customization.patches.v_0.add_supplier_code_in_supplier_details
-aims_customization.patches.v_0.add_mould_in_workorder
+
