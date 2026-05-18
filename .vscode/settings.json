@@ -1,0 +1,5 @@
+{
+    "chat.extensionUnification.enabled": true,
+    "chat.disableAIFeatures": false,
+    "docwriter.style": "Auto-detect"
+}
